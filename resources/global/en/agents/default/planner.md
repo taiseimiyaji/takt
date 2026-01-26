@@ -59,22 +59,7 @@ Determine the implementation direction:
 
 ```
 [PLANNER:DONE]
-
-worktree:
-  baseBranch: {base branch name}
-  branchName: {new branch name}
 ```
-
-**baseBranch criteria:**
-- New feature: `main` or `master`
-- Existing feature modification: related feature branch (use `main` if unknown)
-- Bug fix: relevant branch (use `main` if unknown)
-
-**branchName naming convention:**
-- Feature addition: `add-{feature-name}` (e.g., `add-user-authentication`)
-- Fix: `fix-{issue}` (e.g., `fix-login-error`)
-- Refactor: `refactor-{target}` (e.g., `refactor-api-client`)
-- Use lowercase English with hyphens
 
 ### BLOCKED Output Structure
 
@@ -85,8 +70,6 @@ Clarifications needed:
 - {Question 1}
 - {Question 2}
 ```
-
-**Note:** Do not output worktree settings when BLOCKED.
 
 ## Important
 

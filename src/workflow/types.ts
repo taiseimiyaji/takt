@@ -8,7 +8,6 @@
 import type { WorkflowStep, AgentResponse, WorkflowState } from '../models/types.js';
 import type { StreamCallback } from '../agents/runner.js';
 import type { PermissionHandler, AskUserQuestionHandler } from '../claude/process.js';
-import type { WorktreeConfig } from '../utils/worktree.js';
 
 /** Events emitted by workflow engine */
 export interface WorkflowEvents {
@@ -20,7 +19,6 @@ export interface WorkflowEvents {
   'workflow:abort': (state: WorkflowState, reason: string) => void;
   'iteration:limit': (iteration: number, maxIterations: number) => void;
   'step:loop_detected': (step: WorkflowStep, consecutiveCount: number) => void;
-  'planner:worktree_config': (config: WorktreeConfig) => void;
 }
 
 /** User input request for blocked state */

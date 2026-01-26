@@ -23,7 +23,6 @@ import {
   addUserInput,
   getPreviousOutput,
 } from './state-manager.js';
-import { parseWorktreeConfig } from '../utils/worktree.js';
 import { generateReportDir } from '../utils/session.js';
 
 // Re-export types for backward compatibility
@@ -35,7 +34,6 @@ export type {
   IterationLimitCallback,
   WorkflowEngineOptions,
 } from './types.js';
-export type { WorktreeConfig } from '../utils/worktree.js';
 export { COMPLETE_STEP, ABORT_STEP } from './constants.js';
 
 /** Workflow engine for orchestrating agent execution */
@@ -103,12 +101,12 @@ export class WorkflowEngine extends EventEmitter {
     addUserInput(this.state, input);
   }
 
-  /** Update working directory (used after worktree creation) */
+  /** Update working directory */
   updateCwd(newCwd: string): void {
     this.cwd = newCwd;
   }
 
-  /** Get current working directory (may be worktree path) */
+  /** Get current working directory */
   getCwd(): string {
     return this.cwd;
   }
@@ -216,14 +214,6 @@ export class WorkflowEngine extends EventEmitter {
       try {
         const response = await this.runStep(step);
         this.emit('step:complete', step, response);
-
-        // Check for worktree config in Planner output (when DONE)
-        if (step.name === 'plan' && response.status === 'done') {
-          const worktreeConfig = parseWorktreeConfig(response.content);
-          if (worktreeConfig) {
-            this.emit('planner:worktree_config', worktreeConfig);
-          }
-        }
 
         if (response.status === 'blocked') {
           this.emit('step:blocked', step, response);
