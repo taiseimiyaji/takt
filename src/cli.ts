@@ -30,6 +30,7 @@ import {
   switchWorkflow,
   switchConfig,
   addTask,
+  refreshBuiltin,
 } from './commands/index.js';
 import { listWorkflows } from './config/workflowLoader.js';
 import { selectOptionWithDefault } from './prompt/index.js';
@@ -109,9 +110,13 @@ program
           await addTask(cwd, args);
           return;
 
+        case 'refresh-builtin':
+          await refreshBuiltin();
+          return;
+
         default:
           error(`Unknown command: /${command}`);
-          info('Available: /run-tasks, /add-task, /switch, /clear, /help, /config');
+          info('Available: /run-tasks, /add-task, /switch, /clear, /refresh-builtin, /help, /config');
           process.exit(1);
       }
     }

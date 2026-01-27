@@ -13,18 +13,20 @@ export function showHelp(): void {
 
   console.log(`
 Usage:
-  takt {task}        Execute task with current workflow (continues session)
-  takt /run-tasks    Run all pending tasks from .takt/tasks/
-  takt /add-task     Add a new task (interactive, YAML format)
-  takt /switch       Switch workflow interactively
-  takt /clear        Clear agent conversation sessions (reset to initial state)
-  takt /help         Show this help
+  takt {task}             Execute task with current workflow (continues session)
+  takt /run-tasks         Run all pending tasks from .takt/tasks/
+  takt /add-task          Add a new task (interactive, YAML format)
+  takt /switch            Switch workflow interactively
+  takt /clear             Clear agent conversation sessions (reset to initial state)
+  takt /refresh-builtin   Overwrite builtin agents/workflows with latest version
+  takt /help              Show this help
 
 Examples:
   takt "Fix the bug in main.ts"         # Execute task (continues session)
   takt /add-task "認証機能を追加する"   # Quick add task
   takt /add-task                        # Interactive task creation
   takt /clear                           # Clear sessions, start fresh
+  takt /refresh-builtin                 # Update builtin resources
   takt /switch
   takt /run-tasks
 

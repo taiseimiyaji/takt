@@ -55,7 +55,7 @@ export function copyGlobalResourcesToDir(targetDir: string): void {
     return;
   }
   // Skip language directories (they are handled by copyLanguageResourcesToDir)
-  copyDirRecursive(resourcesDir, targetDir, ['en', 'ja']);
+  copyDirRecursive(resourcesDir, targetDir, { skipDirs: ['en', 'ja'] });
 }
 
 /**
@@ -106,24 +106,62 @@ export function copyLanguageResourcesToDir(targetDir: string, lang: Language): v
   }
 }
 
+/**
+ * Force-refresh language-specific resources (agents and workflows) to ~/.takt.
+ * Overwrites existing builtin files. Does NOT touch config.yaml.
+ */
+export function forceRefreshLanguageResources(targetDir: string, lang: Language): string[] {
+  const langDir = getLanguageResourcesDir(lang);
+  if (!existsSync(langDir)) {
+    throw new Error(`Language resources not found: ${langDir}`);
+  }
+
+  const copiedFiles: string[] = [];
+  const forceOptions = { overwrite: true, copiedFiles };
+
+  // Overwrite agents directory
+  const langAgentsDir = join(langDir, 'agents');
+  const targetAgentsDir = join(targetDir, 'agents');
+  if (existsSync(langAgentsDir)) {
+    copyDirRecursive(langAgentsDir, targetAgentsDir, forceOptions);
+  }
+
+  // Overwrite workflows directory
+  const langWorkflowsDir = join(langDir, 'workflows');
+  const targetWorkflowsDir = join(targetDir, 'workflows');
+  if (existsSync(langWorkflowsDir)) {
+    copyDirRecursive(langWorkflowsDir, targetWorkflowsDir, forceOptions);
+  }
+
+  return copiedFiles;
+}
+
 /** Files to skip during resource copy (OS-generated files) */
 const SKIP_FILES = ['.DS_Store', 'Thumbs.db'];
 
+interface CopyOptions {
+  /** Directory names to skip at the top level */
+  skipDirs?: string[];
+  /** Overwrite existing files (default: false) */
+  overwrite?: boolean;
+  /** Collect copied file paths into this array */
+  copiedFiles?: string[];
+}
+
 /**
  * Recursively copy directory contents.
- * Skips files that already exist in target.
- * @param skipDirs - Directory names to skip at top level
+ * @param overwrite - If false (default), skips files that already exist in target.
+ *                    If true, overwrites existing files.
  */
-function copyDirRecursive(srcDir: string, destDir: string, skipDirs: string[] = []): void {
+function copyDirRecursive(srcDir: string, destDir: string, options: CopyOptions = {}): void {
+  const { skipDirs = [], overwrite = false, copiedFiles } = options;
+
   if (!existsSync(destDir)) {
     mkdirSync(destDir, { recursive: true });
   }
 
   for (const entry of readdirSync(srcDir)) {
-    // Skip OS-generated files
     if (SKIP_FILES.includes(entry)) continue;
-
-    // Skip specified directories
     if (skipDirs.includes(entry)) continue;
 
     const srcPath = join(srcDir, entry);
@@ -131,11 +169,11 @@ function copyDirRecursive(srcDir: string, destDir: string, skipDirs: string[] = 
     const stat = statSync(srcPath);
 
     if (stat.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else if (!existsSync(destPath)) {
-      // Only copy if file doesn't exist
+      copyDirRecursive(srcPath, destPath, { overwrite, copiedFiles });
+    } else if (overwrite || !existsSync(destPath)) {
       const content = readFileSync(srcPath);
       writeFileSync(destPath, content);
+      copiedFiles?.push(destPath);
     }
   }
 }
