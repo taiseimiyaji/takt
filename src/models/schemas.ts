@@ -136,9 +136,9 @@ export const ProjectConfigSchema = z.object({
  * Custom agents can override these patterns in their configuration.
  */
 export const GENERIC_STATUS_PATTERNS: Record<string, string> = {
-  approved: '\\[\\w+:APPROVE\\]',
-  rejected: '\\[\\w+:REJECT\\]',
-  improve: '\\[\\w+:IMPROVE\\]',
-  done: '\\[\\w+:(DONE|FIXED)\\]',
-  blocked: '\\[\\w+:BLOCKED\\]',
+  approved: '\\[[\\w-]+:APPROVE\\]',
+  rejected: '\\[[\\w-]+:REJECT\\]',
+  improve: '\\[[\\w-]+:IMPROVE\\]',
+  done: '\\[[\\w-]+:(DONE|FIXED)\\]',
+  blocked: '\\[[\\w-]+:BLOCKED\\]',
 };

@@ -1,0 +1,594 @@
+# Simple TAKT Workflow
+# Plan -> Coder -> Architect Review -> AI Review -> Supervisor Approval
+# (Simplified version of default - removed improve, fix, ai_fix, security_review, security_fix)
+#
+# Template Variables:
+#   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {step_iteration} - Per-step iteration count (how many times THIS step has been executed)
+#   {task}           - Original user request
+#   {previous_response} - Output from the previous step
+#   {git_diff}       - Current uncommitted changes (git diff)
+#   {user_inputs}    - Accumulated user inputs during workflow
+#   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
+
+name: simple
+description: Simplified development workflow (plan -> implement -> review -> ai_review -> supervise)
+
+max_iterations: 20
+
+initial_step: plan
+
+steps:
+  - name: plan
+    agent: ~/.takt/agents/default/planner.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Requirements clear and implementable | DONE |
+      | Requirements unclear, insufficient info | BLOCKED |
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Analysis complete | `[PLANNER:DONE]` |
+      | Insufficient info | `[PLANNER:BLOCKED]` |
+
+      ### Output Examples
+
+      **DONE case:**
+      ```
+      [PLANNER:DONE]
+      ```
+
+      **BLOCKED case:**
+      ```
+      [PLANNER:BLOCKED]
+
+      Clarifications needed:
+      - {Question 1}
+      - {Question 2}
+      ```
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: plan (Task Analysis)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/00-plan.md
+
+      ## User Request
+      {task}
+
+      ## Previous Response (when returned from implement)
+      {previous_response}
+
+      ## Instructions
+      Analyze the task and create an implementation plan.
+
+      **Note:** If returned from implement step (Previous Response exists),
+      review and revise the plan based on that feedback (replan).
+
+      **Tasks:**
+      1. Understand the requirements
+      2. Identify impact scope
+      3. Decide implementation approach
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # Task Plan
+
+      ## Original Request
+      {User's request as-is}
+
+      ## Analysis Results
+
+      ### Objective
+      {What needs to be achieved}
+
+      ### Scope
+      {Impact scope}
+
+      ### Implementation Approach
+      {How to proceed}
+
+      ## Clarifications Needed (if any)
+      - {Unclear points or items requiring confirmation}
+      ```
+    pass_previous_response: true
+    transitions:
+      - condition: done
+        next_step: implement
+      - condition: blocked
+        next_step: ABORT
+
+  - name: implement
+    agent: ~/.takt/agents/default/coder.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Implementation complete | `[CODER:DONE]` |
+      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
+
+      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
+
+      ### Output Examples
+
+      **DONE case:**
+      ```
+      Implementation complete.
+      - Created: `src/auth/service.ts`, `tests/auth.test.ts`
+      - Modified: `src/routes.ts`
+
+      [CODER:DONE]
+      ```
+
+      **BLOCKED case:**
+      ```
+      [CODER:BLOCKED]
+
+      Reason: DB schema is undefined, cannot implement
+      Required info: users table structure
+      ```
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: implement
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report Files:
+        - Scope: .takt/reports/{report_dir}/01-coder-scope.md
+        - Decisions: .takt/reports/{report_dir}/02-coder-decisions.md
+
+      ## User Request
+      {task}
+
+      ## Additional User Inputs
+      {user_inputs}
+
+      ## Instructions
+      Follow the plan from the plan step and implement.
+      Refer to the plan report (00-plan.md) and proceed with implementation.
+
+      **Report output:** Output to the `Report Files` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Scope report format (create at implementation start):**
+      ```markdown
+      # Change Scope Declaration
+
+      ## Task
+      {One-line task summary}
+
+      ## Planned Changes
+      | Type | File |
+      |------|------|
+      | Create | `src/example.ts` |
+      | Modify | `src/routes.ts` |
+
+      ## Estimated Size
+      Small / Medium / Large
+
+      ## Impact Scope
+      - {Affected modules or features}
+      ```
+
+      **Decisions report format (on completion, only if decisions were made):**
+      ```markdown
+      # Decision Log
+
+      ## 1. {Decision Content}
+      - **Background**: {Why the decision was needed}
+      - **Options Considered**: {List of options}
+      - **Reason**: {Why this option was chosen}
+      ```
+    transitions:
+      - condition: done
+        next_step: review
+      - condition: blocked
+        next_step: plan
+
+  - name: review
+    agent: ~/.takt/agents/default/architect.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Structural issues | REJECT |
+      | Design principle violations | REJECT |
+      | Security issues | REJECT |
+      | Insufficient tests | REJECT |
+      | No issues | APPROVE |
+
+      **Note:** In simple workflow, IMPROVE is not used.
+      If there are minor suggestions, use APPROVE + comments.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | No issues | `[ARCHITECT:APPROVE]` |
+      | Structural changes required | `[ARCHITECT:REJECT]` |
+
+      ### Output Examples
+
+      **APPROVE case:**
+      ```
+      [ARCHITECT:APPROVE]
+
+      Positive points:
+      - Appropriate module organization
+      - Single responsibility maintained
+      ```
+
+      **REJECT case:**
+      ```
+      [ARCHITECT:REJECT]
+
+      Issues:
+      1. File size exceeded
+         - Location: `src/services/user.ts` (523 lines)
+         - Fix: Split into 3 files
+      ```
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: review (Architecture Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/03-architect-review.md
+
+      ## Original User Request (Initial request from workflow start)
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Focus on **architecture and design** review. Do NOT review AI-specific issues (that's the next step).
+
+      Review the changes and provide feedback.
+
+      **Note:** In simple workflow, IMPROVE judgment is not used.
+      If there are minor suggestions, use APPROVE + comments.
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # Architecture Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {1-2 sentences summarizing result}
+
+      ## Reviewed Perspectives
+      - [x] Structure & Design
+      - [x] Code Quality
+      - [x] Change Scope
+
+      ## Issues (if REJECT)
+      | # | Location | Issue | Fix |
+      |---|----------|-------|-----|
+      | 1 | `src/file.ts:42` | Issue description | Fix method |
+
+      ## Improvement Suggestions (optional, non-blocking)
+      - {Future improvement suggestions}
+      ```
+
+      **Cognitive load reduction rules:**
+      - APPROVE + no issues → Summary only (5 lines or less)
+      - APPROVE + minor suggestions → Summary + suggestions (15 lines or less)
+      - REJECT → Issues in table format (30 lines or less)
+    transitions:
+      - condition: approved
+        next_step: ai_review
+      - condition: rejected
+        next_step: plan
+
+  - name: ai_review
+    agent: ~/.takt/agents/default/ai-reviewer.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Incorrect assumptions (affecting behavior) | REJECT |
+      | Plausible-but-wrong code | REJECT |
+      | Significant context mismatch with codebase | REJECT |
+      | Scope creep | APPROVE (with warning noted) |
+      | Minor style deviations only | APPROVE |
+      | Code fits context and works | APPROVE |
+
+      **Note:** Scope creep is noted as a warning but doesn't warrant REJECT alone.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | No AI-specific issues | `[AI_REVIEW:APPROVE]` |
+      | Issues found | `[AI_REVIEW:REJECT]` |
+
+      ### Output Examples
+
+      **APPROVE case:**
+      ```
+      [AI_REVIEW:APPROVE]
+
+      Verification result: No issues
+      ```
+
+      **REJECT case:**
+      ```
+      [AI_REVIEW:REJECT]
+
+      Issues:
+      1. Non-existent API used: `fetch.json()` → `response.json()`
+      ```
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: ai_review (AI-Generated Code Review)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report File: .takt/reports/{report_dir}/04-ai-review.md
+
+      ## Original User Request (Initial request from workflow start)
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Review the code for AI-specific issues:
+      - Assumption validation
+      - Plausible but wrong patterns
+      - Context fit with existing codebase
+      - Scope creep detection
+
+      **Report output:** Output to the `Report File` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Report format:**
+      ```markdown
+      # AI-Generated Code Review
+
+      ## Result: APPROVE / REJECT
+
+      ## Summary
+      {One sentence summarizing result}
+
+      ## Verified Items
+      | Aspect | Result | Notes |
+      |--------|--------|-------|
+      | Assumption validity | ✅ | - |
+      | API/Library existence | ✅ | - |
+      | Context fit | ✅ | - |
+      | Scope | ✅ | - |
+
+      ## Issues (if REJECT)
+      | # | Category | Location | Issue |
+      |---|----------|----------|-------|
+      | 1 | Hallucinated API | `src/file.ts:23` | Non-existent method |
+      ```
+
+      **Cognitive load reduction rules:**
+      - No issues → Summary 1 line + check table only (10 lines or less)
+      - Issues found → + Issues in table format (25 lines or less)
+    transitions:
+      - condition: approved
+        next_step: supervise
+      - condition: rejected
+        next_step: plan
+
+  - name: supervise
+    agent: ~/.takt/agents/default/supervisor.md
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+      - WebSearch
+      - WebFetch
+    status_rules_prompt: |
+      # ⚠️ REQUIRED: Status Output Rules ⚠️
+
+      **Without this tag, the workflow will stop.**
+      Your final output MUST include a status tag following the rules below.
+
+      ## Judgment Criteria
+
+      | Situation | Judgment |
+      |-----------|----------|
+      | Requirements not met | REJECT |
+      | Tests failing | REJECT |
+      | Build fails | REJECT |
+      | Workarounds remaining | REJECT |
+      | All OK | APPROVE |
+
+      **Principle**: When in doubt, REJECT. Don't give ambiguous approval.
+
+      ## Output Format
+
+      | Situation | Tag |
+      |-----------|-----|
+      | Final approval | `[SUPERVISOR:APPROVE]` |
+      | Return for fixes | `[SUPERVISOR:REJECT]` |
+
+      ### Output Examples
+
+      **APPROVE case:**
+      ```
+      [SUPERVISOR:APPROVE]
+
+      Verification results:
+      - Tests: ✅ All passed
+      - Build: ✅ Succeeded
+      - Requirements met: ✅
+      ```
+
+      **REJECT case:**
+      ```
+      [SUPERVISOR:REJECT]
+
+      Issues:
+      1. Tests failing: `npm test` - 2 failures
+      2. Requirements not met: Login feature not implemented
+      ```
+    instruction_template: |
+      ## Workflow Context
+      - Iteration: {iteration}/{max_iterations} (workflow-wide)
+      - Step Iteration: {step_iteration} (times this step has run)
+      - Step: supervise (final verification)
+      - Report Directory: .takt/reports/{report_dir}/
+      - Report Files:
+        - Validation: .takt/reports/{report_dir}/05-supervisor-validation.md
+        - Summary: .takt/reports/{report_dir}/summary.md
+
+      ## Original User Request
+      {task}
+
+      ## Git Diff
+      ```diff
+      {git_diff}
+      ```
+
+      ## Instructions
+      Run tests, verify the build, and perform final approval.
+
+      **Workflow Overall Review:**
+      1. Does the implementation match the plan (00-plan.md)?
+      2. Were all review step issues addressed?
+      3. Was the original task objective achieved?
+
+      **Review Reports:** Read all reports in Report Directory and
+      check for any unaddressed improvement suggestions.
+
+      **Report output:** Output to the `Report Files` specified above.
+      - If file does not exist: Create new file
+      - If file exists: Append with `## Iteration {step_iteration}` section
+
+      **Validation report format:**
+      ```markdown
+      # Final Validation Results
+
+      ## Result: APPROVE / REJECT
+
+      ## Validation Summary
+      | Item | Status | Verification Method |
+      |------|--------|---------------------|
+      | Requirements met | ✅ | Matched against requirements list |
+      | Tests | ✅ | `npm test` (N passed) |
+      | Build | ✅ | `npm run build` succeeded |
+      | Functional check | ✅ | Main flows verified |
+
+      ## Deliverables
+      - Created: {Created files}
+      - Modified: {Modified files}
+
+      ## Incomplete Items (if REJECT)
+      | # | Item | Reason |
+      |---|------|--------|
+      | 1 | {Item} | {Reason} |
+      ```
+
+      **Summary report format (only if APPROVE):**
+      ```markdown
+      # Task Completion Summary
+
+      ## Task
+      {Original request in 1-2 sentences}
+
+      ## Result
+      ✅ Complete
+
+      ## Changes
+      | Type | File | Summary |
+      |------|------|---------|
+      | Create | `src/file.ts` | Summary description |
+
+      ## Review Results
+      | Review | Result |
+      |--------|--------|
+      | Architect | ✅ APPROVE |
+      | AI Review | ✅ APPROVE |
+      | Supervisor | ✅ APPROVE |
+
+      ## Verification Commands
+      ```bash
+      npm test
+      npm run build
+      ```
+      ```
+    transitions:
+      - condition: approved
+        next_step: COMPLETE
+      - condition: rejected
+        next_step: plan
