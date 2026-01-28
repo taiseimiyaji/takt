@@ -95,7 +95,7 @@ async function showDiffAndPromptAction(
     [
       { label: 'View diff', value: 'diff', description: 'Show full diff in pager' },
       { label: 'Instruct', value: 'instruct', description: 'Give additional instructions to modify this worktree' },
-      { label: 'Try merge', value: 'try', description: 'Merge without cleanup (keep worktree & branch)' },
+      { label: 'Try merge', value: 'try', description: 'Squash merge (stage changes without commit)' },
       { label: 'Merge & cleanup', value: 'merge', description: 'Merge (if needed) and remove worktree & branch' },
       { label: 'Delete', value: 'delete', description: 'Discard changes, remove worktree and branch' },
     ],
@@ -105,27 +105,29 @@ async function showDiffAndPromptAction(
 }
 
 /**
- * Try-merge: merge the branch without cleanup.
+ * Try-merge (squash): stage changes from branch without committing.
  * Keeps the worktree and branch intact for further review.
+ * User can inspect staged changes and commit manually if satisfied.
  */
 export function tryMergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem): boolean {
   const { branch } = item.info;
 
   try {
-    execFileSync('git', ['merge', branch], {
+    execFileSync('git', ['merge', '--squash', branch], {
       cwd: projectDir,
       encoding: 'utf-8',
       stdio: 'pipe',
     });
 
-    success(`Merged ${branch} (worktree kept)`);
-    log.info('Try-merge completed', { branch });
+    success(`Squash-merged ${branch} (changes staged, not committed)`);
+    info('Run `git status` to see staged changes, `git commit` to finalize, or `git reset` to undo.');
+    log.info('Try-merge (squash) completed', { branch });
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    logError(`Merge failed: ${msg}`);
+    logError(`Squash merge failed: ${msg}`);
     logError('You may need to resolve conflicts manually.');
-    log.error('Try-merge failed', { branch, error: msg });
+    log.error('Try-merge (squash) failed', { branch, error: msg });
     return false;
   }
 }
