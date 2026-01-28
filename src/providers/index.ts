@@ -6,7 +6,7 @@
  */
 
 import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../claude/process.js';
-import type { AgentResponse } from '../models/types.js';
+import type { AgentResponse, PermissionMode } from '../models/types.js';
 import { ClaudeProvider } from './claude.js';
 import { CodexProvider } from './codex.js';
 import { MockProvider } from './mock.js';
@@ -19,6 +19,8 @@ export interface ProviderCallOptions {
   systemPrompt?: string;
   allowedTools?: string[];
   statusPatterns?: Record<string, string>;
+  /** Permission mode for tool execution (from workflow step) */
+  permissionMode?: PermissionMode;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;

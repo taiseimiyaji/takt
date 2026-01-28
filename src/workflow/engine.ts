@@ -25,6 +25,9 @@ import {
   incrementStepIteration,
 } from './state-manager.js';
 import { generateReportDir } from '../utils/session.js';
+import { createLogger } from '../utils/debug.js';
+
+const log = createLogger('engine');
 
 // Re-export types for backward compatibility
 export type {
@@ -60,6 +63,12 @@ export class WorkflowEngine extends EventEmitter {
     this.ensureReportDirExists();
     this.validateConfig();
     this.state = createInitialState(config, options);
+    log.debug('WorkflowEngine initialized', {
+      workflow: config.name,
+      steps: config.steps.map(s => s.name),
+      initialStep: config.initialStep,
+      maxIterations: config.maxIterations,
+    });
   }
 
   /** Ensure report directory exists (always in original cwd) */
@@ -146,6 +155,13 @@ export class WorkflowEngine extends EventEmitter {
     const stepIteration = incrementStepIteration(this.state, step.name);
     const instruction = this.buildInstruction(step, stepIteration);
     const sessionId = this.state.agentSessions.get(step.agent);
+    log.debug('Running step', {
+      step: step.name,
+      agent: step.agent,
+      stepIteration,
+      iteration: this.state.iteration,
+      sessionId: sessionId ?? 'new',
+    });
 
     const agentOptions: RunAgentOptions = {
       cwd: this.cwd,
@@ -155,6 +171,7 @@ export class WorkflowEngine extends EventEmitter {
       statusRulesPrompt: step.statusRulesPrompt,
       provider: step.provider,
       model: step.model,
+      permissionMode: step.permissionMode,
       onStream: this.options.onStream,
       onPermissionRequest: this.options.onPermissionRequest,
       onAskUserQuestion: this.options.onAskUserQuestion,
@@ -239,6 +256,11 @@ export class WorkflowEngine extends EventEmitter {
         }
 
         const nextStep = determineNextStep(step, response.status, this.config);
+        log.debug('Step transition', {
+          from: step.name,
+          status: response.status,
+          nextStep,
+        });
 
         if (nextStep === COMPLETE_STEP) {
           this.state.status = 'completed';

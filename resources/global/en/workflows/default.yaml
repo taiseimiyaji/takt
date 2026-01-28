@@ -39,6 +39,7 @@ steps:
       | Situation | Judgment |
       |-----------|----------|
       | Requirements clear and implementable | DONE |
+      | User is asking a question (not an implementation task) | ANSWER |
       | Requirements unclear, insufficient info | BLOCKED |
 
       ## Output Format
@@ -46,6 +47,7 @@ steps:
       | Situation | Tag |
       |-----------|-----|
       | Analysis complete | `[PLANNER:DONE]` |
+      | Question answered | `[PLANNER:ANSWER]` |
       | Insufficient info | `[PLANNER:BLOCKED]` |
 
       ### Output Examples
@@ -53,6 +55,13 @@ steps:
       **DONE case:**
       ```
       [PLANNER:DONE]
+      ```
+
+      **ANSWER case:**
+      ```
+      {Answer to the question}
+
+      [PLANNER:ANSWER]
       ```
 
       **BLOCKED case:**
@@ -80,10 +89,15 @@ steps:
       ## Instructions
       Analyze the task and create an implementation plan.
 
+      **Judgment criteria:**
+      - If the user input is an implementation task → create a plan and output `[PLANNER:DONE]`
+      - If the user input is a question → research, answer, and output `[PLANNER:ANSWER]`
+      - If there is insufficient information → output `[PLANNER:BLOCKED]`
+
       **Note:** If returned from implement step (Previous Response exists),
       review and revise the plan based on that feedback (replan).
 
-      **Tasks:**
+      **Tasks (for implementation tasks):**
       1. Understand the requirements
       2. Identify impact scope
       3. Decide implementation approach
@@ -117,6 +131,8 @@ steps:
     transitions:
       - condition: done
         next_step: implement
+      - condition: answer
+        next_step: COMPLETE
       - condition: blocked
         next_step: ABORT
 
@@ -131,6 +147,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ REQUIRED: Status Output Rules ⚠️
 
@@ -360,6 +377,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ REQUIRED: Status Output Rules ⚠️
 
@@ -545,6 +563,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ REQUIRED: Status Output Rules ⚠️
 
@@ -727,6 +746,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ REQUIRED: Status Output Rules ⚠️
 
@@ -796,6 +816,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ REQUIRED: Status Output Rules ⚠️
 

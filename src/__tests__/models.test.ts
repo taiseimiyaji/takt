@@ -7,6 +7,7 @@ import {
   AgentTypeSchema,
   StatusSchema,
   TransitionConditionSchema,
+  PermissionModeSchema,
   WorkflowConfigRawSchema,
   CustomAgentConfigSchema,
   GlobalConfigSchema,
@@ -33,6 +34,7 @@ describe('StatusSchema', () => {
     expect(StatusSchema.parse('approved')).toBe('approved');
     expect(StatusSchema.parse('rejected')).toBe('rejected');
     expect(StatusSchema.parse('blocked')).toBe('blocked');
+    expect(StatusSchema.parse('answer')).toBe('answer');
   });
 
   it('should reject invalid statuses', () => {
@@ -47,11 +49,25 @@ describe('TransitionConditionSchema', () => {
     expect(TransitionConditionSchema.parse('approved')).toBe('approved');
     expect(TransitionConditionSchema.parse('rejected')).toBe('rejected');
     expect(TransitionConditionSchema.parse('always')).toBe('always');
+    expect(TransitionConditionSchema.parse('answer')).toBe('answer');
   });
 
   it('should reject invalid conditions', () => {
     expect(() => TransitionConditionSchema.parse('conditional')).toThrow();
     expect(() => TransitionConditionSchema.parse('fixed')).toThrow();
+  });
+});
+
+describe('PermissionModeSchema', () => {
+  it('should accept valid permission modes', () => {
+    expect(PermissionModeSchema.parse('default')).toBe('default');
+    expect(PermissionModeSchema.parse('acceptEdits')).toBe('acceptEdits');
+    expect(PermissionModeSchema.parse('bypassPermissions')).toBe('bypassPermissions');
+  });
+
+  it('should reject invalid permission modes', () => {
+    expect(() => PermissionModeSchema.parse('readOnly')).toThrow();
+    expect(() => PermissionModeSchema.parse('admin')).toThrow();
   });
 });
 
@@ -78,6 +94,61 @@ describe('WorkflowConfigRawSchema', () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0]?.allowed_tools).toEqual(['Read', 'Grep']);
     expect(result.max_iterations).toBe(10);
+  });
+
+  it('should parse step with permission_mode', () => {
+    const config = {
+      name: 'test-workflow',
+      steps: [
+        {
+          name: 'implement',
+          agent: 'coder',
+          allowed_tools: ['Read', 'Edit', 'Write', 'Bash'],
+          permission_mode: 'acceptEdits',
+          instruction: '{task}',
+          transitions: [
+            { condition: 'done', next_step: 'COMPLETE' },
+          ],
+        },
+      ],
+    };
+
+    const result = WorkflowConfigRawSchema.parse(config);
+    expect(result.steps[0]?.permission_mode).toBe('acceptEdits');
+  });
+
+  it('should allow omitting permission_mode', () => {
+    const config = {
+      name: 'test-workflow',
+      steps: [
+        {
+          name: 'plan',
+          agent: 'planner',
+          instruction: '{task}',
+          transitions: [],
+        },
+      ],
+    };
+
+    const result = WorkflowConfigRawSchema.parse(config);
+    expect(result.steps[0]?.permission_mode).toBeUndefined();
+  });
+
+  it('should reject invalid permission_mode', () => {
+    const config = {
+      name: 'test-workflow',
+      steps: [
+        {
+          name: 'step1',
+          agent: 'coder',
+          permission_mode: 'superAdmin',
+          instruction: '{task}',
+          transitions: [],
+        },
+      ],
+    };
+
+    expect(() => WorkflowConfigRawSchema.parse(config)).toThrow();
   });
 
   it('should require at least one step', () => {
@@ -172,6 +243,7 @@ describe('GENERIC_STATUS_PATTERNS', () => {
     expect(GENERIC_STATUS_PATTERNS.done).toBeDefined();
     expect(GENERIC_STATUS_PATTERNS.blocked).toBeDefined();
     expect(GENERIC_STATUS_PATTERNS.improve).toBeDefined();
+    expect(GENERIC_STATUS_PATTERNS.answer).toBeDefined();
   });
 
   it('should have valid regex patterns', () => {
@@ -187,5 +259,7 @@ describe('GENERIC_STATUS_PATTERNS', () => {
     expect(new RegExp(GENERIC_STATUS_PATTERNS.done).test('[CUSTOM:DONE]')).toBe(true);
     expect(new RegExp(GENERIC_STATUS_PATTERNS.done).test('[CODER:FIXED]')).toBe(true);
     expect(new RegExp(GENERIC_STATUS_PATTERNS.improve).test('[MAGI:IMPROVE]')).toBe(true);
+    expect(new RegExp(GENERIC_STATUS_PATTERNS.answer).test('[PLANNER:ANSWER]')).toBe(true);
+    expect(new RegExp(GENERIC_STATUS_PATTERNS.answer).test('[MY_AGENT:ANSWER]')).toBe(true);
   });
 });

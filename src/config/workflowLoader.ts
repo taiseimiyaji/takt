@@ -69,6 +69,7 @@ function normalizeWorkflowConfig(raw: unknown, workflowDir: string): WorkflowCon
     allowedTools: step.allowed_tools,
     provider: step.provider,
     model: step.model,
+    permissionMode: step.permission_mode,
     instructionTemplate: step.instruction_template || step.instruction || '{task}',
     statusRulesPrompt: step.status_rules_prompt,
     transitions: step.transitions.map((t) => ({

@@ -5,6 +5,7 @@
 import { loadWorkflow } from '../config/index.js';
 import { TaskRunner, type TaskInfo } from '../task/index.js';
 import { createWorktree } from '../task/worktree.js';
+import { autoCommitWorktree } from '../task/autoCommit.js';
 import {
   header,
   info,
@@ -46,6 +47,71 @@ export async function executeTask(
 }
 
 /**
+ * Execute a task: resolve worktree → run workflow → auto-commit → record completion.
+ *
+ * Shared by runAllTasks() and watchTasks() to avoid duplicated
+ * resolve → execute → autoCommit → complete logic.
+ *
+ * @returns true if the task succeeded
+ */
+export async function executeAndCompleteTask(
+  task: TaskInfo,
+  taskRunner: TaskRunner,
+  cwd: string,
+  workflowName: string,
+): Promise<boolean> {
+  const startedAt = new Date().toISOString();
+  const executionLog: string[] = [];
+
+  try {
+    const { execCwd, execWorkflow, isWorktree } = resolveTaskExecution(task, cwd, workflowName);
+
+    const taskSuccess = await executeTask(task.content, execCwd, execWorkflow);
+    const completedAt = new Date().toISOString();
+
+    if (taskSuccess && isWorktree) {
+      const commitResult = autoCommitWorktree(execCwd, task.name);
+      if (commitResult.success && commitResult.commitHash) {
+        info(`Auto-committed: ${commitResult.commitHash}`);
+      } else if (!commitResult.success) {
+        error(`Auto-commit failed: ${commitResult.message}`);
+      }
+    }
+
+    taskRunner.completeTask({
+      task,
+      success: taskSuccess,
+      response: taskSuccess ? 'Task completed successfully' : 'Task failed',
+      executionLog,
+      startedAt,
+      completedAt,
+    });
+
+    if (taskSuccess) {
+      success(`Task "${task.name}" completed`);
+    } else {
+      error(`Task "${task.name}" failed`);
+    }
+
+    return taskSuccess;
+  } catch (err) {
+    const completedAt = new Date().toISOString();
+
+    taskRunner.completeTask({
+      task,
+      success: false,
+      response: getErrorMessage(err),
+      executionLog,
+      startedAt,
+      completedAt,
+    });
+
+    error(`Task "${task.name}" error: ${getErrorMessage(err)}`);
+    return false;
+  }
+}
+
+/**
  * Run all pending tasks from .takt/tasks/
  *
  * タスクを動的に取得する。各タスク実行前に次のタスクを取得するため、
@@ -76,46 +142,12 @@ export async function runAllTasks(
     info(`=== Task: ${task.name} ===`);
     console.log();
 
-    const startedAt = new Date().toISOString();
-    const executionLog: string[] = [];
+    const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName);
 
-    try {
-      // Resolve execution directory and workflow from task data
-      const { execCwd, execWorkflow } = resolveTaskExecution(task, cwd, workflowName);
-
-      const taskSuccess = await executeTask(task.content, execCwd, execWorkflow);
-      const completedAt = new Date().toISOString();
-
-      taskRunner.completeTask({
-        task,
-        success: taskSuccess,
-        response: taskSuccess ? 'Task completed successfully' : 'Task failed',
-        executionLog,
-        startedAt,
-        completedAt,
-      });
-
-      if (taskSuccess) {
-        successCount++;
-        success(`Task "${task.name}" completed`);
-      } else {
-        failCount++;
-        error(`Task "${task.name}" failed`);
-      }
-    } catch (err) {
+    if (taskSuccess) {
+      successCount++;
+    } else {
       failCount++;
-      const completedAt = new Date().toISOString();
-
-      taskRunner.completeTask({
-        task,
-        success: false,
-        response: getErrorMessage(err),
-        executionLog,
-        startedAt,
-        completedAt,
-      });
-
-      error(`Task "${task.name}" error: ${getErrorMessage(err)}`);
     }
 
     // 次のタスクを動的に取得（新しく追加されたタスクも含む）
@@ -140,15 +172,16 @@ export function resolveTaskExecution(
   task: TaskInfo,
   defaultCwd: string,
   defaultWorkflow: string
-): { execCwd: string; execWorkflow: string } {
+): { execCwd: string; execWorkflow: string; isWorktree: boolean } {
   const data = task.data;
 
   // No structured data: use defaults
   if (!data) {
-    return { execCwd: defaultCwd, execWorkflow: defaultWorkflow };
+    return { execCwd: defaultCwd, execWorkflow: defaultWorkflow, isWorktree: false };
   }
 
   let execCwd = defaultCwd;
+  let isWorktree = false;
 
   // Handle worktree
   if (data.worktree) {
@@ -158,11 +191,12 @@ export function resolveTaskExecution(
       taskSlug: task.name,
     });
     execCwd = result.path;
+    isWorktree = true;
     info(`Worktree created: ${result.path} (branch: ${result.branch})`);
   }
 
   // Handle workflow override
   const execWorkflow = data.workflow || defaultWorkflow;
 
-  return { execCwd, execWorkflow };
+  return { execCwd, execWorkflow, isWorktree };
 }

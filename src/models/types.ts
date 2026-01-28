@@ -15,7 +15,8 @@ export type Status =
   | 'rejected'
   | 'improve'
   | 'cancelled'
-  | 'interrupted';
+  | 'interrupted'
+  | 'answer';
 
 /** Condition types for workflow transitions */
 export type TransitionCondition =
@@ -24,6 +25,7 @@ export type TransitionCondition =
   | 'approved'
   | 'rejected'
   | 'improve'
+  | 'answer'
   | 'always';
 
 /** Response from an agent execution */
@@ -53,6 +55,9 @@ export interface WorkflowTransition {
 /** Behavior when no status marker is found in agent output */
 export type OnNoStatusBehavior = 'complete' | 'continue' | 'stay';
 
+/** Permission mode for tool execution */
+export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions';
+
 /** Single step in a workflow */
 export interface WorkflowStep {
   name: string;
@@ -68,6 +73,8 @@ export interface WorkflowStep {
   provider?: 'claude' | 'codex' | 'mock';
   /** Model override for this step */
   model?: string;
+  /** Permission mode for tool execution in this step */
+  permissionMode?: PermissionMode;
   instructionTemplate: string;
   /** Status output rules to be injected into system prompt */
   statusRulesPrompt?: string;

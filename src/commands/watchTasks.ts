@@ -11,12 +11,10 @@ import { getCurrentWorkflow } from '../config/paths.js';
 import {
   header,
   info,
-  error,
   success,
   status,
 } from '../utils/ui.js';
-import { getErrorMessage } from '../utils/error.js';
-import { executeTask, resolveTaskExecution } from './taskExecution.js';
+import { executeAndCompleteTask } from './taskExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
 
 /**
@@ -53,44 +51,12 @@ export async function watchTasks(cwd: string): Promise<void> {
       info(`=== Task ${taskCount}: ${task.name} ===`);
       console.log();
 
-      const startedAt = new Date().toISOString();
-      const executionLog: string[] = [];
+      const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName);
 
-      try {
-        const { execCwd, execWorkflow } = resolveTaskExecution(task, cwd, workflowName);
-        const taskSuccess = await executeTask(task.content, execCwd, execWorkflow);
-        const completedAt = new Date().toISOString();
-
-        taskRunner.completeTask({
-          task,
-          success: taskSuccess,
-          response: taskSuccess ? 'Task completed successfully' : 'Task failed',
-          executionLog,
-          startedAt,
-          completedAt,
-        });
-
-        if (taskSuccess) {
-          successCount++;
-          success(`Task "${task.name}" completed`);
-        } else {
-          failCount++;
-          error(`Task "${task.name}" failed`);
-        }
-      } catch (err) {
+      if (taskSuccess) {
+        successCount++;
+      } else {
         failCount++;
-        const completedAt = new Date().toISOString();
-
-        taskRunner.completeTask({
-          task,
-          success: false,
-          response: getErrorMessage(err),
-          executionLog,
-          startedAt,
-          completedAt,
-        });
-
-        error(`Task "${task.name}" error: ${getErrorMessage(err)}`);
       }
 
       console.log();

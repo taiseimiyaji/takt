@@ -22,7 +22,7 @@ import {
 } from './config/index.js';
 import { clearAgentSessions, getCurrentWorkflow, isVerboseMode } from './config/paths.js';
 import { info, error, success, setLogLevel } from './utils/ui.js';
-import { initDebugLogger, createLogger } from './utils/debug.js';
+import { initDebugLogger, createLogger, setVerboseConsole } from './utils/debug.js';
 import {
   executeTask,
   runAllTasks,
@@ -57,24 +57,32 @@ program
     // Initialize project directories (.takt/)
     initProjectDirs(cwd);
 
-    // Initialize debug logger from config
-    const debugConfig = getEffectiveDebugConfig(cwd);
+    // Determine verbose mode and initialize logging
+    const verbose = isVerboseMode(cwd);
+    let debugConfig = getEffectiveDebugConfig(cwd);
+
+    // verbose=true enables file logging automatically
+    if (verbose && (!debugConfig || !debugConfig.enabled)) {
+      debugConfig = { enabled: true };
+    }
+
     initDebugLogger(debugConfig, cwd);
+
+    // Enable verbose console output (stderr) for debug logs
+    if (verbose) {
+      setVerboseConsole(true);
+      setLogLevel('debug');
+    } else {
+      const config = loadGlobalConfig();
+      setLogLevel(config.logLevel);
+    }
 
     log.info('TAKT CLI starting', {
       version: '0.1.0',
       cwd,
       task: task || null,
+      verbose,
     });
-
-    // Set log level from config
-    if (isVerboseMode(cwd)) {
-      setLogLevel('debug');
-      log.debug('Verbose mode enabled (from config)');
-    } else {
-      const config = loadGlobalConfig();
-      setLogLevel(config.logLevel);
-    }
 
     // Handle slash commands
     if (task?.startsWith('/')) {

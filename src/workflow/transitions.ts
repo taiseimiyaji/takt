@@ -31,6 +31,7 @@ export function matchesCondition(
     approved: ['approved'],
     rejected: ['rejected'],
     improve: ['improve'],
+    answer: ['answer'],
     pending: [],
     in_progress: [],
     cancelled: [],

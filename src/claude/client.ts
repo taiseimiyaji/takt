@@ -6,7 +6,7 @@
 
 import { executeClaudeCli, type ClaudeSpawnOptions, type StreamCallback, type PermissionHandler, type AskUserQuestionHandler } from './process.js';
 import type { AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
-import type { AgentResponse, Status } from '../models/types.js';
+import type { AgentResponse, Status, PermissionMode } from '../models/types.js';
 import { GENERIC_STATUS_PATTERNS } from '../models/schemas.js';
 
 /** Options for calling Claude */
@@ -20,6 +20,8 @@ export interface ClaudeCallOptions {
   statusPatterns?: Record<string, string>;
   /** SDK agents to register for sub-agent execution */
   agents?: Record<string, AgentDefinition>;
+  /** Permission mode for tool execution (from workflow step) */
+  permissionMode?: PermissionMode;
   /** Enable streaming mode with callback for real-time output */
   onStream?: StreamCallback;
   /** Custom permission handler for interactive permission prompts */
@@ -112,6 +114,7 @@ export async function callClaude(
     maxTurns: options.maxTurns,
     systemPrompt: options.systemPrompt,
     agents: options.agents,
+    permissionMode: options.permissionMode,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
@@ -145,6 +148,7 @@ export async function callClaudeCustom(
     model: options.model,
     maxTurns: options.maxTurns,
     systemPrompt,
+    permissionMode: options.permissionMode,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
@@ -193,6 +197,7 @@ export async function callClaudeSkill(
     allowedTools: options.allowedTools,
     model: options.model,
     maxTurns: options.maxTurns,
+    permissionMode: options.permissionMode,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,

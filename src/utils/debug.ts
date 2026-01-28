@@ -1,6 +1,7 @@
 /**
  * Debug logging utilities for takt
- * Writes debug logs to file when enabled in config
+ * Writes debug logs to file when enabled in config.
+ * When verbose console is enabled, also outputs to stderr.
  */
 
 import { existsSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -12,6 +13,9 @@ import type { DebugConfig } from '../models/types.js';
 let debugEnabled = false;
 let debugLogFile: string | null = null;
 let initialized = false;
+
+/** Verbose console output state */
+let verboseConsoleEnabled = false;
 
 /** Get default debug log file path */
 function getDefaultLogFile(): string {
@@ -61,6 +65,17 @@ export function resetDebugLogger(): void {
   debugEnabled = false;
   debugLogFile = null;
   initialized = false;
+  verboseConsoleEnabled = false;
+}
+
+/** Enable or disable verbose console output */
+export function setVerboseConsole(enabled: boolean): void {
+  verboseConsoleEnabled = enabled;
+}
+
+/** Check if verbose console is enabled */
+export function isVerboseConsole(): boolean {
+  return verboseConsoleEnabled;
 }
 
 /** Check if debug is enabled */
@@ -92,13 +107,23 @@ function formatLogMessage(level: string, component: string, message: string, dat
   return logLine;
 }
 
-/** Write a debug log entry */
-export function debugLog(component: string, message: string, data?: unknown): void {
+/** Format a compact console log line */
+function formatConsoleMessage(level: string, component: string, message: string): string {
+  const timestamp = new Date().toISOString().slice(11, 23); // HH:mm:ss.SSS
+  return `[${timestamp}] [${level}] [${component}] ${message}`;
+}
+
+/** Write a log entry to verbose console (stderr) and/or file */
+function writeLog(level: string, component: string, message: string, data?: unknown): void {
+  if (verboseConsoleEnabled) {
+    process.stderr.write(formatConsoleMessage(level, component, message) + '\n');
+  }
+
   if (!debugEnabled || !debugLogFile) {
     return;
   }
 
-  const logLine = formatLogMessage('DEBUG', component, message, data);
+  const logLine = formatLogMessage(level, component, message, data);
 
   try {
     appendFileSync(debugLogFile, logLine + '\n', 'utf-8');
@@ -107,34 +132,19 @@ export function debugLog(component: string, message: string, data?: unknown): vo
   }
 }
 
+/** Write a debug log entry */
+export function debugLog(component: string, message: string, data?: unknown): void {
+  writeLog('DEBUG', component, message, data);
+}
+
 /** Write an info log entry */
 export function infoLog(component: string, message: string, data?: unknown): void {
-  if (!debugEnabled || !debugLogFile) {
-    return;
-  }
-
-  const logLine = formatLogMessage('INFO', component, message, data);
-
-  try {
-    appendFileSync(debugLogFile, logLine + '\n', 'utf-8');
-  } catch {
-    // Silently fail
-  }
+  writeLog('INFO', component, message, data);
 }
 
 /** Write an error log entry */
 export function errorLog(component: string, message: string, data?: unknown): void {
-  if (!debugEnabled || !debugLogFile) {
-    return;
-  }
-
-  const logLine = formatLogMessage('ERROR', component, message, data);
-
-  try {
-    appendFileSync(debugLogFile, logLine + '\n', 'utf-8');
-  } catch {
-    // Silently fail
-  }
+  writeLog('ERROR', component, message, data);
 }
 
 /** Log function entry with arguments */

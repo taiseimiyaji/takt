@@ -40,6 +40,7 @@ steps:
       | 状況 | 判定 |
       |------|------|
       | 要件が明確で実装可能 | DONE |
+      | ユーザーが質問をしている（実装タスクではない） | ANSWER |
       | 要件が不明確、情報不足 | BLOCKED |
 
       ## 出力フォーマット
@@ -47,6 +48,7 @@ steps:
       | 状況 | タグ |
       |------|------|
       | 分析完了 | `[PLANNER:DONE]` |
+      | 質問への回答 | `[PLANNER:ANSWER]` |
       | 情報不足 | `[PLANNER:BLOCKED]` |
 
       ### 出力例
@@ -54,6 +56,13 @@ steps:
       **DONE の場合:**
       ```
       [PLANNER:DONE]
+      ```
+
+      **ANSWER の場合:**
+      ```
+      {質問への回答}
+
+      [PLANNER:ANSWER]
       ```
 
       **BLOCKED の場合:**
@@ -81,10 +90,15 @@ steps:
       ## Instructions
       タスクを分析し、実装方針を立ててください。
 
+      **判断基準:**
+      - ユーザーの入力が実装タスクの場合 → 計画を立てて `[PLANNER:DONE]`
+      - ユーザーの入力が質問の場合 → 調査・回答して `[PLANNER:ANSWER]`
+      - 情報不足の場合 → `[PLANNER:BLOCKED]`
+
       **注意:** Previous Responseがある場合は差し戻しのため、
       その内容を踏まえて計画を見直してください（replan）。
 
-      **やること:**
+      **やること（実装タスクの場合）:**
       1. タスクの要件を理解する
       2. 影響範囲を特定する
       3. 実装アプローチを決める
@@ -118,6 +132,8 @@ steps:
     transitions:
       - condition: done
         next_step: implement
+      - condition: answer
+        next_step: COMPLETE
       - condition: blocked
         next_step: ABORT
 
@@ -132,6 +148,7 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
     status_rules_prompt: |
       # ⚠️ 必須: ステータス出力ルール ⚠️
 

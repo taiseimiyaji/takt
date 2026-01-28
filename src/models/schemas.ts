@@ -21,6 +21,7 @@ export const StatusSchema = z.enum([
   'improve',
   'cancelled',
   'interrupted',
+  'answer',
 ]);
 
 /**
@@ -33,6 +34,7 @@ export const StatusSchema = z.enum([
  * - approved: Review passed
  * - rejected: Review failed, needs major rework
  * - improve: Needs improvement (security concerns, quality issues)
+ * - answer: Question answered (complete workflow as success)
  * - always: Unconditional transition
  */
 export const TransitionConditionSchema = z.enum([
@@ -41,6 +43,7 @@ export const TransitionConditionSchema = z.enum([
   'approved',
   'rejected',
   'improve',
+  'answer',
   'always',
 ]);
 
@@ -53,6 +56,9 @@ export const WorkflowTransitionSchema = z.object({
   nextStep: z.string().min(1),
 });
 
+/** Permission mode schema for tool execution */
+export const PermissionModeSchema = z.enum(['default', 'acceptEdits', 'bypassPermissions']);
+
 /** Workflow step schema - raw YAML format */
 export const WorkflowStepRawSchema = z.object({
   name: z.string().min(1),
@@ -62,6 +68,8 @@ export const WorkflowStepRawSchema = z.object({
   allowed_tools: z.array(z.string()).optional(),
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
   model: z.string().optional(),
+  /** Permission mode for tool execution in this step */
+  permission_mode: PermissionModeSchema.optional(),
   instruction: z.string().optional(),
   instruction_template: z.string().optional(),
   status_rules_prompt: z.string().optional(),
@@ -141,4 +149,5 @@ export const GENERIC_STATUS_PATTERNS: Record<string, string> = {
   improve: '\\[[\\w-]+:IMPROVE\\]',
   done: '\\[[\\w-]+:(DONE|FIXED)\\]',
   blocked: '\\[[\\w-]+:BLOCKED\\]',
+  answer: '\\[[\\w-]+:ANSWER\\]',
 };

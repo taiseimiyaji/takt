@@ -15,7 +15,10 @@ import { loadCustomAgents, loadAgentPrompt } from '../config/loader.js';
 import { loadGlobalConfig } from '../config/globalConfig.js';
 import { loadProjectConfig } from '../config/projectConfig.js';
 import { getProvider, type ProviderType, type ProviderCallOptions } from '../providers/index.js';
-import type { AgentResponse, CustomAgentConfig } from '../models/types.js';
+import type { AgentResponse, CustomAgentConfig, PermissionMode } from '../models/types.js';
+import { createLogger } from '../utils/debug.js';
+
+const log = createLogger('runner');
 
 export type { StreamCallback };
 
@@ -31,6 +34,8 @@ export interface RunAgentOptions {
   allowedTools?: string[];
   /** Status output rules to inject into system prompt */
   statusRulesPrompt?: string;
+  /** Permission mode for tool execution (from workflow step) */
+  permissionMode?: PermissionMode;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
@@ -103,6 +108,7 @@ export async function runCustomAgent(
       sessionId: options.sessionId,
       allowedTools,
       model: resolveModel(options.cwd, options, agentConfig),
+      permissionMode: options.permissionMode,
       onStream: options.onStream,
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
@@ -118,6 +124,7 @@ export async function runCustomAgent(
       sessionId: options.sessionId,
       allowedTools,
       model: resolveModel(options.cwd, options, agentConfig),
+      permissionMode: options.permissionMode,
       onStream: options.onStream,
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
@@ -143,6 +150,7 @@ export async function runCustomAgent(
     allowedTools,
     model: resolveModel(options.cwd, options, agentConfig),
     statusPatterns: agentConfig.statusPatterns,
+    permissionMode: options.permissionMode,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
     onAskUserQuestion: options.onAskUserQuestion,
@@ -194,6 +202,15 @@ export async function runAgent(
   options: RunAgentOptions
 ): Promise<AgentResponse> {
   const agentName = extractAgentName(agentSpec);
+  log.debug('Running agent', {
+    agentSpec,
+    agentName,
+    provider: options.provider,
+    model: options.model,
+    hasAgentPath: !!options.agentPath,
+    hasSession: !!options.sessionId,
+    permissionMode: options.permissionMode,
+  });
 
   // If agentPath is provided (from workflow), use it to load prompt
   if (options.agentPath) {
@@ -216,6 +233,7 @@ export async function runAgent(
       allowedTools: options.allowedTools,
       model: resolveModel(options.cwd, options),
       systemPrompt,
+      permissionMode: options.permissionMode,
       onStream: options.onStream,
       onPermissionRequest: options.onPermissionRequest,
       onAskUserQuestion: options.onAskUserQuestion,
