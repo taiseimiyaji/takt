@@ -98,4 +98,10 @@ export {
   saveAgentSessions,
   updateAgentSession,
   clearAgentSessions,
+  // Worktree sessions
+  getWorktreeSessionsDir,
+  encodeWorktreePath,
+  getWorktreeSessionPath,
+  loadWorktreeSessions,
+  updateWorktreeSession,
 } from './sessionStore.js';

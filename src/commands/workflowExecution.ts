@@ -5,7 +5,12 @@
 import { WorkflowEngine } from '../workflow/engine.js';
 import type { WorkflowConfig, Language } from '../models/types.js';
 import type { IterationLimitRequest } from '../workflow/types.js';
-import { loadAgentSessions, updateAgentSession } from '../config/paths.js';
+import {
+  loadAgentSessions,
+  updateAgentSession,
+  loadWorktreeSessions,
+  updateWorktreeSession,
+} from '../config/paths.js';
 import {
   header,
   info,
@@ -103,17 +108,18 @@ export async function executeWorkflow(
     displayRef.current.createHandler()(event);
   };
 
-  // Load saved agent sessions for continuity (from project root)
-  // When running in a worktree (cwd !== projectCwd), skip session resume because
-  // Claude Code sessions are stored per-cwd in ~/.claude/projects/{encoded-path}/
-  // and sessions from the main project dir can't be resumed in a worktree dir.
+  // Load saved agent sessions for continuity (from project root or worktree-specific storage)
   const isWorktree = cwd !== projectCwd;
-  const savedSessions = isWorktree ? {} : loadAgentSessions(projectCwd);
+  const savedSessions = isWorktree
+    ? loadWorktreeSessions(projectCwd, cwd)
+    : loadAgentSessions(projectCwd);
 
-  // Session update handler - persist session IDs when they change (to project root)
-  // Skip persisting worktree sessions since they can't be reused across different worktrees.
+  // Session update handler - persist session IDs when they change
+  // Worktree sessions are stored separately per worktree path
   const sessionUpdateHandler = isWorktree
-    ? undefined
+    ? (agentName: string, agentSessionId: string): void => {
+        updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId);
+      }
     : (agentName: string, agentSessionId: string): void => {
         updateAgentSession(projectCwd, agentName, agentSessionId);
       };

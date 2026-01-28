@@ -20,6 +20,12 @@ import {
   addToInputHistory,
   getInputHistoryPath,
   MAX_INPUT_HISTORY,
+  // Worktree session functions
+  getWorktreeSessionsDir,
+  encodeWorktreePath,
+  getWorktreeSessionPath,
+  loadWorktreeSessions,
+  updateWorktreeSession,
 } from '../config/paths.js';
 import { loadProjectConfig } from '../config/projectConfig.js';
 
@@ -415,5 +421,203 @@ describe('saveProjectConfig - gitignore copy', () => {
     const gitignorePath = join(configDir, '.gitignore');
     const content = readFileSync(gitignorePath, 'utf-8');
     expect(content).toBe(customContent);
+  });
+});
+
+// ============ Worktree Sessions ============
+
+describe('encodeWorktreePath', () => {
+  it('should replace slashes with dashes', () => {
+    const encoded = encodeWorktreePath('/project/.takt/worktrees/my-task');
+
+    expect(encoded).not.toContain('/');
+    expect(encoded).toContain('-');
+  });
+
+  it('should handle Windows-style paths', () => {
+    const encoded = encodeWorktreePath('C:\\project\\worktrees\\task');
+
+    expect(encoded).not.toContain('\\');
+    expect(encoded).not.toContain(':');
+  });
+
+  it('should produce consistent output for same input', () => {
+    const path = '/project/.takt/worktrees/feature-x';
+    const encoded1 = encodeWorktreePath(path);
+    const encoded2 = encodeWorktreePath(path);
+
+    expect(encoded1).toBe(encoded2);
+  });
+});
+
+describe('getWorktreeSessionsDir', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `takt-test-${randomUUID()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should return path inside .takt directory', () => {
+    const sessionsDir = getWorktreeSessionsDir(testDir);
+
+    expect(sessionsDir).toContain('.takt');
+    expect(sessionsDir).toContain('worktree-sessions');
+  });
+});
+
+describe('getWorktreeSessionPath', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `takt-test-${randomUUID()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should return .json file path', () => {
+    const sessionPath = getWorktreeSessionPath(testDir, '/worktree/path');
+
+    expect(sessionPath).toMatch(/\.json$/);
+  });
+
+  it('should include encoded worktree path in filename', () => {
+    const worktreePath = '/project/.takt/worktrees/my-feature';
+    const sessionPath = getWorktreeSessionPath(testDir, worktreePath);
+
+    expect(sessionPath).toContain('worktree-sessions');
+  });
+});
+
+describe('loadWorktreeSessions', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `takt-test-${randomUUID()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should return empty object when no session file exists', () => {
+    const sessions = loadWorktreeSessions(testDir, '/some/worktree');
+
+    expect(sessions).toEqual({});
+  });
+
+  it('should load saved sessions from file', () => {
+    const worktreePath = '/project/worktree';
+    const sessionsDir = getWorktreeSessionsDir(testDir);
+    mkdirSync(sessionsDir, { recursive: true });
+
+    const sessionPath = getWorktreeSessionPath(testDir, worktreePath);
+    const data = {
+      agentSessions: { coder: 'session-123', reviewer: 'session-456' },
+      updatedAt: new Date().toISOString(),
+    };
+    writeFileSync(sessionPath, JSON.stringify(data));
+
+    const sessions = loadWorktreeSessions(testDir, worktreePath);
+
+    expect(sessions).toEqual({ coder: 'session-123', reviewer: 'session-456' });
+  });
+
+  it('should return empty object for corrupted JSON', () => {
+    const worktreePath = '/project/worktree';
+    const sessionsDir = getWorktreeSessionsDir(testDir);
+    mkdirSync(sessionsDir, { recursive: true });
+
+    const sessionPath = getWorktreeSessionPath(testDir, worktreePath);
+    writeFileSync(sessionPath, 'not valid json');
+
+    const sessions = loadWorktreeSessions(testDir, worktreePath);
+
+    expect(sessions).toEqual({});
+  });
+});
+
+describe('updateWorktreeSession', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `takt-test-${randomUUID()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should create session file if not exists', () => {
+    const worktreePath = '/project/worktree';
+
+    updateWorktreeSession(testDir, worktreePath, 'coder', 'session-abc');
+
+    const sessions = loadWorktreeSessions(testDir, worktreePath);
+    expect(sessions).toEqual({ coder: 'session-abc' });
+  });
+
+  it('should update existing session', () => {
+    const worktreePath = '/project/worktree';
+
+    updateWorktreeSession(testDir, worktreePath, 'coder', 'session-1');
+    updateWorktreeSession(testDir, worktreePath, 'coder', 'session-2');
+
+    const sessions = loadWorktreeSessions(testDir, worktreePath);
+    expect(sessions.coder).toBe('session-2');
+  });
+
+  it('should preserve other agent sessions when updating one', () => {
+    const worktreePath = '/project/worktree';
+
+    updateWorktreeSession(testDir, worktreePath, 'coder', 'coder-session');
+    updateWorktreeSession(testDir, worktreePath, 'reviewer', 'reviewer-session');
+
+    const sessions = loadWorktreeSessions(testDir, worktreePath);
+    expect(sessions).toEqual({
+      coder: 'coder-session',
+      reviewer: 'reviewer-session',
+    });
+  });
+
+  it('should create worktree-sessions directory if not exists', () => {
+    const worktreePath = '/project/worktree';
+    const sessionsDir = getWorktreeSessionsDir(testDir);
+    expect(existsSync(sessionsDir)).toBe(false);
+
+    updateWorktreeSession(testDir, worktreePath, 'coder', 'session-xyz');
+
+    expect(existsSync(sessionsDir)).toBe(true);
+  });
+
+  it('should keep sessions isolated between different worktrees', () => {
+    const worktree1 = '/project/worktree-1';
+    const worktree2 = '/project/worktree-2';
+
+    updateWorktreeSession(testDir, worktree1, 'coder', 'wt1-session');
+    updateWorktreeSession(testDir, worktree2, 'coder', 'wt2-session');
+
+    const sessions1 = loadWorktreeSessions(testDir, worktree1);
+    const sessions2 = loadWorktreeSessions(testDir, worktree2);
+
+    expect(sessions1.coder).toBe('wt1-session');
+    expect(sessions2.coder).toBe('wt2-session');
   });
 });

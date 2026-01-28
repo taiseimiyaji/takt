@@ -170,6 +170,76 @@ export function clearAgentSessions(projectDir: string): void {
   clearClaudeProjectSessions(projectDir);
 }
 
+// ============ Worktree Sessions ============
+
+/** Get the worktree sessions directory */
+export function getWorktreeSessionsDir(projectDir: string): string {
+  return join(getProjectConfigDir(projectDir), 'worktree-sessions');
+}
+
+/** Encode a worktree path to a safe filename */
+export function encodeWorktreePath(worktreePath: string): string {
+  const resolved = resolve(worktreePath);
+  return resolved.replace(/[/\\:]/g, '-');
+}
+
+/** Get path for a worktree's session file */
+export function getWorktreeSessionPath(projectDir: string, worktreePath: string): string {
+  const dir = getWorktreeSessionsDir(projectDir);
+  const encoded = encodeWorktreePath(worktreePath);
+  return join(dir, `${encoded}.json`);
+}
+
+/** Load saved agent sessions for a worktree */
+export function loadWorktreeSessions(
+  projectDir: string,
+  worktreePath: string
+): Record<string, string> {
+  const sessionPath = getWorktreeSessionPath(projectDir, worktreePath);
+  if (existsSync(sessionPath)) {
+    try {
+      const content = readFileSync(sessionPath, 'utf-8');
+      const data = JSON.parse(content) as AgentSessionData;
+      return data.agentSessions || {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/** Update a single agent session for a worktree (atomic) */
+export function updateWorktreeSession(
+  projectDir: string,
+  worktreePath: string,
+  agentName: string,
+  sessionId: string
+): void {
+  const dir = getWorktreeSessionsDir(projectDir);
+  ensureDir(dir);
+
+  const sessionPath = getWorktreeSessionPath(projectDir, worktreePath);
+  let sessions: Record<string, string> = {};
+
+  if (existsSync(sessionPath)) {
+    try {
+      const content = readFileSync(sessionPath, 'utf-8');
+      const data = JSON.parse(content) as AgentSessionData;
+      sessions = data.agentSessions || {};
+    } catch {
+      sessions = {};
+    }
+  }
+
+  sessions[agentName] = sessionId;
+
+  const data: AgentSessionData = {
+    agentSessions: sessions,
+    updatedAt: new Date().toISOString(),
+  };
+  writeFileAtomic(sessionPath, JSON.stringify(data, null, 2));
+}
+
 /**
  * Get the Claude CLI project session directory path.
  * Claude CLI stores sessions in ~/.claude/projects/{encoded-project-path}/
