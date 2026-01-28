@@ -38,6 +38,7 @@ import { listWorkflows } from './config/workflowLoader.js';
 import { selectOptionWithDefault, confirm } from './prompt/index.js';
 import { createWorktree } from './task/worktree.js';
 import { autoCommitWorktree } from './task/autoCommit.js';
+import { summarizeTaskName } from './task/summarize.js';
 import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 
 const log = createLogger('cli');
@@ -50,6 +51,7 @@ export interface WorktreeConfirmationResult {
 /**
  * Ask user whether to create a worktree, and create one if confirmed.
  * Returns the execution directory and whether a worktree was created.
+ * Task name is summarized to English by AI for use in branch/worktree names.
  */
 export async function confirmAndCreateWorktree(
   cwd: string,
@@ -61,9 +63,13 @@ export async function confirmAndCreateWorktree(
     return { execCwd: cwd, isWorktree: false };
   }
 
+  // Summarize task name to English slug using AI
+  info('Generating branch name...');
+  const taskSlug = await summarizeTaskName(task, { cwd });
+
   const result = createWorktree(cwd, {
     worktree: true,
-    taskSlug: task,
+    taskSlug,
   });
   info(`Worktree created: ${result.path} (branch: ${result.branch})`);
 
