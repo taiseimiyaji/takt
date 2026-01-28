@@ -19,16 +19,17 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 
 ## CLI Slash Commands
 
-| Command | Description |
-|---------|-------------|
-| `takt /run-tasks` | Execute all pending tasks from `.takt/tasks/` once |
-| `takt /watch` | Watch `.takt/tasks/` and auto-execute tasks (resident process) |
-| `takt /add-task` | Add a new task interactively (YAML format) |
-| `takt /switch` | Switch workflow interactively |
-| `takt /clear` | Clear agent conversation sessions (reset state) |
-| `takt /refresh-builtin` | Update builtin resources from `resources/` to `~/.takt/` |
-| `takt /help` | Show help message |
-| `takt /config` | Display current configuration |
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `takt /run-tasks` | `/run` | Execute all pending tasks from `.takt/tasks/` once |
+| `takt /watch` | | Watch `.takt/tasks/` and auto-execute tasks (resident process) |
+| `takt /add-task` | `/add` | Add a new task interactively (YAML format, multiline supported) |
+| `takt /review-tasks` | `/review` | Review worktree task results (try merge, merge & cleanup, or delete) |
+| `takt /switch` | | Switch workflow interactively |
+| `takt /clear` | | Clear agent conversation sessions (reset state) |
+| `takt /refresh-builtin` | | Update builtin resources from `resources/` to `~/.takt/` |
+| `takt /help` | | Show help message |
+| `takt /config` | | Display current configuration |
 
 ## Architecture
 
@@ -184,6 +185,18 @@ model: opus          # Default model for all steps (unless overridden)
 - `rejected` - Review failed, needs major rework
 - `improve` - Needs improvement (security concerns, quality issues)
 - `always` - Unconditional transition
+
+## Worktree Execution
+
+When tasks specify `worktree: true` or `worktree: "path"`, code runs in a git worktree (separate checkout). Key constraints:
+
+- **Session isolation**: Claude Code sessions are stored per-cwd in `~/.claude/projects/{encoded-path}/`. Sessions from the main project cannot be resumed in a worktree. The engine skips session resume when `cwd !== projectCwd`.
+- **No node_modules**: Worktrees only contain tracked files. `node_modules/` is absent.
+- **Dual cwd**: `cwd` = worktree path (where agents run), `projectCwd` = project root (where `.takt/` lives). Reports, logs, and session data always write to `projectCwd`.
+
+## Error Propagation
+
+`ClaudeResult` (from SDK) has an `error` field. This must be propagated through `AgentResponse.error` → session log history → console output. Without this, SDK failures (exit code 1, rate limits, auth errors) appear as empty `blocked` status with no diagnostic info.
 
 ## Testing Notes
 

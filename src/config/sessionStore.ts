@@ -13,7 +13,7 @@ import { getProjectConfigDir, ensureDir } from './paths.js';
  * Write file atomically using temp file + rename.
  * This prevents corruption when multiple processes write simultaneously.
  */
-function writeFileAtomic(filePath: string, content: string): void {
+export function writeFileAtomic(filePath: string, content: string): void {
   const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   try {
     writeFileSync(tempPath, content, 'utf-8');

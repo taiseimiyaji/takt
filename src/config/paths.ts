@@ -86,6 +86,7 @@ export {
 
 // Re-export session storage functions for backward compatibility
 export {
+  writeFileAtomic,
   getInputHistoryPath,
   MAX_INPUT_HISTORY,
   loadInputHistory,

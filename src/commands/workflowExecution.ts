@@ -21,6 +21,7 @@ import {
   addToSessionLog,
   finalizeSessionLog,
   saveSessionLog,
+  updateLatestPointer,
 } from '../utils/session.js';
 import { createLogger } from '../utils/debug.js';
 import { notifySuccess, notifyError } from '../utils/notification.js';
@@ -83,6 +84,10 @@ export async function executeWorkflow(
 
   const workflowSessionId = generateSessionId();
   const sessionLog = createSessionLog(task, projectCwd, workflowConfig.name);
+
+  // Persist initial log + pointer at workflow start (enables crash recovery)
+  saveSessionLog(sessionLog, workflowSessionId, projectCwd);
+  updateLatestPointer(sessionLog, workflowSessionId, projectCwd, { copyToPrevious: true });
 
   // Track current display for streaming
   const displayRef: { current: StreamDisplay | null } = { current: null };
@@ -191,6 +196,10 @@ export async function executeWorkflow(
       status('Session', response.sessionId);
     }
     addToSessionLog(sessionLog, step.name, response);
+
+    // Incremental save after each step
+    saveSessionLog(sessionLog, workflowSessionId, projectCwd);
+    updateLatestPointer(sessionLog, workflowSessionId, projectCwd);
   });
 
   engine.on('workflow:complete', (state) => {
@@ -198,6 +207,7 @@ export async function executeWorkflow(
     finalizeSessionLog(sessionLog, 'completed');
     // Save log to project root so user can find it easily
     const logPath = saveSessionLog(sessionLog, workflowSessionId, projectCwd);
+    updateLatestPointer(sessionLog, workflowSessionId, projectCwd);
 
     const elapsed = sessionLog.endTime
       ? formatElapsedTime(sessionLog.startTime, sessionLog.endTime)
@@ -219,6 +229,7 @@ export async function executeWorkflow(
     finalizeSessionLog(sessionLog, 'aborted');
     // Save log to project root so user can find it easily
     const logPath = saveSessionLog(sessionLog, workflowSessionId, projectCwd);
+    updateLatestPointer(sessionLog, workflowSessionId, projectCwd);
 
     const elapsed = sessionLog.endTime
       ? formatElapsedTime(sessionLog.startTime, sessionLog.endTime)

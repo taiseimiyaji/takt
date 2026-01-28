@@ -2,10 +2,10 @@
  * Session management utilities
  */
 
-import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentResponse, WorkflowState } from '../models/types.js';
-import { getProjectLogsDir, getGlobalLogsDir, ensureDir } from '../config/paths.js';
+import { getProjectLogsDir, getGlobalLogsDir, ensureDir, writeFileAtomic } from '../config/paths.js';
 
 /** Session log entry */
 export interface SessionLog {
@@ -112,7 +112,7 @@ export function saveSessionLog(
   const filename = `${sessionId}.json`;
   const filepath = join(logsDir, filename);
 
-  writeFileSync(filepath, JSON.stringify(log, null, 2), 'utf-8');
+  writeFileAtomic(filepath, JSON.stringify(log, null, 2));
   return filepath;
 }
 
@@ -142,6 +142,56 @@ export function loadProjectContext(projectDir: string): string {
   }
 
   return contextParts.join('\n\n---\n\n');
+}
+
+/** Pointer metadata for latest/previous log files */
+export interface LatestLogPointer {
+  sessionId: string;
+  logFile: string;
+  task: string;
+  workflowName: string;
+  status: SessionLog['status'];
+  startTime: string;
+  updatedAt: string;
+  iterations: number;
+}
+
+/**
+ * Update latest.json pointer file.
+ * On first call (workflow start), copies existing latest.json to previous.json.
+ * On subsequent calls (step complete / workflow end), only overwrites latest.json.
+ */
+export function updateLatestPointer(
+  log: SessionLog,
+  sessionId: string,
+  projectDir?: string,
+  options?: { copyToPrevious?: boolean }
+): void {
+  const logsDir = projectDir
+    ? getProjectLogsDir(projectDir)
+    : getGlobalLogsDir();
+  ensureDir(logsDir);
+
+  const latestPath = join(logsDir, 'latest.json');
+  const previousPath = join(logsDir, 'previous.json');
+
+  // Copy latest → previous only when explicitly requested (workflow start)
+  if (options?.copyToPrevious && existsSync(latestPath)) {
+    copyFileSync(latestPath, previousPath);
+  }
+
+  const pointer: LatestLogPointer = {
+    sessionId,
+    logFile: `${sessionId}.json`,
+    task: log.task,
+    workflowName: log.workflowName,
+    status: log.status,
+    startTime: log.startTime,
+    updatedAt: new Date().toISOString(),
+    iterations: log.iterations,
+  };
+
+  writeFileAtomic(latestPath, JSON.stringify(pointer, null, 2));
 }
 
 /** Convert workflow state to session log */

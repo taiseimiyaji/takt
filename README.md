@@ -23,7 +23,7 @@ npm install -g takt
 ## Quick Start
 
 ```bash
-# Run a task (will prompt for workflow selection)
+# Run a task (will prompt for workflow selection and optional worktree creation)
 takt "Add a login feature"
 
 # Add a task to the queue
@@ -35,24 +35,28 @@ takt /run-tasks
 # Watch for tasks and auto-execute
 takt /watch
 
+# Review worktree results (merge or delete)
+takt /review-tasks
+
 # Switch workflow
 takt /switch
 ```
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `takt "task"` | Execute task with current workflow (continues session) |
-| `takt -r "task"` | Execute task, resuming previous session |
-| `takt /run-tasks` | Run all pending tasks from `.takt/tasks/` |
-| `takt /watch` | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
-| `takt /add-task` | Add a new task interactively (YAML format) |
-| `takt /switch` | Switch workflow interactively |
-| `takt /clear` | Clear agent conversation sessions |
-| `takt /refresh-builtin` | Update builtin agents/workflows to latest version |
-| `takt /config` | Display current configuration |
-| `takt /help` | Show help |
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `takt "task"` | | Execute task with current workflow (continues session) |
+| `takt -r "task"` | | Execute task, resuming previous session |
+| `takt /run-tasks` | `/run` | Run all pending tasks from `.takt/tasks/` |
+| `takt /watch` | | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
+| `takt /add-task` | `/add` | Add a new task interactively (YAML format, multiline supported) |
+| `takt /review-tasks` | `/review` | Review worktree task results (try merge, merge & cleanup, or delete) |
+| `takt /switch` | | Switch workflow interactively |
+| `takt /clear` | | Clear agent conversation sessions |
+| `takt /refresh-builtin` | | Update builtin agents/workflows to latest version |
+| `takt /config` | | Display current configuration |
+| `takt /help` | | Show help |
 
 ## Workflows
 
@@ -183,7 +187,10 @@ Available Codex models:
 ├── completed/           # Completed tasks with reports
 ├── worktrees/           # Git worktrees for isolated task execution
 ├── reports/             # Execution reports (auto-generated)
-└── logs/                # Session logs
+└── logs/                # Session logs (incremental)
+    ├── latest.json      # Pointer to current/latest session
+    ├── previous.json    # Pointer to previous session
+    └── {sessionId}.json # Full session log per workflow run
 ```
 
 ### Global Configuration
@@ -223,6 +230,15 @@ takt -r "The bug occurs when the password contains special characters"
 ```
 
 The `-r` flag preserves the agent's conversation history, allowing for natural back-and-forth interaction.
+
+### Interactive Workflow
+
+When running `takt "task"`, you are prompted to:
+
+1. **Select a workflow** - Choose from available workflows (arrow keys, ESC to cancel)
+2. **Create a worktree** (optional) - Optionally run the task in an isolated git worktree
+
+This interactive flow ensures each task runs with the right workflow and isolation level.
 
 ### Adding Custom Workflows
 
@@ -335,6 +351,8 @@ YAML task files can specify `worktree` to run each task in an isolated git workt
 - `branch: "feat/xxx"` - Use specified branch (auto-generated as `takt/{timestamp}-{slug}` if omitted)
 - Omit `worktree` - Run in current working directory (default)
 
+When a worktree task completes successfully, TAKT automatically commits all changes (`auto-commit`). Use `takt /review-tasks` to review, try-merge, or delete completed worktree branches.
+
 #### Running Tasks with `/run-tasks`
 
 ```bash
@@ -355,6 +373,27 @@ Watch mode polls `.takt/tasks/` for new task files and auto-executes them as the
 - CI/CD pipelines that generate task files
 - Automated workflows where tasks are added by external processes
 - Long-running development sessions where tasks are queued over time
+
+#### Reviewing Worktree Results with `/review-tasks`
+
+```bash
+takt /review-tasks
+```
+
+Lists all `takt/`-prefixed worktree branches with file change counts. For each branch you can:
+- **Try merge** - Attempt merge into main (dry-run check, then actual merge)
+- **Merge & cleanup** - Merge and remove the worktree
+- **Delete** - Remove the worktree and branch without merging
+
+### Session Logs
+
+TAKT writes session logs incrementally to `.takt/logs/`. Logs are saved at workflow start, after each step, and at workflow end — so even if the process crashes mid-execution, partial logs are preserved.
+
+- `.takt/logs/latest.json` - Pointer to the current (or most recent) session
+- `.takt/logs/previous.json` - Pointer to the previous session
+- `.takt/logs/{sessionId}.json` - Full session log with step history
+
+Agents can read `previous.json` to pick up context from a prior run (e.g., when resuming with `takt "続けて"`).
 
 ### Workflow Variables
 
@@ -401,7 +440,7 @@ transitions:
     next_step: ABORT       # End workflow with failure
 ```
 
-Available transition conditions: `done`, `blocked`, `approved`, `rejected`, `improve`, `always`.
+Available transition conditions: `done`, `blocked`, `approved`, `rejected`, `improve`, `answer`, `always`.
 Special next_step values: `COMPLETE` (success), `ABORT` (failure).
 
 **Step options:**
@@ -413,6 +452,7 @@ Special next_step values: `COMPLETE` (success), `ABORT` (failure).
 | `allowed_tools` | - | List of tools the agent can use (Read, Glob, Grep, Edit, Write, Bash, etc.) |
 | `provider` | - | Override provider for this step (`claude` or `codex`) |
 | `model` | - | Override model for this step |
+| `permission_mode` | `default` | Permission mode: `default`, `acceptEdits`, or `bypassPermissions` |
 
 ## API Usage
 
