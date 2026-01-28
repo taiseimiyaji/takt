@@ -89,7 +89,11 @@ export async function addTask(cwd: string, args: string[]): Promise<void> {
       value: name,
     }));
     const selected = await selectOption('Select workflow:', options);
-    if (selected && selected !== defaultWorkflow) {
+    if (selected === null) {
+      info('Cancelled.');
+      return;
+    }
+    if (selected !== defaultWorkflow) {
       workflow = selected;
     }
   }
