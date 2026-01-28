@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { TaskRunner } from '../task/runner.js';
 
@@ -23,10 +23,11 @@ describe('TaskRunner', () => {
   });
 
   describe('ensureDirs', () => {
-    it('should create tasks and completed directories', () => {
+    it('should create tasks, completed, and failed directories', () => {
       runner.ensureDirs();
       expect(existsSync(join(testDir, '.takt', 'tasks'))).toBe(true);
       expect(existsSync(join(testDir, '.takt', 'completed'))).toBe(true);
+      expect(existsSync(join(testDir, '.takt', 'failed'))).toBe(true);
     });
   });
 
@@ -134,7 +135,7 @@ describe('TaskRunner', () => {
       expect(logData.success).toBe(true);
     });
 
-    it('should record failure status', () => {
+    it('should throw error when called with a failed result', () => {
       const tasksDir = join(testDir, '.takt', 'tasks');
       mkdirSync(tasksDir, { recursive: true });
       writeFileSync(join(tasksDir, 'fail-task.md'), 'Will fail');
@@ -149,9 +150,75 @@ describe('TaskRunner', () => {
         completedAt: '2024-01-01T00:01:00.000Z',
       };
 
-      const reportFile = runner.completeTask(result);
+      expect(() => runner.completeTask(result)).toThrow(
+        'Cannot complete a failed task. Use failTask() instead.'
+      );
+    });
+  });
+
+  describe('failTask', () => {
+    it('should move task to failed directory', () => {
+      const tasksDir = join(testDir, '.takt', 'tasks');
+      mkdirSync(tasksDir, { recursive: true });
+      const taskFile = join(tasksDir, 'fail-task.md');
+      writeFileSync(taskFile, 'Task that will fail');
+
+      const task = runner.getTask('fail-task')!;
+      const result = {
+        task,
+        success: false,
+        response: 'Error occurred',
+        executionLog: ['Started', 'Error'],
+        startedAt: '2024-01-01T00:00:00.000Z',
+        completedAt: '2024-01-01T00:01:00.000Z',
+      };
+
+      const reportFile = runner.failTask(result);
+
+      // Original task file should be removed from tasks dir
+      expect(existsSync(taskFile)).toBe(false);
+
+      // Report should be in .takt/failed/ (not .takt/completed/)
+      expect(reportFile).toContain(join('.takt', 'failed'));
+      expect(reportFile).not.toContain(join('.takt', 'completed'));
+      expect(existsSync(reportFile)).toBe(true);
+
       const reportContent = readFileSync(reportFile, 'utf-8');
+      expect(reportContent).toContain('# タスク実行レポート');
+      expect(reportContent).toContain('fail-task');
       expect(reportContent).toContain('失敗');
+
+      // Log file should be created in failed dir
+      const logFile = reportFile.replace('report.md', 'log.json');
+      expect(existsSync(logFile)).toBe(true);
+      const logData = JSON.parse(readFileSync(logFile, 'utf-8'));
+      expect(logData.taskName).toBe('fail-task');
+      expect(logData.success).toBe(false);
+    });
+
+    it('should not move failed task to completed directory', () => {
+      const tasksDir = join(testDir, '.takt', 'tasks');
+      const completedDir = join(testDir, '.takt', 'completed');
+      mkdirSync(tasksDir, { recursive: true });
+      const taskFile = join(tasksDir, 'another-fail.md');
+      writeFileSync(taskFile, 'Another failing task');
+
+      const task = runner.getTask('another-fail')!;
+      const result = {
+        task,
+        success: false,
+        response: 'Something went wrong',
+        executionLog: [],
+        startedAt: '2024-01-01T00:00:00.000Z',
+        completedAt: '2024-01-01T00:01:00.000Z',
+      };
+
+      runner.failTask(result);
+
+      // completed directory should be empty (only the dir itself exists)
+      mkdirSync(completedDir, { recursive: true });
+      const completedContents = readdirSync(completedDir);
+      expect(completedContents).toHaveLength(0);
     });
   });
 

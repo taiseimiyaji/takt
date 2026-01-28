@@ -45,17 +45,20 @@ export class TaskRunner {
   private projectDir: string;
   private tasksDir: string;
   private completedDir: string;
+  private failedDir: string;
 
   constructor(projectDir: string) {
     this.projectDir = projectDir;
     this.tasksDir = path.join(projectDir, '.takt', 'tasks');
     this.completedDir = path.join(projectDir, '.takt', 'completed');
+    this.failedDir = path.join(projectDir, '.takt', 'failed');
   }
 
   /** ディレクトリ構造を作成 */
   ensureDirs(): void {
     fs.mkdirSync(this.tasksDir, { recursive: true });
     fs.mkdirSync(this.completedDir, { recursive: true });
+    fs.mkdirSync(this.failedDir, { recursive: true });
   }
 
   /** タスクディレクトリのパスを取得 */
@@ -126,30 +129,52 @@ export class TaskRunner {
    * @returns レポートファイルのパス
    */
   completeTask(result: TaskResult): string {
+    if (!result.success) {
+      throw new Error('Cannot complete a failed task. Use failTask() instead.');
+    }
+    return this.moveTask(result, this.completedDir);
+  }
+
+  /**
+   * タスクを失敗としてマーク
+   *
+   * タスクファイルを .takt/failed に移動し、
+   * レポートファイルを作成する。
+   *
+   * @returns レポートファイルのパス
+   */
+  failTask(result: TaskResult): string {
+    return this.moveTask(result, this.failedDir);
+  }
+
+  /**
+   * タスクファイルを指定ディレクトリに移動し、レポート・ログを生成する
+   */
+  private moveTask(result: TaskResult, targetDir: string): string {
     this.ensureDirs();
 
     // タイムスタンプを生成
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
-    // 完了ディレクトリにサブディレクトリを作成
-    const taskCompletedDir = path.join(
-      this.completedDir,
+    // ターゲットディレクトリにサブディレクトリを作成
+    const taskTargetDir = path.join(
+      targetDir,
       `${timestamp}_${result.task.name}`
     );
-    fs.mkdirSync(taskCompletedDir, { recursive: true });
+    fs.mkdirSync(taskTargetDir, { recursive: true });
 
     // 元のタスクファイルを移動（元の拡張子を保持）
     const originalExt = path.extname(result.task.filePath);
-    const completedTaskFile = path.join(taskCompletedDir, `${result.task.name}${originalExt}`);
-    fs.renameSync(result.task.filePath, completedTaskFile);
+    const movedTaskFile = path.join(taskTargetDir, `${result.task.name}${originalExt}`);
+    fs.renameSync(result.task.filePath, movedTaskFile);
 
     // レポートを生成
-    const reportFile = path.join(taskCompletedDir, 'report.md');
+    const reportFile = path.join(taskTargetDir, 'report.md');
     const reportContent = this.generateReport(result);
     fs.writeFileSync(reportFile, reportContent, 'utf-8');
 
     // ログを保存
-    const logFile = path.join(taskCompletedDir, 'log.json');
+    const logFile = path.join(taskTargetDir, 'log.json');
     const logData = {
       taskName: result.task.name,
       success: result.success,
