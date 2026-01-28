@@ -1,68 +1,250 @@
 /**
  * Interactive prompts for CLI
  *
- * Provides simple input prompts for user interaction.
+ * Provides cursor-based selection menus using arrow keys.
+ * Users navigate with ↑/↓ keys and confirm with Enter.
  */
 
 import * as readline from 'node:readline';
 import chalk from 'chalk';
 
+/** Option type for selectOption */
+export interface SelectOptionItem<T extends string> {
+  label: string;
+  value: T;
+  description?: string;
+  details?: string[];
+}
+
 /**
- * Prompt user to select from a list of options
+ * Render the menu options to the terminal.
+ * Writes directly to stdout using ANSI escape codes.
+ * Exported for testing.
+ */
+export function renderMenu<T extends string>(
+  options: SelectOptionItem<T>[],
+  selectedIndex: number,
+  hasCancelOption: boolean
+): string[] {
+  const lines: string[] = [];
+
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i]!;
+    const isSelected = i === selectedIndex;
+    const cursor = isSelected ? chalk.cyan('❯') : ' ';
+    const label = isSelected ? chalk.cyan.bold(opt.label) : opt.label;
+    lines.push(`  ${cursor} ${label}`);
+
+    if (opt.description) {
+      lines.push(chalk.gray(`     ${opt.description}`));
+    }
+    if (opt.details && opt.details.length > 0) {
+      for (const detail of opt.details) {
+        lines.push(chalk.dim(`       • ${detail}`));
+      }
+    }
+  }
+
+  if (hasCancelOption) {
+    const isCancelSelected = selectedIndex === options.length;
+    const cursor = isCancelSelected ? chalk.cyan('❯') : ' ';
+    const label = isCancelSelected ? chalk.cyan.bold('Cancel') : chalk.gray('Cancel');
+    lines.push(`  ${cursor} ${label}`);
+  }
+
+  return lines;
+}
+
+/**
+ * Count total rendered lines for a set of options.
+ * Exported for testing.
+ */
+export function countRenderedLines<T extends string>(
+  options: SelectOptionItem<T>[],
+  hasCancelOption: boolean
+): number {
+  let count = 0;
+  for (const opt of options) {
+    count++; // main label line
+    if (opt.description) count++;
+    if (opt.details) count += opt.details.length;
+  }
+  if (hasCancelOption) count++;
+  return count;
+}
+
+/** Result of handling a key input */
+export type KeyInputResult =
+  | { action: 'move'; newIndex: number }
+  | { action: 'confirm'; selectedIndex: number }
+  | { action: 'cancel'; cancelIndex: number }
+  | { action: 'exit' }
+  | { action: 'none' };
+
+/**
+ * Pure function for key input state transitions.
+ * Maps a key string to an action and new state.
+ * Exported for testing.
+ */
+export function handleKeyInput(
+  key: string,
+  currentIndex: number,
+  totalItems: number,
+  hasCancelOption: boolean,
+  optionCount: number
+): KeyInputResult {
+  // Up arrow or vim 'k'
+  if (key === '\x1B[A' || key === 'k') {
+    return { action: 'move', newIndex: (currentIndex - 1 + totalItems) % totalItems };
+  }
+  // Down arrow or vim 'j'
+  if (key === '\x1B[B' || key === 'j') {
+    return { action: 'move', newIndex: (currentIndex + 1) % totalItems };
+  }
+  // Enter
+  if (key === '\r' || key === '\n') {
+    return { action: 'confirm', selectedIndex: currentIndex };
+  }
+  // Ctrl+C - exit process
+  if (key === '\x03') {
+    return { action: 'exit' };
+  }
+  // Escape - cancel
+  if (key === '\x1B') {
+    return { action: 'cancel', cancelIndex: hasCancelOption ? optionCount : -1 };
+  }
+  return { action: 'none' };
+}
+
+/**
+ * Print the menu header (message + hint).
+ */
+function printHeader(message: string): void {
+  console.log();
+  console.log(chalk.cyan(message));
+  console.log(chalk.gray('  (↑↓ to move, Enter to select)'));
+  console.log();
+}
+
+/**
+ * Set up raw mode on stdin and return cleanup function.
+ */
+function setupRawMode(): { cleanup: (listener: (data: Buffer) => void) => void; wasRaw: boolean } {
+  const wasRaw = process.stdin.isRaw;
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+
+  return {
+    wasRaw,
+    cleanup(listener: (data: Buffer) => void): void {
+      process.stdin.removeListener('data', listener);
+      process.stdin.setRawMode(wasRaw ?? false);
+      process.stdin.pause();
+    },
+  };
+}
+
+/**
+ * Redraw the menu by moving cursor up and re-rendering.
+ */
+function redrawMenu<T extends string>(
+  options: SelectOptionItem<T>[],
+  selectedIndex: number,
+  hasCancelOption: boolean,
+  totalLines: number
+): void {
+  process.stdout.write(`\x1B[${totalLines}A`);
+  process.stdout.write('\x1B[J');
+  const newLines = renderMenu(options, selectedIndex, hasCancelOption);
+  process.stdout.write(newLines.join('\n') + '\n');
+}
+
+/**
+ * Interactive cursor-based menu selection.
+ * Uses raw mode to capture arrow key input for navigation.
+ */
+function interactiveSelect<T extends string>(
+  message: string,
+  options: SelectOptionItem<T>[],
+  initialIndex: number,
+  hasCancelOption: boolean
+): Promise<number> {
+  return new Promise((resolve) => {
+    const totalItems = hasCancelOption ? options.length + 1 : options.length;
+    let selectedIndex = initialIndex;
+
+    printHeader(message);
+
+    const totalLines = countRenderedLines(options, hasCancelOption);
+    const lines = renderMenu(options, selectedIndex, hasCancelOption);
+    process.stdout.write(lines.join('\n') + '\n');
+
+    if (!process.stdin.isTTY) {
+      resolve(initialIndex);
+      return;
+    }
+
+    const rawMode = setupRawMode();
+
+    const onKeypress = (data: Buffer): void => {
+      const result = handleKeyInput(
+        data.toString(),
+        selectedIndex,
+        totalItems,
+        hasCancelOption,
+        options.length
+      );
+
+      switch (result.action) {
+        case 'move':
+          selectedIndex = result.newIndex;
+          redrawMenu(options, selectedIndex, hasCancelOption, totalLines);
+          break;
+        case 'confirm':
+          rawMode.cleanup(onKeypress);
+          resolve(result.selectedIndex);
+          break;
+        case 'cancel':
+          rawMode.cleanup(onKeypress);
+          resolve(result.cancelIndex);
+          break;
+        case 'exit':
+          rawMode.cleanup(onKeypress);
+          process.exit(130);
+          break;
+        case 'none':
+          break;
+      }
+    };
+
+    process.stdin.on('data', onKeypress);
+  });
+}
+
+/**
+ * Prompt user to select from a list of options using cursor navigation.
  * @returns Selected option or null if cancelled
  */
 export async function selectOption<T extends string>(
   message: string,
-  options: { label: string; value: T; description?: string; details?: string[] }[]
+  options: SelectOptionItem<T>[]
 ): Promise<T | null> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  if (options.length === 0) return null;
 
-  console.log();
-  console.log(chalk.cyan(message));
-  console.log();
+  const selectedIndex = await interactiveSelect(message, options, 0, true);
 
-  options.forEach((opt, idx) => {
-    console.log(chalk.yellow(`  ${idx + 1}. `) + opt.label);
-    // Display description if provided
-    if (opt.description) {
-      console.log(chalk.gray(`     ${opt.description}`));
-    }
-    // Display additional details if provided
-    if (opt.details && opt.details.length > 0) {
-      opt.details.forEach((detail) => {
-        console.log(chalk.dim(`       • ${detail}`));
-      });
-    }
-  });
-  console.log(chalk.gray(`  0. Cancel`));
-  console.log();
+  // Cancel selected (last item or escape)
+  if (selectedIndex === options.length || selectedIndex === -1) {
+    return null;
+  }
 
-  return new Promise((resolve) => {
-    rl.question(chalk.green('Select [0-' + options.length + ']: '), (answer) => {
-      rl.close();
+  const selected = options[selectedIndex];
+  if (selected) {
+    console.log(chalk.green(`  ✓ ${selected.label}`));
+    return selected.value;
+  }
 
-      const num = parseInt(answer.trim(), 10);
-
-      if (isNaN(num) || num === 0) {
-        resolve(null);
-        return;
-      }
-
-      if (num >= 1 && num <= options.length) {
-        const selected = options[num - 1];
-        if (selected) {
-          resolve(selected.value);
-          return;
-        }
-      }
-
-      console.log(chalk.red('Invalid selection'));
-      resolve(null);
-    });
-  });
+  return null;
 }
 
 /**
@@ -91,8 +273,8 @@ export async function promptInput(message: string): Promise<string | null> {
 }
 
 /**
- * Prompt user to select from a list of options with a default value
- * User can press Enter to select default, or enter a number to select specific option
+ * Prompt user to select from a list of options with a default value.
+ * Uses cursor navigation. Enter immediately selects the default.
  * @returns Selected option value
  */
 export async function selectOptionWithDefault<T extends string>(
@@ -100,53 +282,33 @@ export async function selectOptionWithDefault<T extends string>(
   options: { label: string; value: T }[],
   defaultValue: T
 ): Promise<T> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  if (options.length === 0) return defaultValue;
 
-  console.log();
-  console.log(chalk.cyan(message));
-  console.log();
-
+  // Find default index
   const defaultIndex = options.findIndex((opt) => opt.value === defaultValue);
+  const initialIndex = defaultIndex >= 0 ? defaultIndex : 0;
 
-  options.forEach((opt, idx) => {
-    const isDefault = opt.value === defaultValue;
-    const marker = isDefault ? chalk.green(' (default)') : '';
-    console.log(chalk.yellow(`  ${idx + 1}. `) + opt.label + marker);
-  });
-  console.log();
+  // Mark default in label
+  const decoratedOptions: SelectOptionItem<T>[] = options.map((opt) => ({
+    ...opt,
+    label: opt.value === defaultValue ? `${opt.label} ${chalk.green('(default)')}` : opt.label,
+  }));
 
-  const hint = defaultIndex >= 0 ? ` [Enter=${defaultIndex + 1}]` : '';
+  const selectedIndex = await interactiveSelect(message, decoratedOptions, initialIndex, false);
 
-  return new Promise((resolve) => {
-    rl.question(chalk.green(`Select [1-${options.length}]${hint}: `), (answer) => {
-      rl.close();
+  // Escape pressed - use default
+  if (selectedIndex === -1) {
+    console.log(chalk.gray(`  Using default: ${defaultValue}`));
+    return defaultValue;
+  }
 
-      const trimmed = answer.trim();
+  const selected = options[selectedIndex];
+  if (selected) {
+    console.log(chalk.green(`  ✓ ${selected.label}`));
+    return selected.value;
+  }
 
-      // Empty input = use default
-      if (!trimmed) {
-        resolve(defaultValue);
-        return;
-      }
-
-      const num = parseInt(trimmed, 10);
-
-      if (num >= 1 && num <= options.length) {
-        const selected = options[num - 1];
-        if (selected) {
-          resolve(selected.value);
-          return;
-        }
-      }
-
-      // Invalid input, use default
-      console.log(chalk.gray(`Invalid selection, using default: ${defaultValue}`));
-      resolve(defaultValue);
-    });
-  });
+  return defaultValue;
 }
 
 /**
