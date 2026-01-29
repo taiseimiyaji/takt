@@ -81,7 +81,7 @@ export async function executeWorkflow(
     headerPrefix = 'Running Workflow:',
   } = options;
 
-  // projectCwd is where .takt/ lives (project root, not worktree)
+  // projectCwd is where .takt/ lives (project root, not the clone)
   const projectCwd = options.projectCwd ?? cwd;
 
   // Always continue from previous sessions (use /clear to reset)
@@ -108,14 +108,14 @@ export async function executeWorkflow(
     displayRef.current.createHandler()(event);
   };
 
-  // Load saved agent sessions for continuity (from project root or worktree-specific storage)
+  // Load saved agent sessions for continuity (from project root or clone-specific storage)
   const isWorktree = cwd !== projectCwd;
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd)
     : loadAgentSessions(projectCwd);
 
   // Session update handler - persist session IDs when they change
-  // Worktree sessions are stored separately per worktree path
+  // Clone sessions are stored separately per clone path
   const sessionUpdateHandler = isWorktree
     ? (agentName: string, agentSessionId: string): void => {
         updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId);

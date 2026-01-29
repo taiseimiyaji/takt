@@ -23,7 +23,7 @@ npm install -g takt
 ## Quick Start
 
 ```bash
-# Run a task (will prompt for workflow selection and optional worktree creation)
+# Run a task (will prompt for workflow selection and optional isolated clone)
 takt "Add a login feature"
 
 # Add a task to the queue
@@ -35,7 +35,7 @@ takt /run-tasks
 # Watch for tasks and auto-execute
 takt /watch
 
-# Review worktree results (merge or delete)
+# Review task branches (merge or delete)
 takt /review-tasks
 
 # Switch workflow
@@ -51,7 +51,7 @@ takt /switch
 | `takt /run-tasks` | `/run` | Run all pending tasks from `.takt/tasks/` |
 | `takt /watch` | | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
 | `takt /add-task` | `/add` | Add a new task interactively (YAML format, multiline supported) |
-| `takt /review-tasks` | `/review` | Review worktree task results (try merge, merge & cleanup, or delete) |
+| `takt /review-tasks` | `/review` | Review task branches (try merge, merge & cleanup, or delete) |
 | `takt /switch` | | Switch workflow interactively |
 | `takt /clear` | | Clear agent conversation sessions |
 | `takt /refresh-builtin` | | Update builtin agents/workflows to latest version |
@@ -185,7 +185,7 @@ Available Codex models:
 ├── agents.yaml          # Custom agent definitions
 ├── tasks/               # Pending task files (.yaml, .md)
 ├── completed/           # Completed tasks with reports
-├── worktrees/           # Git worktrees for isolated task execution
+├── worktree-meta/       # Metadata for task branches
 ├── reports/             # Execution reports (auto-generated)
 └── logs/                # Session logs (incremental)
     ├── latest.json      # Pointer to current/latest session
@@ -236,7 +236,7 @@ The `-r` flag preserves the agent's conversation history, allowing for natural b
 When running `takt "task"`, you are prompted to:
 
 1. **Select a workflow** - Choose from available workflows (arrow keys, ESC to cancel)
-2. **Create a worktree** (optional) - Optionally run the task in an isolated git worktree
+2. **Create an isolated clone** (optional) - Optionally run the task in a `git clone --shared` for isolation
 
 This interactive flow ensures each task runs with the right workflow and isolation level.
 
@@ -310,10 +310,10 @@ TAKT supports batch task processing through task files in `.takt/tasks/`. Both `
 #### Adding Tasks with `/add-task`
 
 ```bash
-# Quick add (no worktree)
+# Quick add (no isolation)
 takt /add-task "Add authentication feature"
 
-# Interactive mode (prompts for worktree, branch, workflow options)
+# Interactive mode (prompts for isolation, branch, workflow options)
 takt /add-task
 ```
 
@@ -324,7 +324,7 @@ takt /add-task
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "Add authentication feature"
-worktree: true                  # Run in isolated git worktree
+worktree: true                  # Run in isolated shared clone
 branch: "feat/add-auth"         # Branch name (auto-generated if omitted)
 workflow: "default"             # Workflow override (uses current if omitted)
 ```
@@ -342,16 +342,18 @@ Requirements:
 - Error handling for failed attempts
 ```
 
-#### Git Worktree Isolation
+#### Isolated Execution (Shared Clone)
 
-YAML task files can specify `worktree` to run each task in an isolated git worktree, keeping the main working directory clean:
+YAML task files can specify `worktree` to run each task in an isolated `git clone --shared`, keeping the main working directory clean:
 
-- `worktree: true` - Auto-create at `.takt/worktrees/{timestamp}-{task-slug}/`
+- `worktree: true` - Auto-create a shared clone in a sibling directory (or `worktree_dir` from config)
 - `worktree: "/path/to/dir"` - Create at specified path
 - `branch: "feat/xxx"` - Use specified branch (auto-generated as `takt/{timestamp}-{slug}` if omitted)
 - Omit `worktree` - Run in current working directory (default)
 
-When a worktree task completes successfully, TAKT automatically commits all changes (`auto-commit`). Use `takt /review-tasks` to review, try-merge, or delete completed worktree branches.
+> **Note**: The YAML field is named `worktree` for backward compatibility. Internally, `git clone --shared` is used instead of `git worktree` because git worktrees have a `.git` file with `gitdir:` that points back to the main repository, causing Claude Code to recognize the main repo as the project root. Shared clones have an independent `.git` directory that avoids this issue.
+
+Clones are ephemeral. When a task completes successfully, TAKT automatically commits all changes and pushes the branch to the main repository, then deletes the clone. Use `takt /review-tasks` to review, try-merge, or delete task branches.
 
 #### Running Tasks with `/run-tasks`
 
@@ -374,16 +376,17 @@ Watch mode polls `.takt/tasks/` for new task files and auto-executes them as the
 - Automated workflows where tasks are added by external processes
 - Long-running development sessions where tasks are queued over time
 
-#### Reviewing Worktree Results with `/review-tasks`
+#### Reviewing Task Branches with `/review-tasks`
 
 ```bash
 takt /review-tasks
 ```
 
-Lists all `takt/`-prefixed worktree branches with file change counts. For each branch you can:
-- **Try merge** - Attempt merge into main (dry-run check, then actual merge)
-- **Merge & cleanup** - Merge and remove the worktree
-- **Delete** - Remove the worktree and branch without merging
+Lists all `takt/`-prefixed branches with file change counts. For each branch you can:
+- **Try merge** - Squash merge into main (stage changes without committing)
+- **Instruct** - Give additional instructions via a temporary clone
+- **Merge & cleanup** - Merge and delete the branch
+- **Delete** - Delete the branch without merging
 
 ### Session Logs
 

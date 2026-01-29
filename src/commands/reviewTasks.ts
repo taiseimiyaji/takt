@@ -1,31 +1,33 @@
 /**
  * Review tasks command
  *
- * Interactive UI for reviewing worktree-based task results:
+ * Interactive UI for reviewing branch-based task results:
  * try merge, merge & cleanup, or delete actions.
+ * Clones are ephemeral — only branches persist between sessions.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import chalk from 'chalk';
 import {
-  removeWorktree,
   detectDefaultBranch,
-  listTaktWorktrees,
+  listTaktBranches,
   buildReviewItems,
-  type WorktreeReviewItem,
+  createTempCloneForBranch,
+  removeClone,
+  type BranchReviewItem,
 } from '../task/worktree.js';
+import { autoCommitAndPush } from '../task/autoCommit.js';
 import { selectOption, confirm, promptInput } from '../prompt/index.js';
 import { info, success, error as logError, warn } from '../utils/ui.js';
 import { createLogger } from '../utils/debug.js';
 import { executeTask } from './taskExecution.js';
-import { autoCommitWorktree } from '../task/autoCommit.js';
 import { listWorkflows } from '../config/workflowLoader.js';
 import { getCurrentWorkflow } from '../config/paths.js';
 import { DEFAULT_WORKFLOW_NAME } from '../constants.js';
 
 const log = createLogger('review-tasks');
 
-/** Actions available for a reviewed worktree */
+/** Actions available for a reviewed branch */
 export type ReviewAction = 'diff' | 'instruct' | 'try' | 'merge' | 'delete';
 
 /**
@@ -72,7 +74,7 @@ export function showFullDiff(
 async function showDiffAndPromptAction(
   cwd: string,
   defaultBranch: string,
-  item: WorktreeReviewItem,
+  item: BranchReviewItem,
 ): Promise<ReviewAction | null> {
   console.log();
   console.log(chalk.bold.cyan(`=== ${item.info.branch} ===`));
@@ -94,10 +96,10 @@ async function showDiffAndPromptAction(
     `Action for ${item.info.branch}:`,
     [
       { label: 'View diff', value: 'diff', description: 'Show full diff in pager' },
-      { label: 'Instruct', value: 'instruct', description: 'Give additional instructions to modify this worktree' },
+      { label: 'Instruct', value: 'instruct', description: 'Give additional instructions via temp clone' },
       { label: 'Try merge', value: 'try', description: 'Squash merge (stage changes without commit)' },
-      { label: 'Merge & cleanup', value: 'merge', description: 'Merge (if needed) and remove worktree & branch' },
-      { label: 'Delete', value: 'delete', description: 'Discard changes, remove worktree and branch' },
+      { label: 'Merge & cleanup', value: 'merge', description: 'Merge and delete branch' },
+      { label: 'Delete', value: 'delete', description: 'Discard changes, delete branch' },
     ],
   );
 
@@ -106,10 +108,9 @@ async function showDiffAndPromptAction(
 
 /**
  * Try-merge (squash): stage changes from branch without committing.
- * Keeps the worktree and branch intact for further review.
  * User can inspect staged changes and commit manually if satisfied.
  */
-export function tryMergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem): boolean {
+export function tryMergeBranch(projectDir: string, item: BranchReviewItem): boolean {
   const { branch } = item.info;
 
   try {
@@ -133,18 +134,16 @@ export function tryMergeWorktreeBranch(projectDir: string, item: WorktreeReviewI
 }
 
 /**
- * Merge & cleanup: if already merged, skip merge and just cleanup.
- * Otherwise merge first, then cleanup (remove worktree + delete branch).
+ * Merge & cleanup: if already merged, skip merge and just delete the branch.
+ * Otherwise merge first, then delete the branch.
+ * No worktree removal needed — clones are ephemeral.
  */
-export function mergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem): boolean {
+export function mergeBranch(projectDir: string, item: BranchReviewItem): boolean {
   const { branch } = item.info;
   const alreadyMerged = isBranchMerged(projectDir, branch);
 
   try {
-    // 1. Remove worktree (must happen before merge to unlock branch)
-    removeWorktree(projectDir, item.info.path);
-
-    // 2. Merge only if not already merged
+    // Merge only if not already merged
     if (alreadyMerged) {
       info(`${branch} is already merged, skipping merge.`);
       log.info('Branch already merged, cleanup only', { branch });
@@ -156,7 +155,7 @@ export function mergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem
       });
     }
 
-    // 3. Delete the branch
+    // Delete the branch
     try {
       execFileSync('git', ['branch', '-d', branch], {
         cwd: projectDir,
@@ -168,7 +167,7 @@ export function mergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem
     }
 
     success(`Merged & cleaned up ${branch}`);
-    log.info('Worktree merged & cleaned up', { branch, alreadyMerged });
+    log.info('Branch merged & cleaned up', { branch, alreadyMerged });
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -180,16 +179,14 @@ export function mergeWorktreeBranch(projectDir: string, item: WorktreeReviewItem
 }
 
 /**
- * Delete a worktree and its branch (discard changes).
+ * Delete a branch (discard changes).
+ * No worktree removal needed — clones are ephemeral.
  */
-export function deleteWorktreeBranch(projectDir: string, item: WorktreeReviewItem): boolean {
+export function deleteBranch(projectDir: string, item: BranchReviewItem): boolean {
   const { branch } = item.info;
 
   try {
-    // 1. Remove worktree
-    removeWorktree(projectDir, item.info.path);
-
-    // 2. Force-delete the branch
+    // Force-delete the branch
     execFileSync('git', ['branch', '-D', branch], {
       cwd: projectDir,
       encoding: 'utf-8',
@@ -197,7 +194,7 @@ export function deleteWorktreeBranch(projectDir: string, item: WorktreeReviewIte
     });
 
     success(`Deleted ${branch}`);
-    log.info('Worktree deleted', { branch });
+    log.info('Branch deleted', { branch });
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -233,9 +230,9 @@ async function selectWorkflowForInstruction(projectDir: string): Promise<string 
 }
 
 /**
- * Get worktree context: diff stat and commit log from main branch.
+ * Get branch context: diff stat and commit log from main branch.
  */
-function getWorktreeContext(projectDir: string, branch: string): string {
+function getBranchContext(projectDir: string, branch: string): string {
   const defaultBranch = detectDefaultBranch(projectDir);
   const lines: string[] = [];
 
@@ -276,15 +273,14 @@ function getWorktreeContext(projectDir: string, branch: string): string {
 }
 
 /**
- * Instruct worktree: give additional instructions to modify the worktree.
- * Executes a task on the worktree and auto-commits if successful.
+ * Instruct branch: create a temp clone, give additional instructions,
+ * auto-commit+push, then remove clone.
  */
-export async function instructWorktree(
+export async function instructBranch(
   projectDir: string,
-  item: WorktreeReviewItem,
+  item: BranchReviewItem,
 ): Promise<boolean> {
   const { branch } = item.info;
-  const worktreePath = item.info.path;
 
   // 1. Prompt for instruction
   const instruction = await promptInput('Enter instruction');
@@ -300,53 +296,61 @@ export async function instructWorktree(
     return false;
   }
 
-  log.info('Instructing worktree', { branch, worktreePath, workflow: selectedWorkflow });
+  log.info('Instructing branch via temp clone', { branch, workflow: selectedWorkflow });
   info(`Running instruction on ${branch}...`);
 
-  // 3. Build instruction with worktree context
-  const worktreeContext = getWorktreeContext(projectDir, branch);
-  const fullInstruction = worktreeContext
-    ? `${worktreeContext}## 追加指示\n${instruction}`
-    : instruction;
+  // 3. Create temp clone for the branch
+  const clone = createTempCloneForBranch(projectDir, branch);
 
-  // 4. Execute task on worktree
-  const taskSuccess = await executeTask(fullInstruction, worktreePath, selectedWorkflow, projectDir);
+  try {
+    // 4. Build instruction with branch context
+    const branchContext = getBranchContext(projectDir, branch);
+    const fullInstruction = branchContext
+      ? `${branchContext}## 追加指示\n${instruction}`
+      : instruction;
 
-  // 5. Auto-commit if successful
-  if (taskSuccess) {
-    const commitResult = autoCommitWorktree(worktreePath, item.taskSlug);
-    if (commitResult.success && commitResult.commitHash) {
-      info(`Auto-committed: ${commitResult.commitHash}`);
-    } else if (!commitResult.success) {
-      warn(`Auto-commit skipped: ${commitResult.message}`);
+    // 5. Execute task on temp clone
+    const taskSuccess = await executeTask(fullInstruction, clone.path, selectedWorkflow, projectDir);
+
+    // 6. Auto-commit+push if successful
+    if (taskSuccess) {
+      const commitResult = autoCommitAndPush(clone.path, item.taskSlug);
+      if (commitResult.success && commitResult.commitHash) {
+        info(`Auto-committed & pushed: ${commitResult.commitHash}`);
+      } else if (!commitResult.success) {
+        warn(`Auto-commit skipped: ${commitResult.message}`);
+      }
+      success(`Instruction completed on ${branch}`);
+      log.info('Instruction completed', { branch });
+    } else {
+      logError(`Instruction failed on ${branch}`);
+      log.error('Instruction failed', { branch });
     }
-    success(`Instruction completed on ${branch}`);
-    log.info('Instruction completed', { branch });
-  } else {
-    logError(`Instruction failed on ${branch}`);
-    log.error('Instruction failed', { branch });
-  }
 
-  return taskSuccess;
+    return taskSuccess;
+  } finally {
+    // 7. Always remove temp clone
+    removeClone(clone.path);
+  }
 }
 
 /**
- * Main entry point: review worktree tasks interactively.
+ * Main entry point: review branch-based tasks interactively.
  */
 export async function reviewTasks(cwd: string): Promise<void> {
   log.info('Starting review-tasks');
 
   const defaultBranch = detectDefaultBranch(cwd);
-  let worktrees = listTaktWorktrees(cwd);
+  let branches = listTaktBranches(cwd);
 
-  if (worktrees.length === 0) {
+  if (branches.length === 0) {
     info('No tasks to review.');
     return;
   }
 
   // Interactive loop
-  while (worktrees.length > 0) {
-    const items = buildReviewItems(cwd, worktrees, defaultBranch);
+  while (branches.length > 0) {
+    const items = buildReviewItems(cwd, branches, defaultBranch);
 
     // Build selection options
     const options = items.map((item, idx) => ({
@@ -356,7 +360,7 @@ export async function reviewTasks(cwd: string): Promise<void> {
     }));
 
     const selected = await selectOption<string>(
-      'Review Tasks (Worktrees)',
+      'Review Tasks (Branches)',
       options,
     );
 
@@ -382,13 +386,13 @@ export async function reviewTasks(cwd: string): Promise<void> {
 
     switch (action) {
       case 'instruct':
-        await instructWorktree(cwd, item);
+        await instructBranch(cwd, item);
         break;
       case 'try':
-        tryMergeWorktreeBranch(cwd, item);
+        tryMergeBranch(cwd, item);
         break;
       case 'merge':
-        mergeWorktreeBranch(cwd, item);
+        mergeBranch(cwd, item);
         break;
       case 'delete': {
         const confirmed = await confirm(
@@ -396,14 +400,14 @@ export async function reviewTasks(cwd: string): Promise<void> {
           false,
         );
         if (confirmed) {
-          deleteWorktreeBranch(cwd, item);
+          deleteBranch(cwd, item);
         }
         break;
       }
     }
 
-    // Refresh worktree list after action
-    worktrees = listTaktWorktrees(cwd);
+    // Refresh branch list after action
+    branches = listTaktBranches(cwd);
   }
 
   info('All tasks reviewed.');

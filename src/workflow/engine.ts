@@ -73,7 +73,7 @@ export class WorkflowEngine extends EventEmitter {
     });
   }
 
-  /** Ensure report directory exists (always in project root, not worktree) */
+  /** Ensure report directory exists (always in project root, not clone) */
   private ensureReportDirExists(): void {
     const reportDirPath = join(this.projectCwd, '.takt', 'reports', this.reportDir);
     if (!existsSync(reportDirPath)) {

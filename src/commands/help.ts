@@ -17,7 +17,7 @@ Usage:
   takt /run-tasks (/run)           Run all pending tasks from .takt/tasks/
   takt /watch                      Watch for tasks and auto-execute (stays resident)
   takt /add-task (/add)            Add a new task (interactive, YAML format)
-  takt /review-tasks (/review)     Review worktree task results (merge/delete)
+  takt /review-tasks (/review)     Review task branches (merge/delete)
   takt /switch            Switch workflow interactively
   takt /clear             Clear agent conversation sessions (reset to initial state)
   takt /refresh-builtin   Overwrite builtin agents/workflows with latest version
@@ -30,13 +30,13 @@ Examples:
   takt /clear                           # Clear sessions, start fresh
   takt /watch                            # Watch & auto-execute tasks
   takt /refresh-builtin                 # Update builtin resources
-  takt /review-tasks                     # Review & merge worktree results
+  takt /review-tasks                     # Review & merge task branches
   takt /switch
   takt /run-tasks
 
 Task files (.takt/tasks/):
   .md files    Plain text tasks (backward compatible)
-  .yaml files  Structured tasks with worktree/branch/workflow options
+  .yaml files  Structured tasks with isolation/branch/workflow options
 
 Configuration (.takt/config.yaml):
   workflow: default    # Current workflow

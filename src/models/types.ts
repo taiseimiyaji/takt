@@ -160,7 +160,7 @@ export interface GlobalConfig {
   provider?: 'claude' | 'codex' | 'mock';
   model?: string;
   debug?: DebugConfig;
-  /** Directory for worktrees. If empty, uses ../{tree-name} relative to project */
+  /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktreeDir?: string;
 }
 

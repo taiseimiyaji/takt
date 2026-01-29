@@ -4,8 +4,8 @@
 
 import { loadWorkflow, loadGlobalConfig } from '../config/index.js';
 import { TaskRunner, type TaskInfo } from '../task/index.js';
-import { createWorktree } from '../task/worktree.js';
-import { autoCommitWorktree } from '../task/autoCommit.js';
+import { createSharedClone, removeClone } from '../task/worktree.js';
+import { autoCommitAndPush } from '../task/autoCommit.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import {
   header,
@@ -24,7 +24,7 @@ const log = createLogger('task');
 /**
  * Execute a single task with workflow
  * @param task - Task content
- * @param cwd - Working directory (may be a worktree path)
+ * @param cwd - Working directory (may be a clone path)
  * @param workflowName - Workflow to use
  * @param projectCwd - Project root (where .takt/ lives). Defaults to cwd.
  */
@@ -57,7 +57,7 @@ export async function executeTask(
 }
 
 /**
- * Execute a task: resolve worktree → run workflow → auto-commit → record completion.
+ * Execute a task: resolve clone → run workflow → auto-commit+push → remove clone → record completion.
  *
  * Shared by runAllTasks() and watchTasks() to avoid duplicated
  * resolve → execute → autoCommit → complete logic.
@@ -81,12 +81,17 @@ export async function executeAndCompleteTask(
     const completedAt = new Date().toISOString();
 
     if (taskSuccess && isWorktree) {
-      const commitResult = autoCommitWorktree(execCwd, task.name);
+      const commitResult = autoCommitAndPush(execCwd, task.name);
       if (commitResult.success && commitResult.commitHash) {
-        info(`Auto-committed: ${commitResult.commitHash}`);
+        info(`Auto-committed & pushed: ${commitResult.commitHash}`);
       } else if (!commitResult.success) {
         error(`Auto-commit failed: ${commitResult.message}`);
       }
+    }
+
+    // Remove clone after task completion (success or failure)
+    if (isWorktree) {
+      removeClone(execCwd);
     }
 
     const taskResult = {
@@ -179,8 +184,8 @@ export async function runAllTasks(
 
 /**
  * Resolve execution directory and workflow from task data.
- * If the task has worktree settings, create a worktree and use it as cwd.
- * Task name is summarized to English by AI for use in branch/worktree names.
+ * If the task has worktree settings, create a shared clone and use it as cwd.
+ * Task name is summarized to English by AI for use in branch/clone names.
  */
 export async function resolveTaskExecution(
   task: TaskInfo,
@@ -197,20 +202,20 @@ export async function resolveTaskExecution(
   let execCwd = defaultCwd;
   let isWorktree = false;
 
-  // Handle worktree
+  // Handle worktree (now creates a shared clone)
   if (data.worktree) {
     // Summarize task content to English slug using AI
     info('Generating branch name...');
     const taskSlug = await summarizeTaskName(task.content, { cwd: defaultCwd });
 
-    const result = createWorktree(defaultCwd, {
+    const result = createSharedClone(defaultCwd, {
       worktree: data.worktree,
       branch: data.branch,
       taskSlug,
     });
     execCwd = result.path;
     isWorktree = true;
-    info(`Worktree created: ${result.path} (branch: ${result.branch})`);
+    info(`Clone created: ${result.path} (branch: ${result.branch})`);
   }
 
   // Handle workflow override

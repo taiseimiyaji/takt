@@ -1,7 +1,7 @@
 /**
  * Task name summarization using AI or romanization
  *
- * Generates concise English/romaji summaries for use in branch names and worktree paths.
+ * Generates concise English/romaji summaries for use in branch names and clone paths.
  */
 
 import * as wanakana from 'wanakana';

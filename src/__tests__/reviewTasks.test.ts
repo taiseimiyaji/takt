@@ -4,94 +4,63 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import {
-  parseTaktWorktrees,
+  parseTaktBranches,
   extractTaskSlug,
   buildReviewItems,
-  type WorktreeInfo,
+  type BranchInfo,
 } from '../task/worktree.js';
 import { isBranchMerged, showFullDiff, type ReviewAction } from '../commands/reviewTasks.js';
 
-describe('parseTaktWorktrees', () => {
-  it('should parse takt/ branches from porcelain output', () => {
+describe('parseTaktBranches', () => {
+  it('should parse takt/ branches from git branch output', () => {
     const output = [
-      'worktree /home/user/project',
-      'HEAD abc1234567890',
-      'branch refs/heads/main',
-      '',
-      'worktree /home/user/project/.takt/worktrees/20260128-fix-auth',
-      'HEAD def4567890abc',
-      'branch refs/heads/takt/20260128-fix-auth',
-      '',
-      'worktree /home/user/project/.takt/worktrees/20260128-add-search',
-      'HEAD 789abcdef0123',
-      'branch refs/heads/takt/20260128-add-search',
+      'takt/20260128-fix-auth def4567',
+      'takt/20260128-add-search 789abcd',
     ].join('\n');
 
-    const result = parseTaktWorktrees(output);
+    const result = parseTaktBranches(output);
     expect(result).toHaveLength(2);
 
     expect(result[0]).toEqual({
-      path: '/home/user/project/.takt/worktrees/20260128-fix-auth',
       branch: 'takt/20260128-fix-auth',
-      commit: 'def4567890abc',
+      commit: 'def4567',
     });
 
     expect(result[1]).toEqual({
-      path: '/home/user/project/.takt/worktrees/20260128-add-search',
       branch: 'takt/20260128-add-search',
-      commit: '789abcdef0123',
+      commit: '789abcd',
     });
   });
 
-  it('should exclude non-takt branches', () => {
-    const output = [
-      'worktree /home/user/project',
-      'HEAD abc123',
-      'branch refs/heads/main',
-      '',
-      'worktree /home/user/project/.takt/worktrees/20260128-fix-auth',
-      'HEAD def456',
-      'branch refs/heads/takt/20260128-fix-auth',
-      '',
-      'worktree /tmp/other-worktree',
-      'HEAD 789abc',
-      'branch refs/heads/feature/other',
-    ].join('\n');
-
-    const result = parseTaktWorktrees(output);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.branch).toBe('takt/20260128-fix-auth');
-  });
-
   it('should handle empty output', () => {
-    const result = parseTaktWorktrees('');
+    const result = parseTaktBranches('');
     expect(result).toHaveLength(0);
   });
 
-  it('should handle bare worktree entry (no branch line)', () => {
-    const output = [
-      'worktree /home/user/project',
-      'HEAD abc123',
-      'bare',
-    ].join('\n');
-
-    const result = parseTaktWorktrees(output);
+  it('should handle output with only whitespace lines', () => {
+    const result = parseTaktBranches('  \n  \n');
     expect(result).toHaveLength(0);
   });
 
-  it('should handle detached HEAD worktrees', () => {
+  it('should handle single branch', () => {
+    const output = 'takt/20260128-fix-auth abc1234';
+
+    const result = parseTaktBranches(output);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      branch: 'takt/20260128-fix-auth',
+      commit: 'abc1234',
+    });
+  });
+
+  it('should skip lines without space separator', () => {
     const output = [
-      'worktree /home/user/project',
-      'HEAD abc123',
-      'branch refs/heads/main',
-      '',
-      'worktree /tmp/detached',
-      'HEAD def456',
-      'detached',
+      'takt/20260128-fix-auth abc1234',
+      'malformed-line',
     ].join('\n');
 
-    const result = parseTaktWorktrees(output);
-    expect(result).toHaveLength(0);
+    const result = parseTaktBranches(output);
+    expect(result).toHaveLength(1);
   });
 });
 
@@ -125,45 +94,40 @@ describe('extractTaskSlug', () => {
 
 describe('buildReviewItems', () => {
   it('should build items with correct task slug', () => {
-    const worktrees: WorktreeInfo[] = [
+    const branches: BranchInfo[] = [
       {
-        path: '/project/.takt/worktrees/20260128-fix-auth',
         branch: 'takt/20260128-fix-auth',
         commit: 'abc123',
       },
     ];
 
-    // We can't test getFilesChanged without a real git repo,
-    // so we test buildReviewItems' structure
-    const items = buildReviewItems('/project', worktrees, 'main');
+    const items = buildReviewItems('/project', branches, 'main');
     expect(items).toHaveLength(1);
     expect(items[0]!.taskSlug).toBe('fix-auth');
-    expect(items[0]!.info).toBe(worktrees[0]);
+    expect(items[0]!.info).toBe(branches[0]);
     // filesChanged will be 0 since we don't have a real git repo
     expect(items[0]!.filesChanged).toBe(0);
   });
 
-  it('should handle multiple worktrees', () => {
-    const worktrees: WorktreeInfo[] = [
+  it('should handle multiple branches', () => {
+    const branches: BranchInfo[] = [
       {
-        path: '/project/.takt/worktrees/20260128-fix-auth',
         branch: 'takt/20260128-fix-auth',
         commit: 'abc123',
       },
       {
-        path: '/project/.takt/worktrees/20260128-add-search',
         branch: 'takt/20260128-add-search',
         commit: 'def456',
       },
     ];
 
-    const items = buildReviewItems('/project', worktrees, 'main');
+    const items = buildReviewItems('/project', branches, 'main');
     expect(items).toHaveLength(2);
     expect(items[0]!.taskSlug).toBe('fix-auth');
     expect(items[1]!.taskSlug).toBe('add-search');
   });
 
-  it('should handle empty worktree list', () => {
+  it('should handle empty branch list', () => {
     const items = buildReviewItems('/project', [], 'main');
     expect(items).toHaveLength(0);
   });

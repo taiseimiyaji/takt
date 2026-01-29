@@ -21,7 +21,7 @@ export interface InstructionContext {
   maxIterations: number;
   /** Current step's iteration number (how many times this step has been executed) */
   stepIteration: number;
-  /** Working directory (agent work dir, may be a worktree) */
+  /** Working directory (agent work dir, may be a clone) */
   cwd: string;
   /** Project root directory (where .takt/ lives). Defaults to cwd. */
   projectCwd?: string;
@@ -37,7 +37,7 @@ export interface InstructionContext {
 
 /** Execution environment metadata prepended to agent instructions */
 export interface ExecutionMetadata {
-  /** The agent's working directory (may be a worktree) */
+  /** The agent's working directory (may be a clone) */
   readonly workingDirectory: string;
   /** Language for metadata rendering */
   readonly language: Language;
@@ -183,7 +183,7 @@ export function buildInstruction(
   // Replace .takt/reports/{report_dir} with absolute path first,
   // then replace standalone {report_dir} with the directory name.
   // This ensures agents always use the correct project root for reports,
-  // even when their cwd is a worktree.
+  // even when their cwd is a clone.
   if (context.reportDir) {
     const projectRoot = context.projectCwd ?? context.cwd;
     const reportDirFullPath = join(projectRoot, '.takt', 'reports', context.reportDir);

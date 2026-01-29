@@ -1,7 +1,10 @@
 /**
- * Git worktree management
+ * Git shared clone management
  *
- * Creates and removes git worktrees for task isolation.
+ * Creates and removes git shared clones for task isolation.
+ * Uses `git clone --shared` instead of worktrees so each clone
+ * has an independent .git directory, preventing Claude Code from
+ * traversing gitdir back to the main repository.
  */
 
 import * as fs from 'node:fs';
@@ -23,10 +26,23 @@ export interface WorktreeOptions {
 }
 
 export interface WorktreeResult {
-  /** Absolute path to the worktree */
+  /** Absolute path to the clone */
   path: string;
   /** Branch name used */
   branch: string;
+}
+
+/** Branch info from `git branch --list` */
+export interface BranchInfo {
+  branch: string;
+  commit: string;
+}
+
+/** Branch with review metadata */
+export interface BranchReviewItem {
+  info: BranchInfo;
+  filesChanged: number;
+  taskSlug: string;
 }
 
 /**
@@ -37,14 +53,14 @@ function generateTimestamp(): string {
 }
 
 /**
- * Resolve the worktree path based on options and global config.
+ * Resolve the clone path based on options and global config.
  *
  * Priority:
  * 1. Custom path in options.worktree (string)
  * 2. worktree_dir from config.yaml (if set)
- * 3. Default: ../{tree-name}
+ * 3. Default: ../{dir-name}
  */
-function resolveWorktreePath(projectDir: string, options: WorktreeOptions): string {
+function resolveClonePath(projectDir: string, options: WorktreeOptions): string {
   const timestamp = generateTimestamp();
   const slug = slugify(options.taskSlug);
   const dirName = slug ? `${timestamp}-${slug}` : timestamp;
@@ -96,72 +112,104 @@ function branchExists(projectDir: string, branch: string): boolean {
 }
 
 /**
- * Create a git worktree for a task
+ * Create a git shared clone for a task.
+ *
+ * Uses `git clone --shared` to create a lightweight clone with
+ * an independent .git directory. Then checks out a new branch.
  *
  * @returns WorktreeResult with path and branch
- * @throws Error if git worktree creation fails
+ * @throws Error if git clone creation fails
  */
-export function createWorktree(projectDir: string, options: WorktreeOptions): WorktreeResult {
-  const worktreePath = resolveWorktreePath(projectDir, options);
+export function createSharedClone(projectDir: string, options: WorktreeOptions): WorktreeResult {
+  const clonePath = resolveClonePath(projectDir, options);
   const branch = resolveBranchName(options);
 
-  log.info('Creating worktree', { path: worktreePath, branch });
+  log.info('Creating shared clone', { path: clonePath, branch });
 
   // Ensure parent directory exists
-  fs.mkdirSync(path.dirname(worktreePath), { recursive: true });
+  fs.mkdirSync(path.dirname(clonePath), { recursive: true });
 
-  // Create worktree (use execFileSync to avoid shell injection)
-  if (branchExists(projectDir, branch)) {
-    execFileSync('git', ['worktree', 'add', worktreePath, branch], {
-      cwd: projectDir,
+  // Create shared clone
+  execFileSync('git', ['clone', '--shared', projectDir, clonePath], {
+    cwd: projectDir,
+    stdio: 'pipe',
+  });
+
+  // Checkout branch
+  if (branchExists(clonePath, branch)) {
+    execFileSync('git', ['checkout', branch], {
+      cwd: clonePath,
       stdio: 'pipe',
     });
   } else {
-    execFileSync('git', ['worktree', 'add', '-b', branch, worktreePath], {
-      cwd: projectDir,
+    execFileSync('git', ['checkout', '-b', branch], {
+      cwd: clonePath,
       stdio: 'pipe',
     });
   }
 
-  log.info('Worktree created', { path: worktreePath, branch });
+  log.info('Shared clone created', { path: clonePath, branch });
 
-  return { path: worktreePath, branch };
+  return { path: clonePath, branch };
 }
 
 /**
- * Remove a git worktree
+ * Create a temporary shared clone for an existing branch.
+ * Used by review/instruct to work on a branch that was previously pushed.
+ *
+ * @returns WorktreeResult with path and branch
+ * @throws Error if git clone creation fails
  */
-export function removeWorktree(projectDir: string, worktreePath: string): void {
-  log.info('Removing worktree', { path: worktreePath });
+export function createTempCloneForBranch(projectDir: string, branch: string): WorktreeResult {
+  const timestamp = generateTimestamp();
+  const globalConfig = loadGlobalConfig();
+  let clonePath: string;
+
+  if (globalConfig.worktreeDir) {
+    const baseDir = path.isAbsolute(globalConfig.worktreeDir)
+      ? globalConfig.worktreeDir
+      : path.resolve(projectDir, globalConfig.worktreeDir);
+    clonePath = path.join(baseDir, `tmp-${timestamp}`);
+  } else {
+    clonePath = path.join(projectDir, '..', `tmp-${timestamp}`);
+  }
+
+  log.info('Creating temp clone for branch', { path: clonePath, branch });
+
+  fs.mkdirSync(path.dirname(clonePath), { recursive: true });
+
+  execFileSync('git', ['clone', '--shared', projectDir, clonePath], {
+    cwd: projectDir,
+    stdio: 'pipe',
+  });
+
+  execFileSync('git', ['checkout', branch], {
+    cwd: clonePath,
+    stdio: 'pipe',
+  });
+
+  log.info('Temp clone created', { path: clonePath, branch });
+
+  return { path: clonePath, branch };
+}
+
+/**
+ * Remove a clone directory
+ */
+export function removeClone(clonePath: string): void {
+  log.info('Removing clone', { path: clonePath });
 
   try {
-    execFileSync('git', ['worktree', 'remove', worktreePath, '--force'], {
-      cwd: projectDir,
-      stdio: 'pipe',
-    });
-    log.info('Worktree removed', { path: worktreePath });
+    fs.rmSync(clonePath, { recursive: true, force: true });
+    log.info('Clone removed', { path: clonePath });
   } catch (err) {
-    log.error('Failed to remove worktree', { path: worktreePath, error: String(err) });
+    log.error('Failed to remove clone', { path: clonePath, error: String(err) });
   }
 }
 
 // --- Review-related types and helpers ---
 
 const TAKT_BRANCH_PREFIX = 'takt/';
-
-/** Parsed worktree entry from git worktree list */
-export interface WorktreeInfo {
-  path: string;
-  branch: string;
-  commit: string;
-}
-
-/** Worktree with review metadata */
-export interface WorktreeReviewItem {
-  info: WorktreeInfo;
-  filesChanged: number;
-  taskSlug: string;
-}
 
 /**
  * Detect the default branch name (main or master).
@@ -197,52 +245,46 @@ export function detectDefaultBranch(cwd: string): string {
 }
 
 /**
- * Parse `git worktree list --porcelain` output into WorktreeInfo entries.
- * Only includes worktrees on branches with the takt/ prefix.
+ * List all takt-managed branches.
+ * Uses `git branch --list 'takt/*'` instead of worktree list.
  */
-export function parseTaktWorktrees(porcelainOutput: string): WorktreeInfo[] {
-  const entries: WorktreeInfo[] = [];
-  const blocks = porcelainOutput.trim().split('\n\n');
+export function listTaktBranches(projectDir: string): BranchInfo[] {
+  try {
+    const output = execFileSync(
+      'git', ['branch', '--list', 'takt/*', '--format=%(refname:short) %(objectname:short)'],
+      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' },
+    );
+    return parseTaktBranches(output);
+  } catch (err) {
+    log.error('Failed to list takt branches', { error: String(err) });
+    return [];
+  }
+}
 
-  for (const block of blocks) {
-    const lines = block.split('\n');
-    let wtPath = '';
-    let commit = '';
-    let branch = '';
+/**
+ * Parse `git branch --list` formatted output into BranchInfo entries.
+ */
+export function parseTaktBranches(output: string): BranchInfo[] {
+  const entries: BranchInfo[] = [];
+  const lines = output.trim().split('\n');
 
-    for (const line of lines) {
-      if (line.startsWith('worktree ')) {
-        wtPath = line.slice('worktree '.length);
-      } else if (line.startsWith('HEAD ')) {
-        commit = line.slice('HEAD '.length);
-      } else if (line.startsWith('branch ')) {
-        const ref = line.slice('branch '.length);
-        branch = ref.replace('refs/heads/', '');
-      }
-    }
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-    if (wtPath && branch.startsWith(TAKT_BRANCH_PREFIX)) {
-      entries.push({ path: wtPath, branch, commit });
+    // Format: "takt/20260128-fix-auth abc1234"
+    const spaceIdx = trimmed.lastIndexOf(' ');
+    if (spaceIdx === -1) continue;
+
+    const branch = trimmed.slice(0, spaceIdx);
+    const commit = trimmed.slice(spaceIdx + 1);
+
+    if (branch.startsWith(TAKT_BRANCH_PREFIX)) {
+      entries.push({ branch, commit });
     }
   }
 
   return entries;
-}
-
-/**
- * List all takt-managed worktrees.
- */
-export function listTaktWorktrees(projectDir: string): WorktreeInfo[] {
-  try {
-    const output = execFileSync(
-      'git', ['worktree', 'list', '--porcelain'],
-      { cwd: projectDir, encoding: 'utf-8', stdio: 'pipe' },
-    );
-    return parseTaktWorktrees(output);
-  } catch (err) {
-    log.error('Failed to list worktrees', { error: String(err) });
-    return [];
-  }
 }
 
 /**
@@ -262,7 +304,7 @@ export function getFilesChanged(cwd: string, defaultBranch: string, branch: stri
 
 /**
  * Extract a human-readable task slug from a takt branch name.
- * e.g. "takt/20260128T032800-fix-auth" → "fix-auth"
+ * e.g. "takt/20260128T032800-fix-auth" -> "fix-auth"
  */
 export function extractTaskSlug(branch: string): string {
   const name = branch.replace(TAKT_BRANCH_PREFIX, '');
@@ -272,16 +314,16 @@ export function extractTaskSlug(branch: string): string {
 }
 
 /**
- * Build review items from worktree list, enriching with diff stats.
+ * Build review items from branch list, enriching with diff stats.
  */
 export function buildReviewItems(
   projectDir: string,
-  worktrees: WorktreeInfo[],
+  branches: BranchInfo[],
   defaultBranch: string,
-): WorktreeReviewItem[] {
-  return worktrees.map(wt => ({
-    info: wt,
-    filesChanged: getFilesChanged(projectDir, defaultBranch, wt.branch),
-    taskSlug: extractTaskSlug(wt.branch),
+): BranchReviewItem[] {
+  return branches.map(br => ({
+    info: br,
+    filesChanged: getFilesChanged(projectDir, defaultBranch, br.branch),
+    taskSlug: extractTaskSlug(br.branch),
   }));
 }

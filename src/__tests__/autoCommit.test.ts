@@ -1,9 +1,9 @@
 /**
- * Tests for autoCommitWorktree
+ * Tests for autoCommitAndPush
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { autoCommitWorktree } from '../task/autoCommit.js';
+import { autoCommitAndPush } from '../task/autoCommit.js';
 
 // Mock child_process.execFileSync
 vi.mock('node:child_process', () => ({
@@ -17,9 +17,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('autoCommitWorktree', () => {
-  it('should create a commit when there are changes', () => {
-    // git add -A: no output needed
+describe('autoCommitAndPush', () => {
+  it('should create a commit and push when there are changes', () => {
     mockExecFileSync.mockImplementation((cmd, args) => {
       const argsArr = args as string[];
       if (argsArr[0] === 'status') {
@@ -31,7 +30,7 @@ describe('autoCommitWorktree', () => {
       return Buffer.from('');
     });
 
-    const result = autoCommitWorktree('/tmp/worktree', 'my-task');
+    const result = autoCommitAndPush('/tmp/clone', 'my-task');
 
     expect(result.success).toBe(true);
     expect(result.commitHash).toBe('abc1234');
@@ -41,14 +40,21 @@ describe('autoCommitWorktree', () => {
     expect(mockExecFileSync).toHaveBeenCalledWith(
       'git',
       ['add', '-A'],
-      expect.objectContaining({ cwd: '/tmp/worktree' })
+      expect.objectContaining({ cwd: '/tmp/clone' })
     );
 
     // Verify commit was called with correct message (no co-author)
     expect(mockExecFileSync).toHaveBeenCalledWith(
       'git',
       ['commit', '-m', 'takt: my-task'],
-      expect.objectContaining({ cwd: '/tmp/worktree' })
+      expect.objectContaining({ cwd: '/tmp/clone' })
+    );
+
+    // Verify push was called
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      'git',
+      ['push', 'origin', 'HEAD'],
+      expect.objectContaining({ cwd: '/tmp/clone' })
     );
   });
 
@@ -61,7 +67,7 @@ describe('autoCommitWorktree', () => {
       return Buffer.from('');
     });
 
-    const result = autoCommitWorktree('/tmp/worktree', 'my-task');
+    const result = autoCommitAndPush('/tmp/clone', 'my-task');
 
     expect(result.success).toBe(true);
     expect(result.commitHash).toBeUndefined();
@@ -71,13 +77,20 @@ describe('autoCommitWorktree', () => {
     expect(mockExecFileSync).toHaveBeenCalledWith(
       'git',
       ['add', '-A'],
-      expect.objectContaining({ cwd: '/tmp/worktree' })
+      expect.objectContaining({ cwd: '/tmp/clone' })
     );
 
     // Verify commit was NOT called
     expect(mockExecFileSync).not.toHaveBeenCalledWith(
       'git',
       ['commit', '-m', expect.any(String)],
+      expect.anything()
+    );
+
+    // Verify push was NOT called
+    expect(mockExecFileSync).not.toHaveBeenCalledWith(
+      'git',
+      ['push', 'origin', 'HEAD'],
       expect.anything()
     );
   });
@@ -87,7 +100,7 @@ describe('autoCommitWorktree', () => {
       throw new Error('git error: not a git repository');
     });
 
-    const result = autoCommitWorktree('/tmp/worktree', 'my-task');
+    const result = autoCommitAndPush('/tmp/clone', 'my-task');
 
     expect(result.success).toBe(false);
     expect(result.commitHash).toBeUndefined();
@@ -107,7 +120,7 @@ describe('autoCommitWorktree', () => {
       return Buffer.from('');
     });
 
-    autoCommitWorktree('/tmp/worktree', 'test-task');
+    autoCommitAndPush('/tmp/clone', 'test-task');
 
     // Find the commit call
     const commitCall = mockExecFileSync.mock.calls.find(
@@ -132,7 +145,7 @@ describe('autoCommitWorktree', () => {
       return Buffer.from('');
     });
 
-    autoCommitWorktree('/tmp/worktree', '認証機能を追加する');
+    autoCommitAndPush('/tmp/clone', '認証機能を追加する');
 
     const commitCall = mockExecFileSync.mock.calls.find(
       call => (call[1] as string[])[0] === 'commit'

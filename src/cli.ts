@@ -36,8 +36,8 @@ import {
 } from './commands/index.js';
 import { listWorkflows } from './config/workflowLoader.js';
 import { selectOptionWithDefault, confirm } from './prompt/index.js';
-import { createWorktree } from './task/worktree.js';
-import { autoCommitWorktree } from './task/autoCommit.js';
+import { createSharedClone, removeClone } from './task/worktree.js';
+import { autoCommitAndPush } from './task/autoCommit.js';
 import { summarizeTaskName } from './task/summarize.js';
 import { DEFAULT_WORKFLOW_NAME } from './constants.js';
 
@@ -49,9 +49,9 @@ export interface WorktreeConfirmationResult {
 }
 
 /**
- * Ask user whether to create a worktree, and create one if confirmed.
- * Returns the execution directory and whether a worktree was created.
- * Task name is summarized to English by AI for use in branch/worktree names.
+ * Ask user whether to create a shared clone, and create one if confirmed.
+ * Returns the execution directory and whether a clone was created.
+ * Task name is summarized to English by AI for use in branch/clone names.
  */
 export async function confirmAndCreateWorktree(
   cwd: string,
@@ -67,11 +67,11 @@ export async function confirmAndCreateWorktree(
   info('Generating branch name...');
   const taskSlug = await summarizeTaskName(task, { cwd });
 
-  const result = createWorktree(cwd, {
+  const result = createSharedClone(cwd, {
     worktree: true,
     taskSlug,
   });
-  info(`Worktree created: ${result.path} (branch: ${result.branch})`);
+  info(`Clone created: ${result.path} (branch: ${result.branch})`);
 
   return { execCwd: result.path, isWorktree: true };
 }
@@ -228,12 +228,17 @@ program
       const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd);
 
       if (taskSuccess && isWorktree) {
-        const commitResult = autoCommitWorktree(execCwd, task);
+        const commitResult = autoCommitAndPush(execCwd, task);
         if (commitResult.success && commitResult.commitHash) {
-          success(`Auto-committed: ${commitResult.commitHash}`);
+          success(`Auto-committed & pushed: ${commitResult.commitHash}`);
         } else if (!commitResult.success) {
           error(`Auto-commit failed: ${commitResult.message}`);
         }
+      }
+
+      // Remove clone after task completion (success or failure)
+      if (isWorktree) {
+        removeClone(execCwd);
       }
 
       if (!taskSuccess) {

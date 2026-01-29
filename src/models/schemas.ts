@@ -127,7 +127,7 @@ export const GlobalConfigSchema = z.object({
   provider: z.enum(['claude', 'codex', 'mock']).optional().default('claude'),
   model: z.string().optional(),
   debug: DebugConfigSchema.optional(),
-  /** Directory for worktrees. If empty, uses ../{tree-name} relative to project */
+  /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktree_dir: z.string().optional(),
 });
 

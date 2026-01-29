@@ -1,5 +1,5 @@
 /**
- * Tests for confirmAndCreateWorktree (CLI worktree confirmation flow)
+ * Tests for confirmAndCreateWorktree (CLI clone confirmation flow)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -11,11 +11,12 @@ vi.mock('../prompt/index.js', () => ({
 }));
 
 vi.mock('../task/worktree.js', () => ({
-  createWorktree: vi.fn(),
+  createSharedClone: vi.fn(),
+  removeClone: vi.fn(),
 }));
 
 vi.mock('../task/autoCommit.js', () => ({
-  autoCommitWorktree: vi.fn(),
+  autoCommitAndPush: vi.fn(),
 }));
 
 vi.mock('../task/summarize.js', () => ({
@@ -76,13 +77,13 @@ vi.mock('../constants.js', () => ({
 }));
 
 import { confirm } from '../prompt/index.js';
-import { createWorktree } from '../task/worktree.js';
+import { createSharedClone } from '../task/worktree.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { info } from '../utils/ui.js';
 import { confirmAndCreateWorktree } from '../cli.js';
 
 const mockConfirm = vi.mocked(confirm);
-const mockCreateWorktree = vi.mocked(createWorktree);
+const mockCreateSharedClone = vi.mocked(createSharedClone);
 const mockSummarizeTaskName = vi.mocked(summarizeTaskName);
 const mockInfo = vi.mocked(info);
 
@@ -91,8 +92,8 @@ beforeEach(() => {
 });
 
 describe('confirmAndCreateWorktree', () => {
-  it('should return original cwd when user declines worktree creation', async () => {
-    // Given: user says "no" to worktree creation
+  it('should return original cwd when user declines clone creation', async () => {
+    // Given: user says "no" to clone creation
     mockConfirm.mockResolvedValue(false);
 
     // When
@@ -101,16 +102,16 @@ describe('confirmAndCreateWorktree', () => {
     // Then
     expect(result.execCwd).toBe('/project');
     expect(result.isWorktree).toBe(false);
-    expect(mockCreateWorktree).not.toHaveBeenCalled();
+    expect(mockCreateSharedClone).not.toHaveBeenCalled();
     expect(mockSummarizeTaskName).not.toHaveBeenCalled();
   });
 
-  it('should create worktree and return worktree path when user confirms', async () => {
-    // Given: user says "yes" to worktree creation
+  it('should create shared clone and return clone path when user confirms', async () => {
+    // Given: user says "yes" to clone creation
     mockConfirm.mockResolvedValue(true);
     mockSummarizeTaskName.mockResolvedValue('fix-auth');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128T0504-fix-auth',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-fix-auth',
       branch: 'takt/20260128T0504-fix-auth',
     });
 
@@ -118,21 +119,21 @@ describe('confirmAndCreateWorktree', () => {
     const result = await confirmAndCreateWorktree('/project', 'fix-auth');
 
     // Then
-    expect(result.execCwd).toBe('/project/.takt/worktrees/20260128T0504-fix-auth');
+    expect(result.execCwd).toBe('/project/../20260128T0504-fix-auth');
     expect(result.isWorktree).toBe(true);
     expect(mockSummarizeTaskName).toHaveBeenCalledWith('fix-auth', { cwd: '/project' });
-    expect(mockCreateWorktree).toHaveBeenCalledWith('/project', {
+    expect(mockCreateSharedClone).toHaveBeenCalledWith('/project', {
       worktree: true,
       taskSlug: 'fix-auth',
     });
   });
 
-  it('should display worktree info when created', async () => {
+  it('should display clone info when created', async () => {
     // Given
     mockConfirm.mockResolvedValue(true);
     mockSummarizeTaskName.mockResolvedValue('my-task');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128T0504-my-task',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-my-task',
       branch: 'takt/20260128T0504-my-task',
     });
 
@@ -141,7 +142,7 @@ describe('confirmAndCreateWorktree', () => {
 
     // Then
     expect(mockInfo).toHaveBeenCalledWith(
-      'Worktree created: /project/.takt/worktrees/20260128T0504-my-task (branch: takt/20260128T0504-my-task)'
+      'Clone created: /project/../20260128T0504-my-task (branch: takt/20260128T0504-my-task)'
     );
   });
 
@@ -160,8 +161,8 @@ describe('confirmAndCreateWorktree', () => {
     // Given: Japanese task name, AI summarizes to English
     mockConfirm.mockResolvedValue(true);
     mockSummarizeTaskName.mockResolvedValue('add-auth');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128T0504-add-auth',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-add-auth',
       branch: 'takt/20260128T0504-add-auth',
     });
 
@@ -170,18 +171,18 @@ describe('confirmAndCreateWorktree', () => {
 
     // Then
     expect(mockSummarizeTaskName).toHaveBeenCalledWith('認証機能を追加する', { cwd: '/project' });
-    expect(mockCreateWorktree).toHaveBeenCalledWith('/project', {
+    expect(mockCreateSharedClone).toHaveBeenCalledWith('/project', {
       worktree: true,
       taskSlug: 'add-auth',
     });
   });
 
-  it('should show generating message when creating worktree', async () => {
+  it('should show generating message when creating clone', async () => {
     // Given
     mockConfirm.mockResolvedValue(true);
     mockSummarizeTaskName.mockResolvedValue('test-task');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128T0504-test-task',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-test-task',
       branch: 'takt/20260128T0504-test-task',
     });
 

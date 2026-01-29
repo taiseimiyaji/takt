@@ -15,11 +15,12 @@ vi.mock('../task/index.js', () => ({
 }));
 
 vi.mock('../task/worktree.js', () => ({
-  createWorktree: vi.fn(),
+  createSharedClone: vi.fn(),
+  removeClone: vi.fn(),
 }));
 
 vi.mock('../task/autoCommit.js', () => ({
-  autoCommitWorktree: vi.fn(),
+  autoCommitAndPush: vi.fn(),
 }));
 
 vi.mock('../task/summarize.js', () => ({
@@ -55,13 +56,13 @@ vi.mock('../constants.js', () => ({
   DEFAULT_LANGUAGE: 'en',
 }));
 
-import { createWorktree } from '../task/worktree.js';
+import { createSharedClone } from '../task/worktree.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { info } from '../utils/ui.js';
 import { resolveTaskExecution } from '../commands/taskExecution.js';
 import type { TaskInfo } from '../task/index.js';
 
-const mockCreateWorktree = vi.mocked(createWorktree);
+const mockCreateSharedClone = vi.mocked(createSharedClone);
 const mockSummarizeTaskName = vi.mocked(summarizeTaskName);
 const mockInfo = vi.mocked(info);
 
@@ -88,7 +89,7 @@ describe('resolveTaskExecution', () => {
       isWorktree: false,
     });
     expect(mockSummarizeTaskName).not.toHaveBeenCalled();
-    expect(mockCreateWorktree).not.toHaveBeenCalled();
+    expect(mockCreateSharedClone).not.toHaveBeenCalled();
   });
 
   it('should return defaults when data has no worktree option', async () => {
@@ -110,7 +111,7 @@ describe('resolveTaskExecution', () => {
     expect(mockSummarizeTaskName).not.toHaveBeenCalled();
   });
 
-  it('should create worktree with AI-summarized slug when worktree option is true', async () => {
+  it('should create shared clone with AI-summarized slug when worktree option is true', async () => {
     // Given: Task with worktree option
     const task: TaskInfo = {
       name: 'japanese-task',
@@ -123,8 +124,8 @@ describe('resolveTaskExecution', () => {
     };
 
     mockSummarizeTaskName.mockResolvedValue('add-auth');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128T0504-add-auth',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-add-auth',
       branch: 'takt/20260128T0504-add-auth',
     });
 
@@ -133,13 +134,13 @@ describe('resolveTaskExecution', () => {
 
     // Then
     expect(mockSummarizeTaskName).toHaveBeenCalledWith('認証機能を追加する', { cwd: '/project' });
-    expect(mockCreateWorktree).toHaveBeenCalledWith('/project', {
+    expect(mockCreateSharedClone).toHaveBeenCalledWith('/project', {
       worktree: true,
       branch: undefined,
       taskSlug: 'add-auth',
     });
     expect(result).toEqual({
-      execCwd: '/project/.takt/worktrees/20260128T0504-add-auth',
+      execCwd: '/project/../20260128T0504-add-auth',
       execWorkflow: 'default',
       isWorktree: true,
     });
@@ -158,8 +159,8 @@ describe('resolveTaskExecution', () => {
     };
 
     mockSummarizeTaskName.mockResolvedValue('test-task');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/test-task',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../test-task',
       branch: 'takt/test-task',
     });
 
@@ -183,8 +184,8 @@ describe('resolveTaskExecution', () => {
     };
 
     mockSummarizeTaskName.mockResolvedValue('new-feature');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/new-feature',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../new-feature',
       branch: 'takt/new-feature',
     });
 
@@ -214,7 +215,7 @@ describe('resolveTaskExecution', () => {
     expect(result.execWorkflow).toBe('custom-workflow');
   });
 
-  it('should pass branch option to createWorktree when specified', async () => {
+  it('should pass branch option to createSharedClone when specified', async () => {
     // Given: Task with custom branch
     const task: TaskInfo = {
       name: 'task-with-branch',
@@ -228,8 +229,8 @@ describe('resolveTaskExecution', () => {
     };
 
     mockSummarizeTaskName.mockResolvedValue('custom-task');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/custom-task',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../custom-task',
       branch: 'feature/custom-branch',
     });
 
@@ -237,14 +238,14 @@ describe('resolveTaskExecution', () => {
     await resolveTaskExecution(task, '/project', 'default');
 
     // Then
-    expect(mockCreateWorktree).toHaveBeenCalledWith('/project', {
+    expect(mockCreateSharedClone).toHaveBeenCalledWith('/project', {
       worktree: true,
       branch: 'feature/custom-branch',
       taskSlug: 'custom-task',
     });
   });
 
-  it('should display worktree creation info', async () => {
+  it('should display clone creation info', async () => {
     // Given: Task with worktree
     const task: TaskInfo = {
       name: 'info-task',
@@ -257,8 +258,8 @@ describe('resolveTaskExecution', () => {
     };
 
     mockSummarizeTaskName.mockResolvedValue('info-task');
-    mockCreateWorktree.mockReturnValue({
-      path: '/project/.takt/worktrees/20260128-info-task',
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128-info-task',
       branch: 'takt/20260128-info-task',
     });
 
@@ -267,7 +268,7 @@ describe('resolveTaskExecution', () => {
 
     // Then
     expect(mockInfo).toHaveBeenCalledWith(
-      'Worktree created: /project/.takt/worktrees/20260128-info-task (branch: takt/20260128-info-task)'
+      'Clone created: /project/../20260128-info-task (branch: takt/20260128-info-task)'
     );
   });
 });

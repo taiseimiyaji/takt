@@ -3,6 +3,6 @@ logs/
 reports/
 completed/
 tasks/
-worktrees/
+worktree-meta/
 agent_sessions.json
 input_history

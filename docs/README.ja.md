@@ -73,10 +73,10 @@ TAKTは`.takt/tasks/`内のタスクファイルによるバッチ処理をサ�
 #### `/add-task` でタスクを追加
 
 ```bash
-# クイック追加（worktreeなし）
+# クイック追加（隔離なし）
 takt /add-task "認証機能を追加"
 
-# 対話モード（worktree、ブランチ、ワークフローオプションを指定可能）
+# 対話モード（隔離実行、ブランチ、ワークフローオプションを指定可能）
 takt /add-task
 ```
 
@@ -87,7 +87,7 @@ takt /add-task
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "認証機能を追加する"
-worktree: true                  # 隔離されたgit worktreeで実行
+worktree: true                  # 隔離された共有クローンで実行
 branch: "feat/add-auth"         # ブランチ名（省略時は自動生成）
 workflow: "default"             # ワークフロー指定（省略時は現在のもの）
 ```
@@ -105,14 +105,18 @@ workflow: "default"             # ワークフロー指定（省略時は現在�
 - 失敗時のエラーハンドリング
 ```
 
-#### Git Worktree による隔離実行
+#### 共有クローンによる隔離実行
 
-YAMLタスクファイルで`worktree`を指定すると、各タスクを隔離されたgit worktreeで実行し、メインの作業ディレクトリをクリーンに保てます：
+YAMLタスクファイルで`worktree`を指定すると、各タスクを`git clone --shared`で作成した隔離クローンで実行し、メインの作業ディレクトリをクリーンに保てます：
 
-- `worktree: true` - `.takt/worktrees/{timestamp}-{task-slug}/`に自動作成
+- `worktree: true` - 隣接ディレクトリ（または`worktree_dir`設定で指定した場所）に共有クローンを自動作成
 - `worktree: "/path/to/dir"` - 指定パスに作成
 - `branch: "feat/xxx"` - 指定ブランチを使用（省略時は`takt/{timestamp}-{slug}`で自動生成）
 - `worktree`省略 - カレントディレクトリで実行（デフォルト）
+
+> **Note**: YAMLフィールド名は後方互換のため`worktree`のままです。内部的には`git worktree`ではなく`git clone --shared`を使用しています。git worktreeの`.git`ファイルには`gitdir:`でメインリポジトリへのパスが記載されており、Claude Codeがそれを辿ってメインリポジトリをプロジェクトルートと認識してしまうためです。共有クローンは独立した`.git`ディレクトリを持つため、この問題が発生しません。
+
+クローンは使い捨てです。タスク完了後に自動的にコミット＋プッシュし、クローンを削除します。ブランチが唯一の永続的な成果物です。`takt /review-tasks`でブランチのレビュー・マージ・削除ができます。
 
 #### `/run-tasks` でタスクを実行
 
@@ -338,7 +342,7 @@ agents:
 ├── agents.yaml          # カスタムエージェント定義
 ├── tasks/               # 保留中のタスクファイル（.yaml, .md）
 ├── completed/           # 完了したタスクとレポート
-├── worktrees/           # タスク隔離実行用のgit worktree
+├── worktree-meta/       # タスクブランチのメタデータ
 ├── reports/             # 実行レポート（自動生成）
 └── logs/                # セッションログ
 ```

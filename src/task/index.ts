@@ -13,18 +13,19 @@ export { showTaskList } from './display.js';
 export { TaskFileSchema, type TaskFileData } from './schema.js';
 export { parseTaskFile, parseTaskFiles, type ParsedTask } from './parser.js';
 export {
-  createWorktree,
-  removeWorktree,
+  createSharedClone,
+  removeClone,
+  createTempCloneForBranch,
   detectDefaultBranch,
-  parseTaktWorktrees,
-  listTaktWorktrees,
+  listTaktBranches,
+  parseTaktBranches,
   getFilesChanged,
   extractTaskSlug,
   buildReviewItems,
   type WorktreeOptions,
   type WorktreeResult,
-  type WorktreeInfo,
-  type WorktreeReviewItem,
+  type BranchInfo,
+  type BranchReviewItem,
 } from './worktree.js';
-export { autoCommitWorktree, type AutoCommitResult } from './autoCommit.js';
+export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
 export { TaskWatcher, type TaskWatcherOptions } from './watcher.js';
