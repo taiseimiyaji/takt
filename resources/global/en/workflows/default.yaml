@@ -29,45 +29,18 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## Judgment Criteria
-
-      | Situation | Judgment |
-      |-----------|----------|
-      | Requirements clear and implementable | DONE |
-      | User is asking a question (not an implementation task) | ANSWER |
-      | Requirements unclear, insufficient info | BLOCKED |
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Analysis complete | `[PLANNER:DONE]` |
-      | Question answered | `[PLANNER:ANSWER]` |
-      | Insufficient info | `[PLANNER:BLOCKED]` |
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      [PLANNER:DONE]
-      ```
-
-      **ANSWER case:**
-      ```
-      {Answer to the question}
-
-      [PLANNER:ANSWER]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [PLANNER:BLOCKED]
-
-      Clarifications needed:
-      - {Question 1}
-      - {Question 2}
-      ```
+    rules:
+      - condition: Requirements are clear and implementable
+        next: implement
+      - condition: User is asking a question (not an implementation task)
+        next: COMPLETE
+      - condition: Requirements unclear, insufficient info
+        next: ABORT
+        appendix: |
+          Clarifications needed:
+          - {Question 1}
+          - {Question 2}
+    pass_previous_response: true
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -84,11 +57,6 @@ steps:
 
       ## Instructions
       Analyze the task and create an implementation plan.
-
-      **Judgment criteria:**
-      - If the user input is an implementation task → create a plan and output `[PLANNER:DONE]`
-      - If the user input is a question → research, answer, and output `[PLANNER:ANSWER]`
-      - If there is insufficient information → output `[PLANNER:BLOCKED]`
 
       **Note:** If returned from implement step (Previous Response exists),
       review and revise the plan based on that feedback (replan).
@@ -123,14 +91,6 @@ steps:
       ## Clarifications Needed (if any)
       - {Unclear points or items requiring confirmation}
       ```
-    pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: implement
-      - condition: answer
-        next_step: COMPLETE
-      - condition: blocked
-        next_step: ABORT
 
   - name: implement
     agent: ~/.takt/agents/default/coder.md
@@ -144,34 +104,11 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Implementation complete | `[CODER:DONE]` |
-      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
-
-      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      Implementation complete.
-      - Created: `src/auth/service.ts`, `tests/auth.test.ts`
-      - Modified: `src/routes.ts`
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [CODER:BLOCKED]
-
-      Reason: DB schema is undefined, cannot implement
-      Required info: users table structure
-      ```
+    rules:
+      - condition: Implementation complete
+        next: review
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -225,14 +162,9 @@ steps:
       - **Options Considered**: {List of options}
       - **Reason**: {Why this option was chosen}
       ```
-    transitions:
-      - condition: done
-        next_step: review
-      - condition: blocked
-        next_step: plan
 
   - name: review
-    agent: ~/.takt/agents/default/architect.md
+    agent: ~/.takt/agents/default/architecture-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -240,59 +172,13 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## Judgment Criteria
-
-      | Situation | Judgment |
-      |-----------|----------|
-      | Structural issues | REJECT |
-      | Design principle violations | REJECT |
-      | Security issues | REJECT |
-      | Insufficient tests | REJECT |
-      | Minor improvements needed | IMPROVE |
-      | No issues | APPROVE |
-
-      **How to use IMPROVE:**
-      - Design is acceptable but there are points that could be better
-      - Examples: naming improvements, small refactoring, adding comments
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | No issues | `[ARCHITECT:APPROVE]` |
-      | Minor improvements needed | `[ARCHITECT:IMPROVE]` |
-      | Structural changes required | `[ARCHITECT:REJECT]` |
-
-      ### Output Examples
-
-      **APPROVE case:**
-      ```
-      [ARCHITECT:APPROVE]
-
-      Positive points:
-      - Appropriate module organization
-      - Single responsibility maintained
-      ```
-
-      **IMPROVE case:**
-      ```
-      [ARCHITECT:IMPROVE]
-
-      Improvements:
-      - Improve naming: `data` → `userData`
-      - Add comments
-      ```
-
-      **REJECT case:**
-      ```
-      [ARCHITECT:REJECT]
-
-      Issues:
-      1. File size exceeded
-         - Location: `src/services/user.ts` (523 lines)
-         - Fix: Split into 3 files
-      ```
+    rules:
+      - condition: No issues found
+        next: ai_review
+      - condition: Minor improvements needed
+        next: improve
+      - condition: Structural fix required
+        next: fix
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -342,16 +228,9 @@ steps:
       ```
 
       **Cognitive load reduction rules:**
-      - APPROVE + no issues → Summary only (5 lines or less)
-      - APPROVE + minor suggestions → Summary + suggestions (15 lines or less)
-      - REJECT → Issues in table format (30 lines or less)
-    transitions:
-      - condition: approved
-        next_step: ai_review
-      - condition: improve
-        next_step: improve
-      - condition: rejected
-        next_step: fix
+      - APPROVE + no issues -> Summary only (5 lines or less)
+      - APPROVE + minor suggestions -> Summary + suggestions (15 lines or less)
+      - REJECT -> Issues in table format (30 lines or less)
 
   - name: improve
     agent: ~/.takt/agents/default/coder.md
@@ -365,34 +244,11 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Improvements complete | `[CODER:DONE]` |
-      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
-
-      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      Improvements complete.
-      - Improved naming: `data` → `userData`
-      - Added comments
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [CODER:BLOCKED]
-
-      Reason: Improvement intent unclear
-      Required info: Specific improvement details
-      ```
+    rules:
+      - condition: Improvements complete
+        next: review
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -417,13 +273,7 @@ steps:
       - Small refactoring
       - Adding/fixing comments
       - Code organization
-
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: review
-      - condition: blocked
-        next_step: plan
 
   - name: ai_review
     agent: ~/.takt/agents/default/ai-antipattern-reviewer.md
@@ -434,43 +284,11 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## Judgment Criteria
-
-      | Situation | Judgment |
-      |-----------|----------|
-      | Incorrect assumptions (affecting behavior) | REJECT |
-      | Plausible-but-wrong code | REJECT |
-      | Significant context mismatch with codebase | REJECT |
-      | Scope creep | APPROVE (with warning noted) |
-      | Minor style deviations only | APPROVE |
-      | Code fits context and works | APPROVE |
-
-      **Note:** Scope creep is noted as a warning but doesn't warrant REJECT alone.
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | No AI-specific issues | `[AI_REVIEW:APPROVE]` |
-      | Issues found | `[AI_REVIEW:REJECT]` |
-
-      ### Output Examples
-
-      **APPROVE case:**
-      ```
-      [AI_REVIEW:APPROVE]
-
-      Verification result: No issues
-      ```
-
-      **REJECT case:**
-      ```
-      [AI_REVIEW:REJECT]
-
-      Issues:
-      1. Non-existent API used: `fetch.json()` → `response.json()`
-      ```
+    rules:
+      - condition: No AI-specific issues
+        next: security_review
+      - condition: AI-specific issues found
+        next: ai_fix
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -522,13 +340,8 @@ steps:
       ```
 
       **Cognitive load reduction rules:**
-      - No issues → Summary 1 line + check table only (10 lines or less)
-      - Issues found → + Issues in table format (25 lines or less)
-    transitions:
-      - condition: approved
-        next_step: security_review
-      - condition: rejected
-        next_step: ai_fix
+      - No issues -> Summary 1 line + check table only (10 lines or less)
+      - Issues found -> + Issues in table format (25 lines or less)
 
   - name: ai_fix
     agent: ~/.takt/agents/default/coder.md
@@ -542,33 +355,11 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | AI issue fixes complete | `[CODER:DONE]` |
-      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
-
-      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      Fixed AI Reviewer's issues.
-      - Fixed non-existent API: `fetch.json()` → `response.json()`
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [CODER:BLOCKED]
-
-      Reason: Fix method unclear
-      Required info: Alternative API specification
-      ```
+    rules:
+      - condition: AI issues fixed
+        next: review
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -591,16 +382,10 @@ steps:
       - Fixing plausible-but-wrong implementations
       - Aligning with existing codebase patterns
       - Removing scope creep
-
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: review
-      - condition: blocked
-        next_step: plan
 
   - name: security_review
-    agent: ~/.takt/agents/default/security.md
+    agent: ~/.takt/agents/default/security-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -608,40 +393,11 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## Judgment Criteria
-
-      | Situation | Judgment |
-      |-----------|----------|
-      | Critical vulnerability | REJECT |
-      | Medium severity vulnerability | REJECT |
-      | Minor issues/warnings only | APPROVE (note warnings) |
-      | No security issues | APPROVE |
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | No security issues | `[SECURITY:APPROVE]` |
-      | Vulnerabilities require fixes | `[SECURITY:REJECT]` |
-
-      ### Output Examples
-
-      **APPROVE case:**
-      ```
-      [SECURITY:APPROVE]
-
-      No security issues detected.
-      ```
-
-      **REJECT case:**
-      ```
-      [SECURITY:REJECT]
-
-      Vulnerabilities:
-      1. SQL Injection: `src/db.ts:42`
-         Fix: Use parameterized query
-      ```
+    rules:
+      - condition: No security issues
+        next: supervise
+      - condition: Vulnerabilities require fix
+        next: security_fix
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -695,14 +451,9 @@ steps:
       ```
 
       **Cognitive load reduction rules:**
-      - No issues → Check table only (10 lines or less)
-      - Warnings → + Warnings 1-2 lines (15 lines or less)
-      - Vulnerabilities → + Table format (30 lines or less)
-    transitions:
-      - condition: approved
-        next_step: supervise
-      - condition: rejected
-        next_step: security_fix
+      - No issues -> Check table only (10 lines or less)
+      - Warnings -> + Warnings 1-2 lines (15 lines or less)
+      - Vulnerabilities -> + Table format (30 lines or less)
 
   - name: security_fix
     agent: ~/.takt/agents/default/coder.md
@@ -716,33 +467,11 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Security fixes complete | `[CODER:DONE]` |
-      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
-
-      **Important**: Security issues require highest priority.
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      Fixed security issues.
-      - SQL injection fix: Changed to parameterized query
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [CODER:BLOCKED]
-
-      Reason: Fix method unclear
-      Required info: Auth library specification
-      ```
+    rules:
+      - condition: Security fix complete
+        next: security_review
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -761,13 +490,7 @@ steps:
       ## Instructions
       **Important**: Fix the vulnerabilities identified in the security review.
       Security issues require highest priority.
-
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: security_review
-      - condition: blocked
-        next_step: plan
 
   - name: fix
     agent: ~/.takt/agents/default/coder.md
@@ -781,34 +504,11 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Architect's issues fixed | `[CODER:DONE]` |
-      | Cannot decide/insufficient info | `[CODER:BLOCKED]` |
-
-      **Important**: When in doubt, `[BLOCKED]`. Don't decide on your own.
-
-      ### Output Examples
-
-      **DONE case:**
-      ```
-      Fixed Architect's issues.
-      - File split: Split into 3 files
-      - Added type definitions
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED case:**
-      ```
-      [CODER:BLOCKED]
-
-      Reason: Fix approach unclear
-      Required info: Specific split method
-      ```
+    rules:
+      - condition: Architect feedback addressed
+        next: review
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -828,13 +528,7 @@ steps:
       **Important**: Address the Architect's feedback.
       The "Original User Request" is reference information, not the latest instruction.
       Review the session conversation history and fix the issues raised by the Architect.
-
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: review
-      - condition: blocked
-        next_step: plan
 
   - name: supervise
     agent: ~/.takt/agents/default/supervisor.md
@@ -846,46 +540,11 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## Judgment Criteria
-
-      | Situation | Judgment |
-      |-----------|----------|
-      | Requirements not met | REJECT |
-      | Tests failing | REJECT |
-      | Build fails | REJECT |
-      | Workarounds remaining | REJECT |
-      | All OK | APPROVE |
-
-      **Principle**: When in doubt, REJECT. Don't give ambiguous approval.
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Final approval | `[SUPERVISOR:APPROVE]` |
-      | Return for fixes | `[SUPERVISOR:REJECT]` |
-
-      ### Output Examples
-
-      **APPROVE case:**
-      ```
-      [SUPERVISOR:APPROVE]
-
-      Verification results:
-      - Tests: ✅ All passed
-      - Build: ✅ Succeeded
-      - Requirements met: ✅
-      ```
-
-      **REJECT case:**
-      ```
-      [SUPERVISOR:REJECT]
-
-      Issues:
-      1. Tests failing: `npm test` - 2 failures
-      2. Requirements not met: Login feature not implemented
-      ```
+    rules:
+      - condition: All checks passed
+        next: COMPLETE
+      - condition: Requirements unmet, tests failing, build errors
+        next: plan
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -972,8 +631,3 @@ steps:
       npm run build
       ```
       ```
-    transitions:
-      - condition: approved
-        next_step: COMPLETE
-      - condition: rejected
-        next_step: plan

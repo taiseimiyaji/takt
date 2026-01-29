@@ -8,7 +8,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { WorkflowConfigRawSchema } from '../models/schemas.js';
-import type { WorkflowConfig, WorkflowStep } from '../models/types.js';
+import type { WorkflowConfig, WorkflowStep, WorkflowRule } from '../models/types.js';
 import { getGlobalWorkflowsDir } from './paths.js';
 
 /** Get builtin workflow by name */
@@ -61,24 +61,27 @@ function extractAgentDisplayName(agentPath: string): string {
 function normalizeWorkflowConfig(raw: unknown, workflowDir: string): WorkflowConfig {
   const parsed = WorkflowConfigRawSchema.parse(raw);
 
-  const steps: WorkflowStep[] = parsed.steps.map((step) => ({
-    name: step.name,
-    agent: step.agent,
-    agentDisplayName: step.agent_name || extractAgentDisplayName(step.agent),
-    agentPath: resolveAgentPathForWorkflow(step.agent, workflowDir),
-    allowedTools: step.allowed_tools,
-    provider: step.provider,
-    model: step.model,
-    permissionMode: step.permission_mode,
-    instructionTemplate: step.instruction_template || step.instruction || '{task}',
-    statusRulesPrompt: step.status_rules_prompt,
-    transitions: step.transitions.map((t) => ({
-      condition: t.condition,
-      nextStep: t.next_step,
-    })),
-    passPreviousResponse: step.pass_previous_response,
-    onNoStatus: step.on_no_status,
-  }));
+  const steps: WorkflowStep[] = parsed.steps.map((step) => {
+    const rules: WorkflowRule[] | undefined = step.rules?.map((r) => ({
+      condition: r.condition,
+      next: r.next,
+      appendix: r.appendix,
+    }));
+
+    return {
+      name: step.name,
+      agent: step.agent,
+      agentDisplayName: step.agent_name || extractAgentDisplayName(step.agent),
+      agentPath: resolveAgentPathForWorkflow(step.agent, workflowDir),
+      allowedTools: step.allowed_tools,
+      provider: step.provider,
+      model: step.model,
+      permissionMode: step.permission_mode,
+      instructionTemplate: step.instruction_template || step.instruction || '{task}',
+      rules,
+      passPreviousResponse: step.pass_previous_response,
+    };
+  });
 
   return {
     name: parsed.name,

@@ -32,8 +32,6 @@ export interface RunAgentOptions {
   agentPath?: string;
   /** Allowed tools for this agent run */
   allowedTools?: string[];
-  /** Status output rules to inject into system prompt */
-  statusRulesPrompt?: string;
   /** Permission mode for tool execution (from workflow step) */
   permissionMode?: PermissionMode;
   onStream?: StreamCallback;
@@ -134,12 +132,7 @@ export async function runCustomAgent(
   }
 
   // Custom agent with prompt
-  let systemPrompt = loadAgentPrompt(agentConfig);
-
-  // Inject status rules if provided
-  if (options.statusRulesPrompt) {
-    systemPrompt = `${systemPrompt}\n\n${options.statusRulesPrompt}`;
-  }
+  const systemPrompt = loadAgentPrompt(agentConfig);
 
   const providerType = resolveProvider(options.cwd, options, agentConfig);
   const provider = getProvider(providerType);
@@ -149,7 +142,6 @@ export async function runCustomAgent(
     sessionId: options.sessionId,
     allowedTools,
     model: resolveModel(options.cwd, options, agentConfig),
-    statusPatterns: agentConfig.statusPatterns,
     permissionMode: options.permissionMode,
     onStream: options.onStream,
     onPermissionRequest: options.onPermissionRequest,
@@ -217,12 +209,7 @@ export async function runAgent(
     if (!existsSync(options.agentPath)) {
       throw new Error(`Agent file not found: ${options.agentPath}`);
     }
-    let systemPrompt = loadAgentPromptFromPath(options.agentPath);
-
-    // Inject status rules if provided
-    if (options.statusRulesPrompt) {
-      systemPrompt = `${systemPrompt}\n\n${options.statusRulesPrompt}`;
-    }
+    const systemPrompt = loadAgentPromptFromPath(options.agentPath);
 
     const providerType = resolveProvider(options.cwd, options);
     const provider = getProvider(providerType);

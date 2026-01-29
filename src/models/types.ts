@@ -18,16 +18,6 @@ export type Status =
   | 'interrupted'
   | 'answer';
 
-/** Condition types for workflow transitions */
-export type TransitionCondition =
-  | 'done'
-  | 'blocked'
-  | 'approved'
-  | 'rejected'
-  | 'improve'
-  | 'answer'
-  | 'always';
-
 /** Response from an agent execution */
 export interface AgentResponse {
   agent: string;
@@ -37,6 +27,8 @@ export interface AgentResponse {
   sessionId?: string;
   /** Error message when the query failed (e.g., API error, rate limit) */
   error?: string;
+  /** Matched rule index (0-based) when rules-based detection was used */
+  matchedRuleIndex?: number;
 }
 
 /** Session state for workflow execution */
@@ -48,14 +40,15 @@ export interface SessionState {
   context: Record<string, string>;
 }
 
-/** Workflow step transition configuration */
-export interface WorkflowTransition {
-  condition: TransitionCondition;
-  nextStep: string;
+/** Rule-based transition configuration (new unified format) */
+export interface WorkflowRule {
+  /** Human-readable condition text */
+  condition: string;
+  /** Next step name (e.g., implement, COMPLETE, ABORT) */
+  next: string;
+  /** Template for additional AI output */
+  appendix?: string;
 }
-
-/** Behavior when no status marker is found in agent output */
-export type OnNoStatusBehavior = 'complete' | 'continue' | 'stay';
 
 /** Permission mode for tool execution */
 export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions';
@@ -78,17 +71,9 @@ export interface WorkflowStep {
   /** Permission mode for tool execution in this step */
   permissionMode?: PermissionMode;
   instructionTemplate: string;
-  /** Status output rules to be injected into system prompt */
-  statusRulesPrompt?: string;
-  transitions: WorkflowTransition[];
+  /** Rules for step routing */
+  rules?: WorkflowRule[];
   passPreviousResponse: boolean;
-  /**
-   * Behavior when agent doesn't output a status marker (in_progress).
-   * - 'complete': Treat as done, follow done/always transition or complete workflow (default)
-   * - 'continue': Treat as done, follow done/always transition or move to next step
-   * - 'stay': Stay on current step (may cause loops, use with caution)
-   */
-  onNoStatus?: OnNoStatusBehavior;
 }
 
 /** Loop detection configuration */
@@ -135,7 +120,6 @@ export interface CustomAgentConfig {
   promptFile?: string;
   prompt?: string;
   allowedTools?: string[];
-  statusPatterns?: Record<string, string>;
   claudeAgent?: string;
   claudeSkill?: string;
   provider?: 'claude' | 'codex' | 'mock';

@@ -30,45 +30,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## 判定基準
-
-      | 状況 | 判定 |
-      |------|------|
-      | 要件が明確で実装可能 | DONE |
-      | ユーザーが質問をしている（実装タスクではない） | ANSWER |
-      | 要件が不明確、情報不足 | BLOCKED |
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 分析完了 | `[PLANNER:DONE]` |
-      | 質問への回答 | `[PLANNER:ANSWER]` |
-      | 情報不足 | `[PLANNER:BLOCKED]` |
-
-      ### 出力例
-
-      **DONE の場合:**
-      ```
-      [PLANNER:DONE]
-      ```
-
-      **ANSWER の場合:**
-      ```
-      {質問への回答}
-
-      [PLANNER:ANSWER]
-      ```
-
-      **BLOCKED の場合:**
-      ```
-      [PLANNER:BLOCKED]
-
-      確認事項:
-      - {質問1}
-      - {質問2}
-      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -85,11 +46,6 @@ steps:
 
       ## Instructions
       タスクを分析し、実装方針を立ててください。
-
-      **判断基準:**
-      - ユーザーの入力が実装タスクの場合 → 計画を立てて `[PLANNER:DONE]`
-      - ユーザーの入力が質問の場合 → 調査・回答して `[PLANNER:ANSWER]`
-      - 情報不足の場合 → `[PLANNER:BLOCKED]`
 
       **注意:** Previous Responseがある場合は差し戻しのため、
       その内容を踏まえて計画を見直してください（replan）。
@@ -125,13 +81,17 @@ steps:
       - {不明点や確認が必要な点}
       ```
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: implement
-      - condition: answer
-        next_step: COMPLETE
-      - condition: blocked
-        next_step: ABORT
+    rules:
+      - condition: "要件が明確で実装可能"
+        next: implement
+      - condition: "ユーザーが質問をしている（実装タスクではない）"
+        next: COMPLETE
+      - condition: "要件が不明確、情報不足"
+        next: ABORT
+        appendix: |
+          確認事項:
+          - {質問1}
+          - {質問2}
 
   - name: implement
     agent: ~/.takt/agents/default/coder.md
@@ -145,34 +105,6 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 実装完了 | `[CODER:DONE]` |
-      | 判断できない/情報不足 | `[CODER:BLOCKED]` |
-
-      **重要**: 迷ったら `[BLOCKED]`。勝手に判断しない。
-
-      ### 出力例
-
-      **DONE の場合:**
-      ```
-      実装完了しました。
-      - 作成: `src/auth/service.ts`, `tests/auth.test.ts`
-      - 変更: `src/routes.ts`
-
-      [CODER:DONE]
-      ```
-
-      **BLOCKED の場合:**
-      ```
-      [CODER:BLOCKED]
-
-      理由: DBスキーマが未定義のため実装できません
-      必要な情報: usersテーブルの構造
-      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -226,14 +158,14 @@ steps:
       - **検討した選択肢**: {選択肢リスト}
       - **理由**: {選んだ理由}
       ```
-    transitions:
-      - condition: done
-        next_step: review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: "実装完了"
+        next: review
+      - condition: "判断できない、情報不足"
+        next: plan
 
   - name: review
-    agent: ~/.takt/agents/default/architect.md
+    agent: ~/.takt/agents/default/architecture-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -241,47 +173,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## 判定基準
-
-      | 状況 | 判定 |
-      |------|------|
-      | 構造に問題がある | REJECT |
-      | 設計原則違反がある | REJECT |
-      | セキュリティ問題がある | REJECT |
-      | テストが不十分 | REJECT |
-      | 問題なし | APPROVE |
-
-      **注意:** simpleワークフローでは IMPROVE は使用しません。
-      軽微な問題もある場合は APPROVE + コメントとしてください。
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 問題なし | `[ARCHITECT:APPROVE]` |
-      | 構造的な修正必要 | `[ARCHITECT:REJECT]` |
-
-      ### 出力例
-
-      **APPROVE の場合:**
-      ```
-      [ARCHITECT:APPROVE]
-
-      良い点:
-      - モジュール分割が適切
-      - 単一責務が守られている
-      ```
-
-      **REJECT の場合:**
-      ```
-      [ARCHITECT:REJECT]
-
-      問題点:
-      1. ファイルサイズ超過
-         - 場所: `src/services/user.ts` (523行)
-         - 修正案: 3ファイルに分割
-      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -337,11 +228,11 @@ steps:
       - APPROVE + 問題なし → サマリーのみ（5行以内）
       - APPROVE + 軽微な提案 → サマリー + 改善提案（15行以内）
       - REJECT → 問題点を表形式で（30行以内）
-    transitions:
-      - condition: approved
-        next_step: ai_review
-      - condition: rejected
-        next_step: plan
+    rules:
+      - condition: "問題なし"
+        next: ai_review
+      - condition: "構造的な修正必要"
+        next: plan
 
   - name: ai_review
     agent: ~/.takt/agents/default/ai-antipattern-reviewer.md
@@ -352,43 +243,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## 判定基準
-
-      | 状況 | 判定 |
-      |------|------|
-      | 仮定が間違っている（動作に影響） | REJECT |
-      | もっともらしいが間違っているコード | REJECT |
-      | コードベースの文脈に重大な不整合 | REJECT |
-      | スコープクリープ | APPROVE（警告を付記） |
-      | 軽微なスタイルの逸脱のみ | APPROVE |
-      | コードが文脈に合い動作する | APPROVE |
-
-      **注意:** スコープクリープは警告として記載するが、それだけでREJECTしない。
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | AI特有の問題なし | `[AI_REVIEW:APPROVE]` |
-      | 問題あり | `[AI_REVIEW:REJECT]` |
-
-      ### 出力例
-
-      **APPROVE の場合:**
-      ```
-      [AI_REVIEW:APPROVE]
-
-      検証結果: 問題なし
-      ```
-
-      **REJECT の場合:**
-      ```
-      [AI_REVIEW:REJECT]
-
-      問題点:
-      1. 存在しないAPIを使用: `fetch.json()` → `response.json()`
-      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -442,11 +296,11 @@ steps:
       **認知負荷軽減ルール:**
       - 問題なし → サマリー1文 + チェック表のみ（10行以内）
       - 問題あり → + 問題を表形式で（25行以内）
-    transitions:
-      - condition: approved
-        next_step: supervise
-      - condition: rejected
-        next_step: plan
+    rules:
+      - condition: "AI特有の問題なし"
+        next: supervise
+      - condition: "AI特有の問題あり"
+        next: plan
 
   - name: supervise
     agent: ~/.takt/agents/default/supervisor.md
@@ -458,46 +312,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-      ## 判定基準
-
-      | 状況 | 判定 |
-      |------|------|
-      | 要求が満たされていない | REJECT |
-      | テストが失敗する | REJECT |
-      | ビルドが通らない | REJECT |
-      | その場しのぎが残っている | REJECT |
-      | すべて問題なし | APPROVE |
-
-      **原則**: 疑わしきは REJECT。曖昧な承認はしない。
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 最終承認 | `[SUPERVISOR:APPROVE]` |
-      | 差し戻し | `[SUPERVISOR:REJECT]` |
-
-      ### 出力例
-
-      **APPROVE の場合:**
-      ```
-      [SUPERVISOR:APPROVE]
-
-      検証結果:
-      - テスト: ✅ 全件パス
-      - ビルド: ✅ 成功
-      - 要求充足: ✅
-      ```
-
-      **REJECT の場合:**
-      ```
-      [SUPERVISOR:REJECT]
-
-      問題点:
-      1. テストが失敗: `npm test` で 2 件失敗
-      2. 元の要求を満たしていない: ログイン機能が未実装
-      ```
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -583,8 +397,8 @@ steps:
       npm run build
       ```
       ```
-    transitions:
-      - condition: approved
-        next_step: COMPLETE
-      - condition: rejected
-        next_step: plan
+    rules:
+      - condition: "すべて問題なし"
+        next: COMPLETE
+      - condition: "要求未達成、テスト失敗、ビルドエラー"
+        next: plan

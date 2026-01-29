@@ -184,10 +184,11 @@ export async function executeWorkflow(
     displayRef.current = new StreamDisplay(step.agentDisplayName);
   });
 
-  engine.on('step:complete', (step, response) => {
+  engine.on('step:complete', (step, response, instruction) => {
     log.debug('Step completed', {
       step: step.name,
       status: response.status,
+      matchedRuleIndex: response.matchedRuleIndex,
       contentLength: response.content.length,
       sessionId: response.sessionId,
       error: response.error,
@@ -197,14 +198,25 @@ export async function executeWorkflow(
       displayRef.current = null;
     }
     console.log();
-    status('Status', response.status);
+
+    if (response.matchedRuleIndex != null && step.rules) {
+      const rule = step.rules[response.matchedRuleIndex];
+      if (rule) {
+        status('Status', rule.condition);
+      } else {
+        status('Status', response.status);
+      }
+    } else {
+      status('Status', response.status);
+    }
+
     if (response.error) {
       error(`Error: ${response.error}`);
     }
     if (response.sessionId) {
       status('Session', response.sessionId);
     }
-    addToSessionLog(sessionLog, step.name, response);
+    addToSessionLog(sessionLog, step.name, response, instruction);
 
     // Incremental save after each step
     saveSessionLog(sessionLog, workflowSessionId, projectCwd);

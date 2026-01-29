@@ -41,15 +41,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Analysis complete | `[PLANNER:DONE]` |
-      | Requirements unclear | `[PLANNER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -100,15 +91,12 @@ steps:
       ## Clarifications Needed (if any)
       - {Unclear points or items requiring confirmation}
       ```
-
-      Output [PLANNER:DONE] when complete.
-      Output [PLANNER:BLOCKED] if requirements are unclear.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: implement
-      - condition: blocked
-        next_step: ABORT
+    rules:
+      - condition: Task analysis and planning is complete
+        next: implement
+      - condition: Requirements are unclear and planning cannot proceed
+        next: ABORT
 
   # ===========================================
   # Phase 1: Implementation
@@ -124,15 +112,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Implementation complete | `[CODER:DONE]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -186,14 +165,11 @@ steps:
       - **Options Considered**: {List of options}
       - **Reason**: {Why this option was chosen}
       ```
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if you cannot proceed (returns to plan).
-    transitions:
-      - condition: done
-        next_step: cqrs_es_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Implementation is complete
+        next: cqrs_es_review
+      - condition: Cannot proceed with implementation
+        next: plan
 
   # ===========================================
   # Phase 2: CQRS+ES Review
@@ -207,15 +183,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Design is sound | `[CQRS-ES:APPROVE]` |
-      | Design issues found | `[CQRS-ES:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -273,15 +240,11 @@ steps:
       |---|----------|-------|-----|
       | 1 | `src/file.ts:42` | Issue description | Fix method |
       ```
-
-      Include:
-      - [CQRS-ES:APPROVE] if CQRS+ES design is sound
-      - [CQRS-ES:REJECT] if design issues found (list specific issues)
-    transitions:
-      - condition: approved
-        next_step: frontend_review
-      - condition: rejected
-        next_step: fix_cqrs_es
+    rules:
+      - condition: CQRS+ES design is sound with no issues
+        next: frontend_review
+      - condition: CQRS+ES design issues found
+        next: fix_cqrs_es
 
   - name: fix_cqrs_es
     agent: ~/.takt/agents/default/coder.md
@@ -294,15 +257,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Fix complete | `[CODER:DONE]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -327,15 +281,12 @@ steps:
       - Command/Query separation
       - Projections
       - Eventual consistency
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: cqrs_es_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: CQRS+ES issues have been fixed
+        next: cqrs_es_review
+      - condition: Unable to proceed with fixes
+        next: plan
 
   # ===========================================
   # Phase 3: Frontend Review
@@ -349,15 +300,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Frontend design is sound | `[FRONTEND:APPROVE]` |
-      | Design issues found | `[FRONTEND:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -386,7 +328,7 @@ steps:
       - TypeScript type safety
 
       **Note**: If this project does not include frontend code,
-      output [FRONTEND:APPROVE] and proceed.
+      approve and proceed to the next step.
 
       **Report output:** Output to the `Report File` specified above.
       - If file does not exist: Create new file
@@ -415,15 +357,11 @@ steps:
       |---|----------|-------|-----|
       | 1 | `src/file.tsx:42` | Issue description | Fix method |
       ```
-
-      Include:
-      - [FRONTEND:APPROVE] if frontend design is sound
-      - [FRONTEND:REJECT] if design issues found (list specific issues)
-    transitions:
-      - condition: approved
-        next_step: ai_review
-      - condition: rejected
-        next_step: fix_frontend
+    rules:
+      - condition: Frontend design is sound with no issues
+        next: ai_review
+      - condition: Frontend design issues found
+        next: fix_frontend
 
   - name: fix_frontend
     agent: ~/.takt/agents/default/coder.md
@@ -436,15 +374,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Fix complete | `[CODER:DONE]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -469,15 +398,12 @@ steps:
       - Performance
       - Accessibility
       - Type safety
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: frontend_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Frontend issues have been fixed
+        next: frontend_review
+      - condition: Unable to proceed with fixes
+        next: plan
 
   # ===========================================
   # Phase 4: AI Review
@@ -491,15 +417,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | No AI-specific issues | `[AI_REVIEW:APPROVE]` |
-      | Issues found | `[AI_REVIEW:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -553,15 +470,11 @@ steps:
       **Cognitive load reduction rules:**
       - No issues → Summary 1 line + check table only (10 lines or less)
       - Issues found → + Issues in table format (25 lines or less)
-
-      Include:
-      - [AI_REVIEW:APPROVE] if no AI-specific issues found
-      - [AI_REVIEW:REJECT] if issues detected (list specific problems)
-    transitions:
-      - condition: approved
-        next_step: security_review
-      - condition: rejected
-        next_step: ai_fix
+    rules:
+      - condition: No AI-specific issues found
+        next: security_review
+      - condition: AI-specific issues detected
+        next: ai_fix
 
   - name: ai_fix
     agent: ~/.takt/agents/default/coder.md
@@ -574,15 +487,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Fix complete | `[CODER:DONE]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -605,15 +509,12 @@ steps:
       - Fixing plausible-but-wrong implementations
       - Aligning with existing codebase patterns
       - Removing scope creep
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: ai_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: AI Reviewer's issues have been fixed
+        next: ai_review
+      - condition: Unable to proceed with fixes
+        next: plan
 
   # ===========================================
   # Phase 5: Security Review
@@ -627,15 +528,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | No security issues | `[SECURITY:APPROVE]` |
-      | Vulnerabilities found | `[SECURITY:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -690,15 +582,11 @@ steps:
       ## Warnings (non-blocking)
       - {Security recommendations}
       ```
-
-      Include:
-      - [SECURITY:APPROVE] if no security issues found
-      - [SECURITY:REJECT] if vulnerabilities found (list specific issues with severity)
-    transitions:
-      - condition: approved
-        next_step: qa_review
-      - condition: rejected
-        next_step: fix_security
+    rules:
+      - condition: No security issues found
+        next: qa_review
+      - condition: Security vulnerabilities detected
+        next: fix_security
 
   - name: fix_security
     agent: ~/.takt/agents/default/coder.md
@@ -711,16 +599,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Minor fix complete | `[CODER:DONE]` |
-      | Major fix (restart from CQRS+ES) | `[CODER:REJECT]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -747,22 +625,20 @@ steps:
       - Encryption issues
 
       ## Completion: Determine Change Impact
-      When fix is complete, judge the **impact scope of changes** and output the appropriate tag:
+      When fix is complete, judge the **impact scope of changes**:
 
-      - `[CODER:DONE]` - Minor fix (re-run security review only)
+      - Minor fix (re-run security review only)
         - Examples: Add validation, add escaping, configuration changes
-      - `[CODER:REJECT]` - Major fix (restart from CQRS+ES review)
+      - Major fix (restart from CQRS+ES review)
         - Examples: Data flow changes, API design changes, auth method changes, domain model changes
-
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: security_review
-      - condition: rejected
-        next_step: cqrs_es_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Minor security fix is complete
+        next: security_review
+      - condition: Major fix applied requiring CQRS+ES re-review
+        next: cqrs_es_review
+      - condition: Unable to proceed with fixes
+        next: plan
 
   # ===========================================
   # Phase 6: QA Review
@@ -776,15 +652,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Quality standards met | `[QA:APPROVE]` |
-      | Quality issues found | `[QA:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -839,15 +706,11 @@ steps:
       |---|----------|-------|-----|
       | 1 | Testing | Issue description | Fix method |
       ```
-
-      Include:
-      - [QA:APPROVE] if quality standards are met
-      - [QA:REJECT] if quality issues found (list specific issues)
-    transitions:
-      - condition: approved
-        next_step: supervise
-      - condition: rejected
-        next_step: fix_qa
+    rules:
+      - condition: Quality standards are met
+        next: supervise
+      - condition: Quality issues found
+        next: fix_qa
 
   - name: fix_qa
     agent: ~/.takt/agents/default/coder.md
@@ -860,17 +723,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Minor fix complete | `[CODER:DONE]` |
-      | Security-impacting fix | `[CODER:IMPROVE]` |
-      | Major fix (restart from CQRS+ES) | `[CODER:REJECT]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -897,26 +749,24 @@ steps:
       - Code quality
 
       ## Completion: Determine Change Impact
-      When fix is complete, judge the **impact scope of changes** and output the appropriate tag:
+      When fix is complete, judge the **impact scope of changes**:
 
-      - `[CODER:DONE]` - Minor fix (re-run QA review only)
+      - Minor fix (re-run QA review only)
         - Examples: Add tests, add documentation, add logs, add comments
-      - `[CODER:IMPROVE]` - Security-impacting fix (restart from security review)
+      - Security-impacting fix (restart from security review)
         - Examples: Error handling changes (error message content changes), input validation changes
-      - `[CODER:REJECT]` - Major fix (restart from CQRS+ES review)
+      - Major fix (restart from CQRS+ES review)
         - Examples: Business logic changes, data model changes, API changes
-
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: qa_review
-      - condition: improve
-        next_step: security_review
-      - condition: rejected
-        next_step: cqrs_es_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Minor QA fix is complete
+        next: qa_review
+      - condition: Security-impacting fix applied
+        next: security_review
+      - condition: Major fix applied requiring CQRS+ES re-review
+        next: cqrs_es_review
+      - condition: Unable to proceed with fixes
+        next: plan
 
   # ===========================================
   # Phase 7: Supervision
@@ -930,15 +780,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Ready to merge | `[SUPERVISOR:APPROVE]` |
-      | Issues found | `[SUPERVISOR:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -1035,15 +876,11 @@ steps:
       npm run build
       ```
       ```
-
-      Output:
-      - [SUPERVISOR:APPROVE] if ready to merge
-      - [SUPERVISOR:REJECT] if issues found (specify the issues)
-    transitions:
-      - condition: approved
-        next_step: COMPLETE
-      - condition: rejected
-        next_step: fix_supervisor
+    rules:
+      - condition: All validations pass and ready to merge
+        next: COMPLETE
+      - condition: Issues detected during final review
+        next: fix_supervisor
 
   - name: fix_supervisor
     agent: ~/.takt/agents/default/coder.md
@@ -1056,15 +893,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## Output Format
-
-      | Situation | Tag |
-      |-----------|-----|
-      | Fix complete | `[CODER:DONE]` |
-      | Cannot proceed | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations} (workflow-wide)
@@ -1085,12 +913,9 @@ steps:
 
       The supervisor has identified issues from a big-picture perspective.
       Address items in priority order.
-
-      Include [CODER:DONE] when complete.
-      Include [CODER:BLOCKED] if unable to proceed.
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: supervise
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Supervisor's issues have been fixed
+        next: supervise
+      - condition: Unable to proceed with fixes
+        next: plan

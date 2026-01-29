@@ -8,9 +8,10 @@ import {
   buildExecutionMetadata,
   renderExecutionMetadata,
   renderStatusRulesHeader,
+  generateStatusRulesFromRules,
   type InstructionContext,
 } from '../workflow/instruction-builder.js';
-import type { WorkflowStep } from '../models/types.js';
+import type { WorkflowStep, WorkflowRule } from '../models/types.js';
 
 function createMinimalStep(template: string): WorkflowStep {
   return {
@@ -18,7 +19,6 @@ function createMinimalStep(template: string): WorkflowStep {
     agent: 'test-agent',
     agentDisplayName: 'Test Agent',
     instructionTemplate: template,
-    transitions: [],
     passPreviousResponse: false,
   };
 }
@@ -237,41 +237,110 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('status_rules_prompt with header', () => {
-    it('should prepend status header to status_rules_prompt in Japanese', () => {
-      const step = createMinimalStep('Do work');
-      step.statusRulesPrompt = '## 出力フォーマット\n| 状況 | タグ |';
-      const context = createMinimalContext({ language: 'ja' });
+  describe('generateStatusRulesFromRules', () => {
+    const rules: WorkflowRule[] = [
+      { condition: '要件が明確で実装可能', next: 'implement' },
+      { condition: 'ユーザーが質問をしている', next: 'COMPLETE' },
+      { condition: '要件が不明確、情報不足', next: 'ABORT', appendix: '確認事項:\n- {質問1}\n- {質問2}' },
+    ];
 
-      const result = buildInstruction(step, context);
+    it('should generate criteria table with numbered tags (ja)', () => {
+      const result = generateStatusRulesFromRules('plan', rules, 'ja');
 
-      expect(result).toContain('# ⚠️ 必須: ステータス出力ルール ⚠️');
-      expect(result).toContain('## 出力フォーマット');
-      // Header should come before the step-specific content
-      const headerIndex = result.indexOf('⚠️ 必須');
-      const formatIndex = result.indexOf('## 出力フォーマット');
-      expect(headerIndex).toBeLessThan(formatIndex);
+      expect(result).toContain('## 判定基準');
+      expect(result).toContain('| 1 | 要件が明確で実装可能 | `[PLAN:1]` |');
+      expect(result).toContain('| 2 | ユーザーが質問をしている | `[PLAN:2]` |');
+      expect(result).toContain('| 3 | 要件が不明確、情報不足 | `[PLAN:3]` |');
     });
 
-    it('should prepend status header to status_rules_prompt in English', () => {
+    it('should generate criteria table with numbered tags (en)', () => {
+      const enRules: WorkflowRule[] = [
+        { condition: 'Requirements are clear', next: 'implement' },
+        { condition: 'User is asking a question', next: 'COMPLETE' },
+      ];
+      const result = generateStatusRulesFromRules('plan', enRules, 'en');
+
+      expect(result).toContain('## Decision Criteria');
+      expect(result).toContain('| 1 | Requirements are clear | `[PLAN:1]` |');
+      expect(result).toContain('| 2 | User is asking a question | `[PLAN:2]` |');
+    });
+
+    it('should generate output format section with condition labels', () => {
+      const result = generateStatusRulesFromRules('plan', rules, 'ja');
+
+      expect(result).toContain('## 出力フォーマット');
+      expect(result).toContain('`[PLAN:1]` — 要件が明確で実装可能');
+      expect(result).toContain('`[PLAN:2]` — ユーザーが質問をしている');
+      expect(result).toContain('`[PLAN:3]` — 要件が不明確、情報不足');
+    });
+
+    it('should generate appendix template section when rules have appendix', () => {
+      const result = generateStatusRulesFromRules('plan', rules, 'ja');
+
+      expect(result).toContain('### 追加出力テンプレート');
+      expect(result).toContain('`[PLAN:3]`');
+      expect(result).toContain('確認事項:');
+      expect(result).toContain('- {質問1}');
+    });
+
+    it('should not generate appendix section when no rules have appendix', () => {
+      const noAppendixRules: WorkflowRule[] = [
+        { condition: 'Done', next: 'review' },
+        { condition: 'Blocked', next: 'plan' },
+      ];
+      const result = generateStatusRulesFromRules('implement', noAppendixRules, 'en');
+
+      expect(result).not.toContain('Appendix Template');
+    });
+
+    it('should uppercase step name in tags', () => {
+      const result = generateStatusRulesFromRules('ai_review', [
+        { condition: 'No issues', next: 'supervise' },
+      ], 'en');
+
+      expect(result).toContain('`[AI_REVIEW:1]`');
+    });
+  });
+
+  describe('buildInstruction with rules', () => {
+    it('should auto-generate status rules from rules', () => {
       const step = createMinimalStep('Do work');
-      step.statusRulesPrompt = '## Output Format\n| Situation | Tag |';
+      step.name = 'plan';
+      step.rules = [
+        { condition: 'Clear requirements', next: 'implement' },
+        { condition: 'Unclear', next: 'ABORT' },
+      ];
       const context = createMinimalContext({ language: 'en' });
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('# ⚠️ Required: Status Output Rules ⚠️');
-      expect(result).toContain('## Output Format');
+      // Should contain status header
+      expect(result).toContain('⚠️ Required: Status Output Rules ⚠️');
+      // Should contain auto-generated criteria table
+      expect(result).toContain('## Decision Criteria');
+      expect(result).toContain('`[PLAN:1]`');
+      expect(result).toContain('`[PLAN:2]`');
     });
 
-    it('should not add header if statusRulesPrompt is not set', () => {
+    it('should not add status rules when rules do not exist', () => {
       const step = createMinimalStep('Do work');
       const context = createMinimalContext({ language: 'en' });
 
       const result = buildInstruction(step, context);
 
       expect(result).not.toContain('⚠️ Required');
-      expect(result).not.toContain('⚠️ 必須');
+      expect(result).not.toContain('Decision Criteria');
+    });
+
+    it('should not auto-generate when rules array is empty', () => {
+      const step = createMinimalStep('Do work');
+      step.rules = [];
+      const context = createMinimalContext({ language: 'en' });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).not.toContain('⚠️ Required');
+      expect(result).not.toContain('Decision Criteria');
     });
   });
 

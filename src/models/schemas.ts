@@ -24,40 +24,18 @@ export const StatusSchema = z.enum([
   'answer',
 ]);
 
-/**
- * Transition condition schema
- *
- * WARNING: Do NOT add new values carelessly.
- * Use existing values creatively in workflow design:
- * - done: Task completed (minor fixes, successful completion)
- * - blocked: Cannot proceed (needs plan rework)
- * - approved: Review passed
- * - rejected: Review failed, needs major rework
- * - improve: Needs improvement (security concerns, quality issues)
- * - answer: Question answered (complete workflow as success)
- * - always: Unconditional transition
- */
-export const TransitionConditionSchema = z.enum([
-  'done',
-  'blocked',
-  'approved',
-  'rejected',
-  'improve',
-  'answer',
-  'always',
-]);
-
-/** On no status behavior schema */
-export const OnNoStatusBehaviorSchema = z.enum(['complete', 'continue', 'stay']);
-
-/** Workflow transition schema */
-export const WorkflowTransitionSchema = z.object({
-  condition: TransitionConditionSchema,
-  nextStep: z.string().min(1),
-});
-
 /** Permission mode schema for tool execution */
 export const PermissionModeSchema = z.enum(['default', 'acceptEdits', 'bypassPermissions']);
+
+/** Rule-based transition schema (new unified format) */
+export const WorkflowRuleSchema = z.object({
+  /** Human-readable condition text */
+  condition: z.string().min(1),
+  /** Next step name (e.g., implement, COMPLETE, ABORT) */
+  next: z.string().min(1),
+  /** Template for additional AI output */
+  appendix: z.string().optional(),
+});
 
 /** Workflow step schema - raw YAML format */
 export const WorkflowStepRawSchema = z.object({
@@ -72,15 +50,9 @@ export const WorkflowStepRawSchema = z.object({
   permission_mode: PermissionModeSchema.optional(),
   instruction: z.string().optional(),
   instruction_template: z.string().optional(),
-  status_rules_prompt: z.string().optional(),
+  /** Rules for step routing */
+  rules: z.array(WorkflowRuleSchema).optional(),
   pass_previous_response: z.boolean().optional().default(true),
-  on_no_status: OnNoStatusBehaviorSchema.optional(),
-  transitions: z.array(
-    z.object({
-      condition: TransitionConditionSchema,
-      next_step: z.string().min(1),
-    })
-  ).optional().default([]),
 });
 
 /** Workflow configuration schema - raw YAML format */
@@ -99,7 +71,6 @@ export const CustomAgentConfigSchema = z.object({
   prompt_file: z.string().optional(),
   prompt: z.string().optional(),
   allowed_tools: z.array(z.string()).optional(),
-  status_patterns: z.record(z.string(), z.string()).optional(),
   claude_agent: z.string().optional(),
   claude_skill: z.string().optional(),
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
@@ -138,18 +109,3 @@ export const ProjectConfigSchema = z.object({
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
 });
 
-/**
- * Generic status patterns that match any role name
- * Format: [ROLE:COMMAND] where ROLE is any word characters
- *
- * This allows new agents to be added without modifying this file.
- * Custom agents can override these patterns in their configuration.
- */
-export const GENERIC_STATUS_PATTERNS: Record<string, string> = {
-  approved: '\\[[\\w-]+:APPROVE\\]',
-  rejected: '\\[[\\w-]+:REJECT\\]',
-  improve: '\\[[\\w-]+:IMPROVE\\]',
-  done: '\\[[\\w-]+:(DONE|FIXED)\\]',
-  blocked: '\\[[\\w-]+:BLOCKED\\]',
-  answer: '\\[[\\w-]+:ANSWER\\]',
-};

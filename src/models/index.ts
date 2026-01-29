@@ -2,10 +2,8 @@
 export type {
   AgentType,
   Status,
-  TransitionCondition,
   AgentResponse,
   SessionState,
-  WorkflowTransition,
   WorkflowStep,
   WorkflowConfig,
   WorkflowState,

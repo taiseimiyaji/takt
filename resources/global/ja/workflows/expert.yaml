@@ -41,15 +41,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 分析完了 | `[PLANNER:DONE]` |
-      | 要件不明確 | `[PLANNER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -100,15 +91,12 @@ steps:
       ## 確認事項（あれば）
       - {不明点や確認が必要な点}
       ```
-
-      完了したら [PLANNER:DONE] を出力。
-      要件が不明確な場合は [PLANNER:BLOCKED] を出力。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: implement
-      - condition: blocked
-        next_step: ABORT
+    rules:
+      - condition: タスク分析と計画が完了した
+        next: implement
+      - condition: 要件が不明確で計画を立てられない
+        next: ABORT
 
   # ===========================================
   # Phase 1: Implementation
@@ -124,15 +112,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 実装完了 | `[CODER:DONE]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -186,20 +165,17 @@ steps:
       - **検討した選択肢**: {選択肢リスト}
       - **理由**: {選んだ理由}
       ```
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を出力し、planに戻ります。
-    transitions:
-      - condition: done
-        next_step: architect_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: 実装が完了した
+        next: architect_review
+      - condition: 実装を進行できない
+        next: plan
 
   # ===========================================
   # Phase 2: Architecture Review
   # ===========================================
   - name: architect_review
-    agent: ~/.takt/agents/default/architect.md
+    agent: ~/.takt/agents/default/architecture-reviewer.md
     allowed_tools:
       - Read
       - Glob
@@ -207,27 +183,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 判定基準
-
-      | 状況 | 判定 |
-      |------|------|
-      | 構造に問題がある | REJECT |
-      | 設計原則違反がある | REJECT |
-      | 呼び出しチェーンの配線漏れ | REJECT |
-      | テストが不十分 | REJECT |
-      | 改善すべき点がある（軽微） | IMPROVE |
-      | 問題なし | APPROVE |
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 問題なし | `[ARCHITECT:APPROVE]` |
-      | 軽微な改善必要 | `[ARCHITECT:IMPROVE]` |
-      | 構造的な修正必要 | `[ARCHITECT:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -289,13 +244,13 @@ steps:
       - APPROVE + 問題なし → サマリーのみ（5行以内）
       - APPROVE + 軽微な提案 → サマリー + 改善提案（15行以内）
       - REJECT → 問題点を表形式で（30行以内）
-    transitions:
-      - condition: approved
-        next_step: frontend_review
-      - condition: improve
-        next_step: fix_architect
-      - condition: rejected
-        next_step: fix_architect
+    rules:
+      - condition: アーキテクチャと設計に問題がない
+        next: frontend_review
+      - condition: 軽微な改善が必要だが構造的な問題はない
+        next: fix_architect
+      - condition: 構造的な問題があり修正が必要
+        next: fix_architect
 
   - name: fix_architect
     agent: ~/.takt/agents/default/coder.md
@@ -309,15 +264,6 @@ steps:
       - WebSearch
       - WebFetch
     permission_mode: acceptEdits
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 修正完了 | `[CODER:DONE]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -337,15 +283,12 @@ steps:
       **重要**: Architectのフィードバックに対応してください。
       「Original User Request」は参考情報であり、最新の指示ではありません。
       セッションの会話履歴を確認し、Architectの指摘事項を修正してください。
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: architect_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: Architectの指摘に対する修正が完了した
+        next: architect_review
+      - condition: 修正を進行できない
+        next: plan
 
   # ===========================================
   # Phase 3: Frontend Review
@@ -359,15 +302,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | フロントエンド設計に問題なし | `[FRONTEND:APPROVE]` |
-      | フロントエンド設計に問題あり | `[FRONTEND:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -396,7 +330,7 @@ steps:
       - TypeScript型安全性
 
       **注意**: このプロジェクトがフロントエンドを含まない場合は、
-      [FRONTEND:APPROVE] として次に進んでください。
+      問題なしとして次に進んでください。
 
       **レポート出力:** 上記の `Report File` に出力してください。
       - ファイルが存在しない場合: 新規作成
@@ -425,15 +359,11 @@ steps:
       |---|------|------|--------|
       | 1 | `src/file.tsx:42` | 問題の説明 | 修正方法 |
       ```
-
-      Include:
-      - [FRONTEND:APPROVE] if frontend design is sound
-      - [FRONTEND:REJECT] if design issues found (list specific issues)
-    transitions:
-      - condition: approved
-        next_step: ai_review
-      - condition: rejected
-        next_step: fix_frontend
+    rules:
+      - condition: フロントエンド設計に問題がない
+        next: ai_review
+      - condition: フロントエンド設計に問題がある
+        next: fix_frontend
 
   - name: fix_frontend
     agent: ~/.takt/agents/default/coder.md
@@ -446,15 +376,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 修正完了 | `[CODER:DONE]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -479,15 +400,12 @@ steps:
       - パフォーマンス
       - アクセシビリティ
       - 型安全性
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: frontend_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: フロントエンドの指摘に対する修正が完了した
+        next: frontend_review
+      - condition: 修正を進行できない
+        next: plan
 
   # ===========================================
   # Phase 4: AI Review
@@ -501,15 +419,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | AI特有の問題なし | `[AI_REVIEW:APPROVE]` |
-      | 問題あり | `[AI_REVIEW:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -563,15 +472,11 @@ steps:
       **認知負荷軽減ルール:**
       - 問題なし → サマリー1文 + チェック表のみ（10行以内）
       - 問題あり → + 問題を表形式で（25行以内）
-
-      以下を含めてください:
-      - [AI_REVIEW:APPROVE] AI特有の問題が見つからない場合
-      - [AI_REVIEW:REJECT] 問題が検出された場合（具体的な問題をリスト）
-    transitions:
-      - condition: approved
-        next_step: security_review
-      - condition: rejected
-        next_step: ai_fix
+    rules:
+      - condition: AI特有の問題が見つからない
+        next: security_review
+      - condition: AI特有の問題が検出された
+        next: ai_fix
 
   - name: ai_fix
     agent: ~/.takt/agents/default/coder.md
@@ -584,15 +489,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 修正完了 | `[CODER:DONE]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -615,15 +511,12 @@ steps:
       - もっともらしいが間違っている実装の修正
       - 既存コードベースのパターンとの整合
       - スコープクリープの除去
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: ai_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: AI Reviewerの指摘に対する修正が完了した
+        next: ai_review
+      - condition: 修正を進行できない
+        next: plan
 
   # ===========================================
   # Phase 5: Security Review
@@ -637,15 +530,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | セキュリティ問題なし | `[SECURITY:APPROVE]` |
-      | 脆弱性あり | `[SECURITY:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -700,15 +584,11 @@ steps:
       ## 警告（ブロッキングではない）
       - {セキュリティに関する推奨事項}
       ```
-
-      Include:
-      - [SECURITY:APPROVE] if no security issues found
-      - [SECURITY:REJECT] if vulnerabilities found (list specific issues with severity)
-    transitions:
-      - condition: approved
-        next_step: qa_review
-      - condition: rejected
-        next_step: fix_security
+    rules:
+      - condition: セキュリティ上の問題がない
+        next: qa_review
+      - condition: セキュリティ上の脆弱性が検出された
+        next: fix_security
 
   - name: fix_security
     agent: ~/.takt/agents/default/coder.md
@@ -721,16 +601,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 軽微な修正完了 | `[CODER:DONE]` |
-      | 大きな修正（アーキテクチャからやり直し） | `[CODER:REJECT]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -757,22 +627,20 @@ steps:
       - 暗号化の問題
 
       ## 修正完了時の判断
-      修正が完了したら、**変更の影響範囲**を判断して適切なタグを出力してください：
+      修正が完了したら、**変更の影響範囲**を判断してください：
 
-      - `[CODER:DONE]` - 軽微な修正（セキュリティレビューのみ再実施）
+      - 軽微な修正（セキュリティレビューのみ再実施）
         - 例: バリデーション追加、エスケープ処理追加、設定変更
-      - `[CODER:REJECT]` - 大きな修正（アーキテクチャレビューからやり直し）
+      - 大きな修正（アーキテクチャレビューからやり直し）
         - 例: データフロー変更、API設計変更、認証方式変更、ドメインモデル変更
-
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: security_review
-      - condition: rejected
-        next_step: architect_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: 軽微なセキュリティ修正が完了した
+        next: security_review
+      - condition: 大きな修正を行い、アーキテクチャレビューからやり直す必要がある
+        next: architect_review
+      - condition: 修正を進行できない
+        next: plan
 
   # ===========================================
   # Phase 6: QA Review
@@ -786,15 +654,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 品質基準を満たす | `[QA:APPROVE]` |
-      | 品質問題あり | `[QA:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -849,15 +708,11 @@ steps:
       |---|---------|------|--------|
       | 1 | テスト | 問題の説明 | 修正方法 |
       ```
-
-      Include:
-      - [QA:APPROVE] if quality standards are met
-      - [QA:REJECT] if quality issues found (list specific issues)
-    transitions:
-      - condition: approved
-        next_step: supervise
-      - condition: rejected
-        next_step: fix_qa
+    rules:
+      - condition: 品質基準を満たしている
+        next: supervise
+      - condition: 品質に問題がある
+        next: fix_qa
 
   - name: fix_qa
     agent: ~/.takt/agents/default/coder.md
@@ -870,17 +725,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 軽微な修正完了 | `[CODER:DONE]` |
-      | セキュリティ影響あり | `[CODER:IMPROVE]` |
-      | 大きな修正（アーキテクチャからやり直し） | `[CODER:REJECT]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -907,26 +751,24 @@ steps:
       - コード品質
 
       ## 修正完了時の判断
-      修正が完了したら、**変更の影響範囲**を判断して適切なタグを出力してください：
+      修正が完了したら、**変更の影響範囲**を判断してください：
 
-      - `[CODER:DONE]` - 軽微な修正（QAレビューのみ再実施）
+      - 軽微な修正（QAレビューのみ再実施）
         - 例: テスト追加、ドキュメント追加、ログ追加、コメント追加
-      - `[CODER:IMPROVE]` - セキュリティに影響する修正（セキュリティレビューからやり直し）
+      - セキュリティに影響する修正（セキュリティレビューからやり直し）
         - 例: エラーハンドリング変更（エラーメッセージの内容変更）、入力検証の変更
-      - `[CODER:REJECT]` - 大きな修正（アーキテクチャレビューからやり直し）
+      - 大きな修正（アーキテクチャレビューからやり直し）
         - 例: ビジネスロジック変更、データモデル変更、API変更
-
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: qa_review
-      - condition: improve
-        next_step: security_review
-      - condition: rejected
-        next_step: architect_review
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: 軽微なQA修正が完了した
+        next: qa_review
+      - condition: セキュリティに影響する修正を行った
+        next: security_review
+      - condition: 大きな修正を行い、アーキテクチャレビューからやり直す必要がある
+        next: architect_review
+      - condition: 修正を進行できない
+        next: plan
 
   # ===========================================
   # Phase 7: Supervision
@@ -940,15 +782,6 @@ steps:
       - Write
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 最終承認 | `[SUPERVISOR:APPROVE]` |
-      | 問題あり | `[SUPERVISOR:REJECT]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -1045,15 +878,11 @@ steps:
       npm run build
       ```
       ```
-
-      出力:
-      - [SUPERVISOR:APPROVE] すべて完了、マージ可能
-      - [SUPERVISOR:REJECT] 問題あり（具体的な問題を記載）
-    transitions:
-      - condition: approved
-        next_step: COMPLETE
-      - condition: rejected
-        next_step: fix_supervisor
+    rules:
+      - condition: すべての検証が完了し、マージ可能な状態である
+        next: COMPLETE
+      - condition: 問題が検出された
+        next: fix_supervisor
 
   - name: fix_supervisor
     agent: ~/.takt/agents/default/coder.md
@@ -1066,15 +895,6 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    status_rules_prompt: |
-
-
-      ## 出力フォーマット
-
-      | 状況 | タグ |
-      |------|------|
-      | 修正完了 | `[CODER:DONE]` |
-      | 進行不可 | `[CODER:BLOCKED]` |
     instruction_template: |
       ## Workflow Context
       - Iteration: {iteration}/{max_iterations}（ワークフロー全体）
@@ -1095,12 +915,9 @@ steps:
 
       監督者は全体を俯瞰した視点から問題を指摘しています。
       優先度の高い項目から順に対応してください。
-
-      完了時は [CODER:DONE] を含めてください。
-      進行できない場合は [CODER:BLOCKED] を含めてください。
     pass_previous_response: true
-    transitions:
-      - condition: done
-        next_step: supervise
-      - condition: blocked
-        next_step: plan
+    rules:
+      - condition: 監督者の指摘に対する修正が完了した
+        next: supervise
+      - condition: 修正を進行できない
+        next: plan
