@@ -27,7 +27,7 @@ vi.mock('../prompt/index.js', () => ({
 // Import after mocks are set up
 const { needsLanguageSetup } = await import('../config/initialization.js');
 const { getGlobalAgentsDir, getGlobalWorkflowsDir } = await import('../config/paths.js');
-const { copyLanguageResourcesToDir, getLanguageResourcesDir } = await import('../resources/index.js');
+const { copyLanguageResourcesToDir, copyProjectResourcesToDir, getLanguageResourcesDir, getProjectResourcesDir } = await import('../resources/index.js');
 
 describe('initialization', () => {
   beforeEach(() => {
@@ -84,6 +84,43 @@ describe('initialization', () => {
         expect(existsSync(join(testTaktDir, 'workflows'))).toBe(true);
       }
     });
+  });
+});
+
+describe('copyProjectResourcesToDir', () => {
+  const testProjectDir = join(tmpdir(), `takt-project-test-${Date.now()}`);
+
+  beforeEach(() => {
+    mkdirSync(testProjectDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testProjectDir)) {
+      rmSync(testProjectDir, { recursive: true });
+    }
+  });
+
+  it('should rename dotgitignore to .gitignore during copy', () => {
+    const resourcesDir = getProjectResourcesDir();
+    if (!existsSync(join(resourcesDir, 'dotgitignore'))) {
+      return; // Skip if resource file doesn't exist
+    }
+
+    copyProjectResourcesToDir(testProjectDir);
+
+    expect(existsSync(join(testProjectDir, '.gitignore'))).toBe(true);
+    expect(existsSync(join(testProjectDir, 'dotgitignore'))).toBe(false);
+  });
+
+  it('should copy tasks/TASK-FORMAT to target directory', () => {
+    const resourcesDir = getProjectResourcesDir();
+    if (!existsSync(join(resourcesDir, 'tasks', 'TASK-FORMAT'))) {
+      return; // Skip if resource file doesn't exist
+    }
+
+    copyProjectResourcesToDir(testProjectDir);
+
+    expect(existsSync(join(testProjectDir, 'tasks', 'TASK-FORMAT'))).toBe(true);
   });
 });
 

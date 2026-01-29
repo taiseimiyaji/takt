@@ -6,6 +6,52 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { TaskRunner } from '../task/runner.js';
+import { isTaskFile, parseTaskFiles } from '../task/parser.js';
+
+describe('isTaskFile', () => {
+  it('should accept .yaml files', () => {
+    expect(isTaskFile('task.yaml')).toBe(true);
+  });
+
+  it('should accept .yml files', () => {
+    expect(isTaskFile('task.yml')).toBe(true);
+  });
+
+  it('should accept .md files', () => {
+    expect(isTaskFile('task.md')).toBe(true);
+  });
+
+  it('should reject extensionless files like TASK-FORMAT', () => {
+    expect(isTaskFile('TASK-FORMAT')).toBe(false);
+  });
+
+  it('should reject .txt files', () => {
+    expect(isTaskFile('readme.txt')).toBe(false);
+  });
+});
+
+describe('parseTaskFiles', () => {
+  const testDir = `/tmp/takt-parse-test-${Date.now()}`;
+
+  beforeEach(() => {
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should ignore extensionless files like TASK-FORMAT', () => {
+    writeFileSync(join(testDir, 'TASK-FORMAT'), 'Format documentation');
+    writeFileSync(join(testDir, 'real-task.md'), 'Real task');
+
+    const tasks = parseTaskFiles(testDir);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.name).toBe('real-task');
+  });
+});
 
 describe('TaskRunner', () => {
   const testDir = `/tmp/takt-task-test-${Date.now()}`;

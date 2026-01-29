@@ -67,7 +67,9 @@ export function copyProjectResourcesToDir(targetDir: string): void {
   if (!existsSync(resourcesDir)) {
     return;
   }
-  copyDirRecursive(resourcesDir, targetDir);
+  copyDirRecursive(resourcesDir, targetDir, {
+    renameMap: { dotgitignore: '.gitignore' },
+  });
 }
 
 /**
@@ -146,6 +148,8 @@ interface CopyOptions {
   overwrite?: boolean;
   /** Collect copied file paths into this array */
   copiedFiles?: string[];
+  /** Rename files during copy (source name → dest name) */
+  renameMap?: Record<string, string>;
 }
 
 /**
@@ -154,7 +158,7 @@ interface CopyOptions {
  *                    If true, overwrites existing files.
  */
 function copyDirRecursive(srcDir: string, destDir: string, options: CopyOptions = {}): void {
-  const { skipDirs = [], overwrite = false, copiedFiles } = options;
+  const { skipDirs = [], overwrite = false, copiedFiles, renameMap } = options;
 
   if (!existsSync(destDir)) {
     mkdirSync(destDir, { recursive: true });
@@ -165,7 +169,8 @@ function copyDirRecursive(srcDir: string, destDir: string, options: CopyOptions 
     if (skipDirs.includes(entry)) continue;
 
     const srcPath = join(srcDir, entry);
-    const destPath = join(destDir, entry);
+    const destName = renameMap?.[entry] ?? entry;
+    const destPath = join(destDir, destName);
     const stat = statSync(srcPath);
 
     if (stat.isDirectory()) {
