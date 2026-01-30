@@ -15,7 +15,7 @@ import { runAgent, type RunAgentOptions } from '../agents/runner.js';
 import { COMPLETE_STEP, ABORT_STEP, ERROR_MESSAGES } from './constants.js';
 import type { WorkflowEngineOptions } from './types.js';
 import { determineNextStepByRules } from './transitions.js';
-import { detectRuleIndex } from '../claude/client.js';
+import { detectRuleIndex, callAiJudge } from '../claude/client.js';
 import { buildInstruction as buildInstructionFromTemplate, isReportObjectConfig } from './instruction-builder.js';
 import { LoopDetector } from './loop-detector.js';
 import { handleBlocked } from './blocked-handler.js';
@@ -196,22 +196,19 @@ export class WorkflowEngine extends EventEmitter {
     }
   }
 
-  /** Run a single step */
+  /** Run a single step (delegates to runParallelStep if step has parallel sub-steps) */
   private async runStep(step: WorkflowStep): Promise<{ response: AgentResponse; instruction: string }> {
-    const stepIteration = incrementStepIteration(this.state, step.name);
-    const instruction = this.buildInstruction(step, stepIteration);
-    const sessionId = this.state.agentSessions.get(step.agent);
-    log.debug('Running step', {
-      step: step.name,
-      agent: step.agent,
-      stepIteration,
-      iteration: this.state.iteration,
-      sessionId: sessionId ?? 'new',
-    });
+    if (step.parallel && step.parallel.length > 0) {
+      return this.runParallelStep(step);
+    }
+    return this.runNormalStep(step);
+  }
 
-    const agentOptions: RunAgentOptions = {
+  /** Build RunAgentOptions from a step's configuration */
+  private buildAgentOptions(step: WorkflowStep): RunAgentOptions {
+    return {
       cwd: this.cwd,
-      sessionId,
+      sessionId: this.state.agentSessions.get(step.agent),
       agentPath: step.agentPath,
       allowedTools: step.allowedTools,
       provider: step.provider,
@@ -222,28 +219,170 @@ export class WorkflowEngine extends EventEmitter {
       onAskUserQuestion: this.options.onAskUserQuestion,
       bypassPermissions: this.options.bypassPermissions,
     };
+  }
 
-    let response = await runAgent(step.agent, instruction, agentOptions);
+  /** Update agent session and notify via callback if session changed */
+  private updateAgentSession(agent: string, sessionId: string | undefined): void {
+    if (!sessionId) return;
 
-    if (response.sessionId) {
-      const previousSessionId = this.state.agentSessions.get(step.agent);
-      this.state.agentSessions.set(step.agent, response.sessionId);
+    const previousSessionId = this.state.agentSessions.get(agent);
+    this.state.agentSessions.set(agent, sessionId);
 
-      if (this.options.onSessionUpdate && response.sessionId !== previousSessionId) {
-        this.options.onSessionUpdate(step.agent, response.sessionId);
-      }
+    if (this.options.onSessionUpdate && sessionId !== previousSessionId) {
+      this.options.onSessionUpdate(agent, sessionId);
+    }
+  }
+
+  /**
+   * Detect matched rule for a step's response.
+   * 1. Try standard [STEP:N] tag detection
+   * 2. Fallback to ai() condition evaluation via AI judge
+   */
+  private async detectMatchedRule(step: WorkflowStep, content: string): Promise<number | undefined> {
+    if (!step.rules || step.rules.length === 0) return undefined;
+
+    const ruleIndex = detectRuleIndex(content, step.name);
+    if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
+      return ruleIndex;
     }
 
-    if (step.rules && step.rules.length > 0) {
-      const ruleIndex = detectRuleIndex(response.content, step.name);
-      if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-        response = { ...response, matchedRuleIndex: ruleIndex };
-      }
+    const aiRuleIndex = await this.evaluateAiConditions(step, content);
+    if (aiRuleIndex >= 0) {
+      return aiRuleIndex;
+    }
+
+    return undefined;
+  }
+
+  /** Run a normal (non-parallel) step */
+  private async runNormalStep(step: WorkflowStep): Promise<{ response: AgentResponse; instruction: string }> {
+    const stepIteration = incrementStepIteration(this.state, step.name);
+    const instruction = this.buildInstruction(step, stepIteration);
+    log.debug('Running step', {
+      step: step.name,
+      agent: step.agent,
+      stepIteration,
+      iteration: this.state.iteration,
+      sessionId: this.state.agentSessions.get(step.agent) ?? 'new',
+    });
+
+    const agentOptions = this.buildAgentOptions(step);
+    let response = await runAgent(step.agent, instruction, agentOptions);
+
+    this.updateAgentSession(step.agent, response.sessionId);
+
+    const matchedRuleIndex = await this.detectMatchedRule(step, response.content);
+    if (matchedRuleIndex != null) {
+      response = { ...response, matchedRuleIndex };
     }
 
     this.state.stepOutputs.set(step.name, response);
     this.emitStepReports(step);
     return { response, instruction };
+  }
+
+  /**
+   * Run a parallel step: execute all sub-steps concurrently, then aggregate results.
+   * The aggregated output becomes the parent step's response for rules evaluation.
+   */
+  private async runParallelStep(step: WorkflowStep): Promise<{ response: AgentResponse; instruction: string }> {
+    const subSteps = step.parallel!;
+    const stepIteration = incrementStepIteration(this.state, step.name);
+    log.debug('Running parallel step', {
+      step: step.name,
+      subSteps: subSteps.map(s => s.name),
+      stepIteration,
+    });
+
+    // Run all sub-steps concurrently
+    const subResults = await Promise.all(
+      subSteps.map(async (subStep) => {
+        const subIteration = incrementStepIteration(this.state, subStep.name);
+        const subInstruction = this.buildInstruction(subStep, subIteration);
+
+        const agentOptions = this.buildAgentOptions(subStep);
+        const subResponse = await runAgent(subStep.agent, subInstruction, agentOptions);
+
+        this.updateAgentSession(subStep.agent, subResponse.sessionId);
+
+        // Detect sub-step rule matches (tag detection + ai() fallback)
+        const matchedRuleIndex = await this.detectMatchedRule(subStep, subResponse.content);
+        const finalResponse = matchedRuleIndex != null
+          ? { ...subResponse, matchedRuleIndex }
+          : subResponse;
+
+        this.state.stepOutputs.set(subStep.name, finalResponse);
+        this.emitStepReports(subStep);
+
+        return { subStep, response: finalResponse, instruction: subInstruction };
+      }),
+    );
+
+    // Aggregate sub-step outputs into parent step's response
+    const aggregatedContent = subResults
+      .map((r) => `## ${r.subStep.name}\n${r.response.content}`)
+      .join('\n\n---\n\n');
+
+    const aggregatedInstruction = subResults
+      .map((r) => r.instruction)
+      .join('\n\n');
+
+    // Evaluate parent step's rules against aggregated output
+    const matchedRuleIndex = await this.detectMatchedRule(step, aggregatedContent);
+
+    const aggregatedResponse: AgentResponse = {
+      agent: step.name,
+      status: 'done',
+      content: aggregatedContent,
+      timestamp: new Date(),
+      ...(matchedRuleIndex != null && { matchedRuleIndex }),
+    };
+
+    this.state.stepOutputs.set(step.name, aggregatedResponse);
+    this.emitStepReports(step);
+    return { response: aggregatedResponse, instruction: aggregatedInstruction };
+  }
+
+  /**
+   * Evaluate ai() conditions via AI judge.
+   * Collects all ai() rules, calls the judge, and maps the result back to the original rule index.
+   * Returns the 0-based rule index in the step's rules array, or -1 if no match.
+   */
+  private async evaluateAiConditions(step: WorkflowStep, agentOutput: string): Promise<number> {
+    if (!step.rules) return -1;
+
+    const aiConditions: { index: number; text: string }[] = [];
+    for (let i = 0; i < step.rules.length; i++) {
+      const rule = step.rules[i]!;
+      if (rule.isAiCondition && rule.aiConditionText) {
+        aiConditions.push({ index: i, text: rule.aiConditionText });
+      }
+    }
+
+    if (aiConditions.length === 0) return -1;
+
+    log.debug('Evaluating ai() conditions via judge', {
+      step: step.name,
+      conditionCount: aiConditions.length,
+    });
+
+    // Remap: judge returns 0-based index within aiConditions array
+    const judgeConditions = aiConditions.map((c, i) => ({ index: i, text: c.text }));
+    const judgeResult = await callAiJudge(agentOutput, judgeConditions, { cwd: this.cwd });
+
+    if (judgeResult >= 0 && judgeResult < aiConditions.length) {
+      const matched = aiConditions[judgeResult]!;
+      log.debug('AI judge matched condition', {
+        step: step.name,
+        judgeResult,
+        originalRuleIndex: matched.index,
+        condition: matched.text,
+      });
+      return matched.index;
+    }
+
+    log.debug('AI judge did not match any condition', { step: step.name });
+    return -1;
   }
 
   /**

@@ -910,6 +910,48 @@ describe('instruction-builder', () => {
     });
   });
 
+  describe('ai() condition status tag skip', () => {
+    it('should skip status rules when ALL rules are ai() conditions', () => {
+      const step = createMinimalStep('Do work');
+      step.rules = [
+        { condition: 'ai("No issues")', next: 'COMPLETE', isAiCondition: true, aiConditionText: 'No issues' },
+        { condition: 'ai("Issues found")', next: 'fix', isAiCondition: true, aiConditionText: 'Issues found' },
+      ];
+      const context = createMinimalContext({ language: 'en' });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).not.toContain('Status Output Rules');
+      expect(result).not.toContain('[TEST-STEP:');
+    });
+
+    it('should include status rules when some rules are NOT ai() conditions', () => {
+      const step = createMinimalStep('Do work');
+      step.rules = [
+        { condition: 'Error occurred', next: 'ABORT' },
+        { condition: 'ai("Issues found")', next: 'fix', isAiCondition: true, aiConditionText: 'Issues found' },
+      ];
+      const context = createMinimalContext({ language: 'en' });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('Status Output Rules');
+    });
+
+    it('should include status rules when no rules are ai() conditions', () => {
+      const step = createMinimalStep('Do work');
+      step.rules = [
+        { condition: 'Done', next: 'COMPLETE' },
+        { condition: 'Blocked', next: 'ABORT' },
+      ];
+      const context = createMinimalContext({ language: 'en' });
+
+      const result = buildInstruction(step, context);
+
+      expect(result).toContain('Status Output Rules');
+    });
+  });
+
   describe('isReportObjectConfig', () => {
     it('should return true for ReportObjectConfig', () => {
       expect(isReportObjectConfig({ name: '00-plan.md' })).toBe(true);

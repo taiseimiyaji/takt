@@ -494,10 +494,14 @@ export function buildInstruction(
   }
 
   // 7. Status rules (auto-generated from rules)
+  // Skip when ALL rules are ai() conditions — agent doesn't need to output status tags
   if (step.rules && step.rules.length > 0) {
-    const statusHeader = renderStatusRulesHeader(language);
-    const generatedPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
-    sections.push(`${statusHeader}\n${generatedPrompt}`);
+    const allAiConditions = step.rules.every((r) => r.isAiCondition);
+    if (!allAiConditions) {
+      const statusHeader = renderStatusRulesHeader(language);
+      const generatedPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
+      sections.push(`${statusHeader}\n${generatedPrompt}`);
+    }
   }
 
   return sections.join('\n\n');

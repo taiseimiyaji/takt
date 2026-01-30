@@ -48,6 +48,10 @@ export interface WorkflowRule {
   next: string;
   /** Template for additional AI output */
   appendix?: string;
+  /** Whether this condition uses ai() expression (set by loader) */
+  isAiCondition?: boolean;
+  /** The condition text inside ai("...") for AI judge evaluation (set by loader) */
+  aiConditionText?: string;
 }
 
 /** Report file configuration for a workflow step (label: path pair) */
@@ -96,6 +100,8 @@ export interface WorkflowStep {
   /** Report file configuration. Single string, array of label:path, or object with order/format. */
   report?: string | ReportConfig[] | ReportObjectConfig;
   passPreviousResponse: boolean;
+  /** Sub-steps to execute in parallel. When set, this step runs all sub-steps concurrently. */
+  parallel?: WorkflowStep[];
 }
 
 /** Loop detection configuration */

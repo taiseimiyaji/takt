@@ -165,6 +165,80 @@ export async function callClaudeCustom(
   };
 }
 
+/**
+ * Detect judge rule index from [JUDGE:N] tag pattern.
+ * Returns 0-based rule index, or -1 if no match.
+ */
+export function detectJudgeIndex(content: string): number {
+  const regex = /\[JUDGE:(\d+)\]/i;
+  const match = content.match(regex);
+  if (match?.[1]) {
+    const index = Number.parseInt(match[1], 10) - 1;
+    return index >= 0 ? index : -1;
+  }
+  return -1;
+}
+
+/**
+ * Build the prompt for the AI judge that evaluates agent output against ai() conditions.
+ */
+export function buildJudgePrompt(
+  agentOutput: string,
+  aiConditions: { index: number; text: string }[],
+): string {
+  const conditionList = aiConditions
+    .map((c) => `| ${c.index + 1} | ${c.text} |`)
+    .join('\n');
+
+  return [
+    '# Judge Task',
+    '',
+    'You are a judge evaluating an agent\'s output against a set of conditions.',
+    'Read the agent output below, then determine which condition best matches.',
+    '',
+    '## Agent Output',
+    '```',
+    agentOutput,
+    '```',
+    '',
+    '## Conditions',
+    '| # | Condition |',
+    '|---|-----------|',
+    conditionList,
+    '',
+    '## Instructions',
+    'Output ONLY the tag `[JUDGE:N]` where N is the number of the best matching condition.',
+    'Do not output anything else.',
+  ].join('\n');
+}
+
+/**
+ * Call AI judge to evaluate agent output against ai() conditions.
+ * Uses a lightweight model (haiku) for cost efficiency.
+ * Returns 0-based index of the matched ai() condition, or -1 if no match.
+ */
+export async function callAiJudge(
+  agentOutput: string,
+  aiConditions: { index: number; text: string }[],
+  options: { cwd: string },
+): Promise<number> {
+  const prompt = buildJudgePrompt(agentOutput, aiConditions);
+
+  const spawnOptions: ClaudeSpawnOptions = {
+    cwd: options.cwd,
+    model: 'haiku',
+    maxTurns: 1,
+  };
+
+  const result = await executeClaudeCli(prompt, spawnOptions);
+  if (!result.success) {
+    log.error('AI judge call failed', { error: result.error });
+    return -1;
+  }
+
+  return detectJudgeIndex(result.content);
+}
+
 /** Call a Claude Code built-in agent (using claude --agent flag if available) */
 export async function callClaudeAgent(
   claudeAgentName: string,
