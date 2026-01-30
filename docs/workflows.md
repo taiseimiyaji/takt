@@ -13,7 +13,7 @@ A workflow is a YAML file that defines a sequence of steps executed by AI agents
 
 - Builtin workflows are embedded in the npm package (`dist/resources/`)
 - `~/.takt/workflows/` — User workflows (override builtins with the same name)
-- Use `takt /eject <workflow>` to copy a builtin to `~/.takt/workflows/` for customization
+- Use `takt eject <workflow>` to copy a builtin to `~/.takt/workflows/` for customization
 
 ## Workflow Schema
 

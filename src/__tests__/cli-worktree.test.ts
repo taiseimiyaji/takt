@@ -59,13 +59,12 @@ vi.mock('../config/paths.js', () => ({
 vi.mock('../commands/index.js', () => ({
   executeTask: vi.fn(),
   runAllTasks: vi.fn(),
-  showHelp: vi.fn(),
   switchWorkflow: vi.fn(),
   switchConfig: vi.fn(),
   addTask: vi.fn(),
-  refreshBuiltin: vi.fn(),
   watchTasks: vi.fn(),
   listTasks: vi.fn(),
+  interactiveMode: vi.fn(() => Promise.resolve({ confirmed: false, task: '' })),
 }));
 
 vi.mock('../config/workflowLoader.js', () => ({
@@ -74,6 +73,15 @@ vi.mock('../config/workflowLoader.js', () => ({
 
 vi.mock('../constants.js', () => ({
   DEFAULT_WORKFLOW_NAME: 'default',
+}));
+
+vi.mock('../github/issue.js', () => ({
+  isIssueReference: vi.fn((s: string) => /^#\d+$/.test(s)),
+  resolveIssueTask: vi.fn(),
+}));
+
+vi.mock('../utils/updateNotifier.js', () => ({
+  checkForUpdates: vi.fn(),
 }));
 
 import { confirm } from '../prompt/index.js';
@@ -193,3 +201,4 @@ describe('confirmAndCreateWorktree', () => {
     expect(mockInfo).toHaveBeenCalledWith('Generating branch name...');
   });
 });
+

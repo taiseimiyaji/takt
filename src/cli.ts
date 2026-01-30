@@ -5,11 +5,11 @@
  *
  * Usage:
  *   takt {task}       - Execute task with current workflow (continues session)
- *   takt /run-tasks   - Run all pending tasks from .takt/tasks/
- *   takt /switch      - Switch workflow interactively
- *   takt /clear       - Clear agent conversation sessions (reset to initial state)
- *   takt /help        - Show help
- *   takt /config      - Select permission mode interactively
+ *   takt run          - Run all pending tasks from .takt/tasks/
+ *   takt switch       - Switch workflow interactively
+ *   takt clear        - Clear agent conversation sessions (reset to initial state)
+ *   takt --help       - Show help
+ *   takt config       - Select permission mode interactively
  */
 
 import { createRequire } from 'node:module';
@@ -27,14 +27,13 @@ import { initDebugLogger, createLogger, setVerboseConsole } from './utils/debug.
 import {
   executeTask,
   runAllTasks,
-  showHelp,
   switchWorkflow,
   switchConfig,
   addTask,
-  refreshBuiltin,
   ejectBuiltin,
   watchTasks,
   listTasks,
+  interactiveMode,
 } from './commands/index.js';
 import { listWorkflows } from './config/workflowLoader.js';
 import { selectOptionWithDefault, confirm } from './prompt/index.js';
@@ -52,10 +51,75 @@ const log = createLogger('cli');
 
 checkForUpdates();
 
+/** Resolved cwd shared across commands via preAction hook */
+let resolvedCwd = '';
+
 export interface WorktreeConfirmationResult {
   execCwd: string;
   isWorktree: boolean;
   branch?: string;
+}
+
+/**
+ * Select a workflow interactively.
+ * Returns the selected workflow name, or null if cancelled.
+ */
+async function selectWorkflow(cwd: string): Promise<string | null> {
+  const availableWorkflows = listWorkflows();
+  const currentWorkflow = getCurrentWorkflow(cwd);
+
+  if (availableWorkflows.length === 0) {
+    info(`No workflows found. Using default: ${DEFAULT_WORKFLOW_NAME}`);
+    return DEFAULT_WORKFLOW_NAME;
+  }
+
+  if (availableWorkflows.length === 1 && availableWorkflows[0]) {
+    return availableWorkflows[0];
+  }
+
+  const options = availableWorkflows.map((name) => ({
+    label: name === currentWorkflow ? `${name} (current)` : name,
+    value: name,
+  }));
+
+  const defaultWorkflow = availableWorkflows.includes(currentWorkflow)
+    ? currentWorkflow
+    : (availableWorkflows.includes(DEFAULT_WORKFLOW_NAME)
+        ? DEFAULT_WORKFLOW_NAME
+        : availableWorkflows[0] || DEFAULT_WORKFLOW_NAME);
+
+  return selectOptionWithDefault('Select workflow:', options, defaultWorkflow);
+}
+
+/**
+ * Execute a task with workflow selection, optional worktree, and auto-commit.
+ * Shared by direct task execution and interactive mode.
+ */
+async function selectAndExecuteTask(cwd: string, task: string): Promise<void> {
+  const selectedWorkflow = await selectWorkflow(cwd);
+
+  if (selectedWorkflow === null) {
+    info('Cancelled');
+    return;
+  }
+
+  const { execCwd, isWorktree } = await confirmAndCreateWorktree(cwd, task);
+
+  log.info('Starting task execution', { workflow: selectedWorkflow, worktree: isWorktree });
+  const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd);
+
+  if (taskSuccess && isWorktree) {
+    const commitResult = autoCommitAndPush(execCwd, task, cwd);
+    if (commitResult.success && commitResult.commitHash) {
+      success(`Auto-committed & pushed: ${commitResult.commitHash}`);
+    } else if (!commitResult.success) {
+      error(`Auto-commit failed: ${commitResult.message}`);
+    }
+  }
+
+  if (!taskSuccess) {
+    process.exit(1);
+  }
 }
 
 /**
@@ -93,107 +157,118 @@ program
   .description('TAKT: Task Agent Koordination Tool')
   .version(cliVersion);
 
+// Common initialization for all commands
+program.hook('preAction', async () => {
+  resolvedCwd = resolve(process.cwd());
+
+  await initGlobalDirs();
+  initProjectDirs(resolvedCwd);
+
+  const verbose = isVerboseMode(resolvedCwd);
+  let debugConfig = getEffectiveDebugConfig(resolvedCwd);
+
+  if (verbose && (!debugConfig || !debugConfig.enabled)) {
+    debugConfig = { enabled: true };
+  }
+
+  initDebugLogger(debugConfig, resolvedCwd);
+
+  if (verbose) {
+    setVerboseConsole(true);
+    setLogLevel('debug');
+  } else {
+    const config = loadGlobalConfig();
+    setLogLevel(config.logLevel);
+  }
+
+  log.info('TAKT CLI starting', { version: cliVersion, cwd: resolvedCwd, verbose });
+});
+
+// --- Subcommands ---
+
 program
-  .argument('[task]', 'Task to execute or slash command')
-  .action(async (task) => {
-    const cwd = resolve(process.cwd());
+  .command('run')
+  .description('Run all pending tasks from .takt/tasks/')
+  .action(async () => {
+    const workflow = getCurrentWorkflow(resolvedCwd);
+    await runAllTasks(resolvedCwd, workflow);
+  });
 
-    // Initialize global directories first
-    await initGlobalDirs();
+program
+  .command('watch')
+  .description('Watch for tasks and auto-execute')
+  .action(async () => {
+    await watchTasks(resolvedCwd);
+  });
 
-    // Initialize project directories (.takt/)
-    initProjectDirs(cwd);
+program
+  .command('add')
+  .description('Add a new task (interactive AI conversation)')
+  .argument('[task]', 'Task description or GitHub issue reference (e.g. "#28")')
+  .action(async (task?: string) => {
+    await addTask(resolvedCwd, task);
+  });
 
-    // Determine verbose mode and initialize logging
-    const verbose = isVerboseMode(cwd);
-    let debugConfig = getEffectiveDebugConfig(cwd);
+program
+  .command('list')
+  .description('List task branches (merge/delete)')
+  .action(async () => {
+    await listTasks(resolvedCwd);
+  });
 
-    // verbose=true enables file logging automatically
-    if (verbose && (!debugConfig || !debugConfig.enabled)) {
-      debugConfig = { enabled: true };
-    }
+program
+  .command('switch')
+  .description('Switch workflow interactively')
+  .argument('[workflow]', 'Workflow name')
+  .action(async (workflow?: string) => {
+    await switchWorkflow(resolvedCwd, workflow);
+  });
 
-    initDebugLogger(debugConfig, cwd);
+program
+  .command('clear')
+  .description('Clear agent conversation sessions')
+  .action(() => {
+    clearAgentSessions(resolvedCwd);
+    success('Agent sessions cleared');
+  });
 
-    // Enable verbose console output (stderr) for debug logs
-    if (verbose) {
-      setVerboseConsole(true);
-      setLogLevel('debug');
-    } else {
-      const config = loadGlobalConfig();
-      setLogLevel(config.logLevel);
-    }
+program
+  .command('eject')
+  .description('Copy builtin workflow/agents to ~/.takt/ for customization')
+  .argument('[name]', 'Specific builtin to eject')
+  .action(async (name?: string) => {
+    await ejectBuiltin(name);
+  });
 
-    log.info('TAKT CLI starting', {
-      version: cliVersion,
-      cwd,
-      task: task || null,
-      verbose,
-    });
+program
+  .command('config')
+  .description('Configure settings (permission mode)')
+  .argument('[key]', 'Configuration key')
+  .action(async (key?: string) => {
+    await switchConfig(resolvedCwd, key);
+  });
 
-    // Handle slash commands
-    if (task?.startsWith('/')) {
-      const parts = task.slice(1).split(/\s+/);
-      const command = parts[0]?.toLowerCase() || '';
-      const args = parts.slice(1);
+// --- Default action: task execution or interactive mode ---
 
-      switch (command) {
-        case 'run-tasks':
-        case 'run': {
-          const workflow = getCurrentWorkflow(cwd);
-          await runAllTasks(cwd, workflow);
-          return;
-        }
+/**
+ * Check if the input is a task description (should execute directly)
+ * vs a short input that should enter interactive mode as initial input.
+ *
+ * Task descriptions: contain spaces, or are issue references (#N).
+ * Short single words: routed to interactive mode as first message.
+ */
+function isDirectTask(input: string): boolean {
+  // Multi-word input is a task description
+  if (input.includes(' ')) return true;
+  // Issue references are direct tasks
+  if (isIssueReference(input) || input.trim().split(/\s+/).every((t: string) => isIssueReference(t))) return true;
+  return false;
+}
 
-        case 'clear':
-          clearAgentSessions(cwd);
-          success('Agent sessions cleared');
-          return;
-
-        case 'switch':
-        case 'sw':
-          await switchWorkflow(cwd, args[0]);
-          return;
-
-        case 'help':
-          showHelp();
-          return;
-
-        case 'config':
-          await switchConfig(cwd, args[0]);
-          return;
-
-        case 'add-task':
-        case 'add':
-          await addTask(cwd, args);
-          return;
-
-        case 'refresh-builtin':
-          await refreshBuiltin();
-          return;
-
-        case 'eject':
-          await ejectBuiltin(args[0]);
-          return;
-
-        case 'watch':
-          await watchTasks(cwd);
-          return;
-
-        case 'list-tasks':
-        case 'list':
-          await listTasks(cwd);
-          return;
-
-        default:
-          error(`Unknown command: /${command}`);
-          info('Available: /run-tasks (/run), /watch, /add-task (/add), /list-tasks (/list), /switch (/sw), /clear, /eject, /help, /config');
-          process.exit(1);
-      }
-    }
-
-    // Task execution
-    if (task) {
+program
+  .argument('[task]', 'Task to execute (or GitHub issue reference like "#6")')
+  .action(async (task?: string) => {
+    if (task && isDirectTask(task)) {
       // Resolve #N issue references to task text
       let resolvedTask: string = task;
       if (isIssueReference(task) || task.trim().split(/\s+/).every((t: string) => isIssueReference(t))) {
@@ -206,70 +281,18 @@ program
         }
       }
 
-      // Get available workflows and prompt user to select
-      const availableWorkflows = listWorkflows();
-      const currentWorkflow = getCurrentWorkflow(cwd);
-
-      let selectedWorkflow: string;
-
-      if (availableWorkflows.length === 0) {
-        // No workflows available, use default
-        selectedWorkflow = DEFAULT_WORKFLOW_NAME;
-        info(`No workflows found. Using default: ${selectedWorkflow}`);
-      } else if (availableWorkflows.length === 1 && availableWorkflows[0]) {
-        // Only one workflow, use it directly
-        selectedWorkflow = availableWorkflows[0];
-      } else {
-        // Multiple workflows, prompt user to select
-        const options = availableWorkflows.map((name) => ({
-          label: name === currentWorkflow ? `${name} (current)` : name,
-          value: name,
-        }));
-
-        // Use current workflow as default, fallback to DEFAULT_WORKFLOW_NAME
-        const defaultWorkflow = availableWorkflows.includes(currentWorkflow)
-          ? currentWorkflow
-          : (availableWorkflows.includes(DEFAULT_WORKFLOW_NAME)
-              ? DEFAULT_WORKFLOW_NAME
-              : availableWorkflows[0] || DEFAULT_WORKFLOW_NAME);
-
-        const selected = await selectOptionWithDefault(
-          'Select workflow:',
-          options,
-          defaultWorkflow
-        );
-
-        if (selected === null) {
-          info('Cancelled');
-          return;
-        }
-
-        selectedWorkflow = selected;
-      }
-
-      // Ask whether to create a worktree
-      const { execCwd, isWorktree } = await confirmAndCreateWorktree(cwd, resolvedTask);
-
-      log.info('Starting task execution', { task: resolvedTask, workflow: selectedWorkflow, worktree: isWorktree });
-      const taskSuccess = await executeTask(resolvedTask, execCwd, selectedWorkflow, cwd);
-
-      if (taskSuccess && isWorktree) {
-        const commitResult = autoCommitAndPush(execCwd, resolvedTask, cwd);
-        if (commitResult.success && commitResult.commitHash) {
-          success(`Auto-committed & pushed: ${commitResult.commitHash}`);
-        } else if (!commitResult.success) {
-          error(`Auto-commit failed: ${commitResult.message}`);
-        }
-      }
-
-      if (!taskSuccess) {
-        process.exit(1);
-      }
+      await selectAndExecuteTask(resolvedCwd, resolvedTask);
       return;
     }
 
-    // No task provided - show help
-    showHelp();
+    // Short single word or no task → interactive mode (with optional initial input)
+    const result = await interactiveMode(resolvedCwd, task);
+
+    if (!result.confirmed) {
+      return;
+    }
+
+    await selectAndExecuteTask(resolvedCwd, result.task);
   });
 
 program.parse();

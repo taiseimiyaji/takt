@@ -336,18 +336,6 @@ export function readMultilineFromStream(input: NodeJS.ReadableStream): Promise<s
 }
 
 /**
- * Prompt user for multiline text input.
- * Each line is entered with Enter. An empty line finishes input.
- * If the first line is empty, returns null (cancel).
- * @returns Multiline text or null if cancelled
- */
-export async function promptMultilineInput(message: string): Promise<string | null> {
-  console.log(chalk.green(`${message} (empty line to finish):`));
-  process.stdout.write(chalk.gray('> '));
-  return readMultilineFromStream(process.stdin);
-}
-
-/**
  * Prompt user to select from a list of options with a default value.
  * Uses cursor navigation. Enter immediately selects the default.
  * @returns Selected option value, or null if cancelled (ESC pressed)

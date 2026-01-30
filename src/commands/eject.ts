@@ -31,7 +31,7 @@ export async function ejectBuiltin(name?: string): Promise<void> {
   const builtinPath = join(builtinWorkflowsDir, `${name}.yaml`);
   if (!existsSync(builtinPath)) {
     error(`Builtin workflow not found: ${name}`);
-    info('Run "takt /eject" to see available builtins.');
+    info('Run "takt eject" to see available builtins.');
     return;
   }
 
@@ -101,7 +101,7 @@ function listAvailableBuiltins(builtinWorkflowsDir: string): void {
   }
 
   console.log();
-  info('Usage: takt /eject {name}');
+  info('Usage: takt eject {name}');
 }
 
 /**

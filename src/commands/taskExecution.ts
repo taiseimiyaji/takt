@@ -39,7 +39,7 @@ export async function executeTask(
   if (!workflowConfig) {
     error(`Workflow "${workflowName}" not found.`);
     info('Available workflows are in ~/.takt/workflows/');
-    info('Use "takt /switch" to select a workflow.');
+    info('Use "takt switch" to select a workflow.');
     return false;
   }
 
@@ -141,7 +141,7 @@ export async function runAllTasks(
 
   if (!task) {
     info('No pending tasks in .takt/tasks/');
-    info('Create task files as .takt/tasks/*.yaml or use takt /add-task');
+    info('Create task files as .takt/tasks/*.yaml or use takt add');
     return;
   }
 

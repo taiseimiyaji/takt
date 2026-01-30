@@ -76,20 +76,23 @@ function buildSdkOptions(options: ExecuteOptions): Options {
     permissionMode = 'acceptEdits';
   }
 
+  // Only include defined values — the SDK treats key-present-but-undefined
+  // differently from key-absent for some options (e.g. model), causing hangs.
   const sdkOptions: Options = {
     cwd: options.cwd,
-    model: options.model,
-    maxTurns: options.maxTurns,
-    allowedTools: options.allowedTools,
-    agents: options.agents,
     permissionMode,
-    includePartialMessages: !!options.onStream,
-    canUseTool,
-    hooks,
   };
 
-  if (options.systemPrompt) {
-    sdkOptions.systemPrompt = options.systemPrompt;
+  if (options.model) sdkOptions.model = options.model;
+  if (options.maxTurns != null) sdkOptions.maxTurns = options.maxTurns;
+  if (options.allowedTools) sdkOptions.allowedTools = options.allowedTools;
+  if (options.agents) sdkOptions.agents = options.agents;
+  if (options.systemPrompt) sdkOptions.systemPrompt = options.systemPrompt;
+  if (canUseTool) sdkOptions.canUseTool = canUseTool;
+  if (hooks) sdkOptions.hooks = hooks;
+
+  if (options.onStream) {
+    sdkOptions.includePartialMessages = true;
   }
 
   if (options.sessionId) {

@@ -17,20 +17,21 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 | `npx vitest run src/__tests__/client.test.ts` | Run single test file |
 | `npx vitest run -t "pattern"` | Run tests matching pattern |
 
-## CLI Slash Commands
+## CLI Subcommands
 
-| Command | Alias | Description |
-|---------|-------|-------------|
-| `takt /run-tasks` | `/run` | Execute all pending tasks from `.takt/tasks/` once |
-| `takt /watch` | | Watch `.takt/tasks/` and auto-execute tasks (resident process) |
-| `takt /add-task` | `/add` | Add a new task interactively (YAML format, multiline supported) |
-| `takt /list-tasks` | `/list` | List task branches (try merge, merge & cleanup, or delete) |
-| `takt /switch` | `/sw` | Switch workflow interactively |
-| `takt /clear` | | Clear agent conversation sessions (reset state) |
-| `takt /eject` | | Copy builtin workflow/agents to `~/.takt/` for customization |
-| `takt /refresh-builtin` | | Update builtin resources from `resources/` to `~/.takt/` |
-| `takt /help` | | Show help message |
-| `takt /config` | | Display current configuration |
+| Command | Description |
+|---------|-------------|
+| `takt {task}` | Execute task with current workflow |
+| `takt` | Interactive task input mode |
+| `takt run` | Execute all pending tasks from `.takt/tasks/` once |
+| `takt watch` | Watch `.takt/tasks/` and auto-execute tasks (resident process) |
+| `takt add` | Add a new task via AI conversation |
+| `takt list` | List task branches (try merge, merge & cleanup, or delete) |
+| `takt switch` | Switch workflow interactively |
+| `takt clear` | Clear agent conversation sessions (reset state) |
+| `takt eject` | Copy builtin workflow/agents to `~/.takt/` for customization |
+| `takt config` | Configure settings (permission mode) |
+| `takt --help` | Show help message |
 
 GitHub issue references: `takt #6` fetches issue #6 and executes it as a task.
 
@@ -296,7 +297,7 @@ Key constraints:
 - **Session isolation**: Claude Code sessions are stored per-cwd in `~/.claude/projects/{encoded-path}/`. Sessions from the main project cannot be resumed in a clone. The engine skips session resume when `cwd !== projectCwd`.
 - **No node_modules**: Clones only contain tracked files. `node_modules/` is absent.
 - **Dual cwd**: `cwd` = clone path (where agents run), `projectCwd` = project root (where `.takt/` lives). Reports, logs, and session data always write to `projectCwd`.
-- **List**: Use `takt /list-tasks` to list branches. Instruct action creates a temporary clone for the branch, executes, pushes, then removes the clone.
+- **List**: Use `takt list` to list branches. Instruct action creates a temporary clone for the branch, executes, pushes, then removes the clone.
 
 ## Error Propagation
 

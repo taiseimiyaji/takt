@@ -30,20 +30,20 @@ takt "Add a login feature"
 # Run a GitHub issue as a task
 takt "#6"
 
-# Add a task to the queue
-takt /add-task "Fix the login bug"
+# Add a task via AI conversation
+takt add
 
 # Run all pending tasks
-takt /run-tasks
+takt run
 
 # Watch for tasks and auto-execute
-takt /watch
+takt watch
 
 # List task branches (merge or delete)
-takt /list-tasks
+takt list
 
 # Switch workflow
-takt /switch
+takt switch
 ```
 
 ### What happens when you run a task
@@ -87,24 +87,24 @@ Choose `y` to run in a `git clone --shared` isolated environment, keeping your w
 
 ## Commands
 
-| Command | Alias | Description |
-|---------|-------|-------------|
-| `takt "task"` | | Execute task with current workflow (session auto-continued) |
-| `takt "#N"` | | Execute GitHub issue #N as a task |
-| `takt /run-tasks` | `/run` | Run all pending tasks from `.takt/tasks/` |
-| `takt /watch` | | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
-| `takt /add-task` | `/add` | Add a new task interactively (YAML format, multiline supported) |
-| `takt /list-tasks` | `/list` | List task branches (try merge, merge & cleanup, or delete) |
-| `takt /switch` | `/sw` | Switch workflow interactively |
-| `takt /clear` | | Clear agent conversation sessions |
-| `takt /eject` | | Copy builtin workflow/agents to `~/.takt/` for customization |
-| `takt /refresh-builtin` | | Update builtin agents/workflows to latest version |
-| `takt /config` | | Configure permission mode |
-| `takt /help` | | Show help |
+| Command | Description |
+|---------|-------------|
+| `takt "task"` | Execute task with current workflow (session auto-continued) |
+| `takt "#N"` | Execute GitHub issue #N as a task |
+| `takt` | Interactive task input mode |
+| `takt run` | Run all pending tasks from `.takt/tasks/` |
+| `takt watch` | Watch `.takt/tasks/` and auto-execute tasks (stays resident) |
+| `takt add` | Add a new task via AI conversation |
+| `takt list` | List task branches (try merge, merge & cleanup, or delete) |
+| `takt switch` | Switch workflow interactively |
+| `takt clear` | Clear agent conversation sessions |
+| `takt eject` | Copy builtin workflow/agents to `~/.takt/` for customization |
+| `takt config` | Configure permission mode |
+| `takt --help` | Show help |
 
 ## Workflows
 
-TAKT uses YAML-based workflow definitions with rule-based routing. Builtin workflows are embedded in the package; user workflows in `~/.takt/workflows/` take priority. Use `/eject` to copy a builtin to `~/.takt/` for customization.
+TAKT uses YAML-based workflow definitions with rule-based routing. Builtin workflows are embedded in the package; user workflows in `~/.takt/workflows/` take priority. Use `takt eject` to copy a builtin to `~/.takt/` for customization.
 
 ### Example Workflow
 
@@ -201,7 +201,7 @@ TAKT ships with several built-in workflows:
 | `expert-cqrs` | Sequential review with domain experts: CQRS+ES, Frontend, Security, QA reviews with fix loops. |
 | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
 
-Switch between workflows with `takt /switch`.
+Switch between workflows with `takt switch`.
 
 ## Built-in Agents
 
@@ -312,7 +312,7 @@ Create your own workflow by adding YAML files to `~/.takt/workflows/`, or use `/
 
 ```bash
 # Copy the default workflow to ~/.takt/workflows/ for editing
-takt /eject default
+takt eject default
 ```
 
 ```yaml
@@ -365,18 +365,14 @@ agent: /path/to/custom/agent.md
 
 TAKT supports batch task processing through task files in `.takt/tasks/`. Both `.yaml`/`.yml` and `.md` file formats are supported.
 
-#### Adding Tasks with `/add-task`
+#### Adding Tasks with `takt add`
 
 ```bash
-# Quick add (no isolation)
-takt /add-task "Add authentication feature"
-
-# Add a GitHub issue as a task
-takt /add-task "#6"
-
-# Interactive mode (prompts for isolation, branch, workflow options)
-takt /add-task
+# Start AI conversation to define and add a task
+takt add
 ```
+
+The `takt add` command starts an AI conversation where you discuss and refine your task requirements. After confirming with `/go`, the AI summarizes the conversation and creates a YAML task file with optional worktree/branch/workflow settings.
 
 #### Task File Formats
 
@@ -414,12 +410,12 @@ YAML task files can specify `worktree` to run each task in an isolated `git clon
 
 > **Note**: The YAML field is named `worktree` for backward compatibility. Internally, `git clone --shared` is used instead of `git worktree` because git worktrees have a `.git` file with `gitdir:` that points back to the main repository, causing Claude Code to recognize the main repo as the project root. Shared clones have an independent `.git` directory that avoids this issue.
 
-Clones are ephemeral. When a task completes successfully, TAKT automatically commits all changes and pushes the branch to the main repository, then deletes the clone. Use `takt /list-tasks` to list, try-merge, or delete task branches.
+Clones are ephemeral. When a task completes successfully, TAKT automatically commits all changes and pushes the branch to the main repository, then deletes the clone. Use `takt list` to list, try-merge, or delete task branches.
 
 #### Running Tasks with `/run-tasks`
 
 ```bash
-takt /run-tasks
+takt run
 ```
 
 - Tasks are executed in alphabetical order (use prefixes like `001-`, `002-` for ordering)
@@ -429,7 +425,7 @@ takt /run-tasks
 #### Watching Tasks with `/watch`
 
 ```bash
-takt /watch
+takt watch
 ```
 
 Watch mode polls `.takt/tasks/` for new task files and auto-executes them as they appear. The process stays resident until `Ctrl+C`. This is useful for:
@@ -440,7 +436,7 @@ Watch mode polls `.takt/tasks/` for new task files and auto-executes them as the
 #### Listing Task Branches with `/list-tasks`
 
 ```bash
-takt /list-tasks
+takt list
 ```
 
 Lists all `takt/`-prefixed branches with file change counts. For each branch you can:

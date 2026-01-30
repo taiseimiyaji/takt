@@ -25,7 +25,7 @@ export function showTaskList(runner: TaskRunner): void {
     console.log();
     info('実行待ちのタスクはありません。');
     console.log(chalk.gray(`\n${runner.getTasksDir()}/ にタスクファイル（.yaml/.md）を配置してください。`));
-    console.log(chalk.gray(`または takt /add-task でタスクを追加できます。`));
+    console.log(chalk.gray(`または takt add でタスクを追加できます。`));
     return;
   }
 
