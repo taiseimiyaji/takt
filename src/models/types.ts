@@ -8,7 +8,6 @@ export type AgentType = 'coder' | 'architect' | 'supervisor' | 'custom';
 /** Execution status for agents and workflows */
 export type Status =
   | 'pending'
-  | 'in_progress'
   | 'done'
   | 'blocked'
   | 'approved'
@@ -17,6 +16,14 @@ export type Status =
   | 'cancelled'
   | 'interrupted'
   | 'answer';
+
+/** How a rule match was detected */
+export type RuleMatchMethod =
+  | 'aggregate'
+  | 'phase3_tag'
+  | 'phase1_tag'
+  | 'ai_judge'
+  | 'ai_judge_fallback';
 
 /** Response from an agent execution */
 export interface AgentResponse {
@@ -29,6 +36,8 @@ export interface AgentResponse {
   error?: string;
   /** Matched rule index (0-based) when rules-based detection was used */
   matchedRuleIndex?: number;
+  /** How the rule match was detected */
+  matchedRuleMethod?: RuleMatchMethod;
 }
 
 /** Session state for workflow execution */
@@ -48,6 +57,16 @@ export interface WorkflowRule {
   next: string;
   /** Template for additional AI output */
   appendix?: string;
+  /** Whether this condition uses ai() expression (set by loader) */
+  isAiCondition?: boolean;
+  /** The condition text inside ai("...") for AI judge evaluation (set by loader) */
+  aiConditionText?: string;
+  /** Whether this condition uses all()/any() aggregate expression (set by loader) */
+  isAggregateCondition?: boolean;
+  /** Aggregate type: 'all' requires all sub-steps match, 'any' requires at least one (set by loader) */
+  aggregateType?: 'all' | 'any';
+  /** The condition text inside all("...")/any("...") to match against sub-step results (set by loader) */
+  aggregateConditionText?: string;
 }
 
 /** Report file configuration for a workflow step (label: path pair) */
@@ -96,6 +115,8 @@ export interface WorkflowStep {
   /** Report file configuration. Single string, array of label:path, or object with order/format. */
   report?: string | ReportConfig[] | ReportObjectConfig;
   passPreviousResponse: boolean;
+  /** Sub-steps to execute in parallel. When set, this step runs all sub-steps concurrently. */
+  parallel?: WorkflowStep[];
 }
 
 /** Loop detection configuration */

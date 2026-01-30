@@ -3,9 +3,12 @@
  *
  * Builds the instruction string for agent execution by:
  * 1. Auto-injecting standard sections (Execution Context, Workflow Context,
- *    User Request, Previous Response, Additional User Inputs, Instructions header)
+ *    User Request, Previous Response, Additional User Inputs, Instructions header,
+ *    Status Output Rules)
  * 2. Replacing template placeholders with actual values
- * 3. Appending auto-generated status rules from workflow rules
+ *
+ * Status rules are injected into Phase 1 for tag-based detection,
+ * and also used in Phase 3 (buildStatusJudgmentInstruction) as a dedicated follow-up.
  */
 
 import type { WorkflowStep, WorkflowRule, AgentResponse, Language, ReportConfig, ReportObjectConfig } from '../models/types.js';
@@ -58,29 +61,6 @@ export function buildExecutionMetadata(context: InstructionContext, edit?: boole
     language: context.language ?? 'en',
     edit,
   };
-}
-
-/** Localized strings for status rules header */
-const STATUS_RULES_HEADER_STRINGS = {
-  en: {
-    heading: '# ⚠️ Required: Status Output Rules ⚠️',
-    warning: '**The workflow will stop without this tag.**',
-    instruction: 'Your final output MUST include a status tag following the rules below.',
-  },
-  ja: {
-    heading: '# ⚠️ 必須: ステータス出力ルール ⚠️',
-    warning: '**このタグがないとワークフローが停止します。**',
-    instruction: '最終出力には必ず以下のルールに従ったステータスタグを含めてください。',
-  },
-} as const;
-
-/**
- * Render status rules header.
- * Prepended to auto-generated status rules from workflow rules.
- */
-export function renderStatusRulesHeader(language: Language): string {
-  const strings = STATUS_RULES_HEADER_STRINGS[language];
-  return [strings.heading, '', strings.warning, strings.instruction, ''].join('\n');
 }
 
 /** Localized strings for rules-based status prompt */
@@ -323,22 +303,31 @@ function renderWorkflowContext(
     `- ${s.step}: ${step.name}`,
   ];
 
-  // Report info (only if step has report config AND reportDir is available)
-  if (step.report && context.reportDir) {
-    lines.push(`- ${s.reportDirectory}: ${context.reportDir}/`);
+  return lines.join('\n');
+}
 
-    if (typeof step.report === 'string') {
-      // Single file (string form)
-      lines.push(`- ${s.reportFile}: ${context.reportDir}/${step.report}`);
-    } else if (isReportObjectConfig(step.report)) {
-      // Object form (name + order + format)
-      lines.push(`- ${s.reportFile}: ${context.reportDir}/${step.report.name}`);
-    } else {
-      // Multiple files (ReportConfig[] form)
-      lines.push(`- ${s.reportFiles}:`);
-      for (const file of step.report as ReportConfig[]) {
-        lines.push(`  - ${file.label}: ${context.reportDir}/${file.path}`);
-      }
+/**
+ * Render report info for the Workflow Context section.
+ * Used only by buildReportInstruction() (phase 2).
+ */
+function renderReportContext(
+  report: string | ReportConfig[] | ReportObjectConfig,
+  reportDir: string,
+  language: Language,
+): string {
+  const s = SECTION_STRINGS[language];
+  const lines: string[] = [
+    `- ${s.reportDirectory}: ${reportDir}/`,
+  ];
+
+  if (typeof report === 'string') {
+    lines.push(`- ${s.reportFile}: ${reportDir}/${report}`);
+  } else if (isReportObjectConfig(report)) {
+    lines.push(`- ${s.reportFile}: ${reportDir}/${report.name}`);
+  } else {
+    lines.push(`- ${s.reportFiles}:`);
+    for (const file of report) {
+      lines.push(`  - ${file.label}: ${reportDir}/${file.path}`);
     }
   }
 
@@ -419,7 +408,7 @@ function replaceTemplatePlaceholders(
  * 4. Previous Response — if passPreviousResponse and has content, unless template contains {previous_response}
  * 5. Additional User Inputs — unless template contains {user_inputs}
  * 6. Instructions header + instruction_template content — always
- * 7. Status Output Rules — if rules exist
+ * 7. Status Output Rules — when step has tag-based rules (not all ai()/aggregate)
  *
  * Template placeholders ({task}, {previous_response}, etc.) are still replaced
  * within the instruction_template body for backward compatibility.
@@ -466,20 +455,7 @@ export function buildInstruction(
     sections.push(`${s.additionalUserInputs}\n${escapeTemplateChars(userInputsStr)}`);
   }
 
-  // 6a. Report output instruction (auto-generated from step.report)
-  // If ReportObjectConfig has an explicit `order:`, use that (backward compat).
-  // Otherwise, auto-generate from the report declaration.
-  if (step.report && isReportObjectConfig(step.report) && step.report.order) {
-    const processedOrder = replaceTemplatePlaceholders(step.report.order.trimEnd(), step, context);
-    sections.push(processedOrder);
-  } else {
-    const reportInstruction = renderReportOutputInstruction(step, context, language);
-    if (reportInstruction) {
-      sections.push(reportInstruction);
-    }
-  }
-
-  // 6b. Instructions header + instruction_template content
+  // 6. Instructions header + instruction_template content
   const processedTemplate = replaceTemplatePlaceholders(
     step.instructionTemplate,
     step,
@@ -487,18 +463,182 @@ export function buildInstruction(
   );
   sections.push(`${s.instructions}\n${processedTemplate}`);
 
-  // 6c. Report format (appended after instruction_template, from ReportObjectConfig)
-  if (step.report && isReportObjectConfig(step.report) && step.report.format) {
-    const processedFormat = replaceTemplatePlaceholders(step.report.format.trimEnd(), step, context);
-    sections.push(processedFormat);
+  // 7. Status Output Rules (for tag-based detection in Phase 1)
+  // Skip if all rules are ai() or aggregate conditions (no tags needed)
+  if (step.rules && step.rules.length > 0) {
+    const allNonTagConditions = step.rules.every((r) => r.isAiCondition || r.isAggregateCondition);
+    if (!allNonTagConditions) {
+      const statusRulesPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
+      sections.push(statusRulesPrompt);
+    }
   }
 
-  // 7. Status rules (auto-generated from rules)
-  if (step.rules && step.rules.length > 0) {
-    const statusHeader = renderStatusRulesHeader(language);
-    const generatedPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
-    sections.push(`${statusHeader}\n${generatedPrompt}`);
+  return sections.join('\n\n');
+}
+
+/** Localized strings for report phase execution rules */
+const REPORT_PHASE_STRINGS = {
+  en: {
+    noSourceEdit: '**Do NOT modify project source files.** Only output report files.',
+    instructionBody: 'Output the results of your previous work as a report.',
+  },
+  ja: {
+    noSourceEdit: '**プロジェクトのソースファイルを変更しないでください。** レポートファイルのみ出力してください。',
+    instructionBody: '前のステップの作業結果をレポートとして出力してください。',
+  },
+} as const;
+
+/**
+ * Context for building report phase instruction.
+ */
+export interface ReportInstructionContext {
+  /** Working directory */
+  cwd: string;
+  /** Report directory path */
+  reportDir: string;
+  /** Step iteration (for {step_iteration} replacement) */
+  stepIteration: number;
+  /** Language */
+  language?: Language;
+}
+
+/**
+ * Build instruction for phase 2 (report output).
+ *
+ * Separate from buildInstruction() — only includes:
+ * - Execution Context (cwd + rules)
+ * - Workflow Context (report info only)
+ * - Report output instruction + format
+ *
+ * Does NOT include: User Request, Previous Response, User Inputs,
+ * Status rules, instruction_template.
+ */
+export function buildReportInstruction(
+  step: WorkflowStep,
+  context: ReportInstructionContext,
+): string {
+  if (!step.report) {
+    throw new Error(`buildReportInstruction called for step "${step.name}" which has no report config`);
   }
+
+  const language = context.language ?? 'en';
+  const s = SECTION_STRINGS[language];
+  const r = REPORT_PHASE_STRINGS[language];
+  const m = METADATA_STRINGS[language];
+  const sections: string[] = [];
+
+  // 1. Execution Context
+  const execLines = [
+    m.heading,
+    `- ${m.workingDirectory}: ${context.cwd}`,
+    '',
+    m.rulesHeading,
+    `- ${m.noCommit}`,
+    `- ${m.noCd}`,
+    `- ${r.noSourceEdit}`,
+  ];
+  if (m.note) {
+    execLines.push('');
+    execLines.push(m.note);
+  }
+  execLines.push('');
+  sections.push(execLines.join('\n'));
+
+  // 2. Workflow Context (report info only)
+  const workflowLines = [
+    s.workflowContext,
+    renderReportContext(step.report, context.reportDir, language),
+  ];
+  sections.push(workflowLines.join('\n'));
+
+  // 3. Instructions + report output instruction + format
+  const instrParts: string[] = [
+    `${s.instructions}`,
+    r.instructionBody,
+  ];
+
+  // Report output instruction (auto-generated or explicit order)
+  const reportContext: InstructionContext = {
+    task: '',
+    iteration: 0,
+    maxIterations: 0,
+    stepIteration: context.stepIteration,
+    cwd: context.cwd,
+    userInputs: [],
+    reportDir: context.reportDir,
+    language,
+  };
+
+  if (isReportObjectConfig(step.report) && step.report.order) {
+    const processedOrder = replaceTemplatePlaceholders(step.report.order.trimEnd(), step, reportContext);
+    instrParts.push('');
+    instrParts.push(processedOrder);
+  } else {
+    const reportInstruction = renderReportOutputInstruction(step, reportContext, language);
+    if (reportInstruction) {
+      instrParts.push('');
+      instrParts.push(reportInstruction);
+    }
+  }
+
+  // Report format
+  if (isReportObjectConfig(step.report) && step.report.format) {
+    const processedFormat = replaceTemplatePlaceholders(step.report.format.trimEnd(), step, reportContext);
+    instrParts.push('');
+    instrParts.push(processedFormat);
+  }
+
+  sections.push(instrParts.join('\n'));
+
+  return sections.join('\n\n');
+}
+
+/** Localized strings for status judgment phase (Phase 3) */
+const STATUS_JUDGMENT_STRINGS = {
+  en: {
+    header: 'Review your work results and determine the status. Do NOT perform any additional work.',
+  },
+  ja: {
+    header: '作業結果を振り返り、ステータスを判定してください。追加の作業は行わないでください。',
+  },
+} as const;
+
+/**
+ * Context for building status judgment instruction (Phase 3).
+ */
+export interface StatusJudgmentContext {
+  /** Language */
+  language?: Language;
+}
+
+/**
+ * Build instruction for Phase 3 (status judgment).
+ *
+ * Resumes the agent session and asks it to evaluate its work
+ * and output the appropriate status tag. No tools are allowed.
+ *
+ * Includes:
+ * - Header instruction (review and determine status)
+ * - Status rules (criteria table + output format) from generateStatusRulesFromRules()
+ */
+export function buildStatusJudgmentInstruction(
+  step: WorkflowStep,
+  context: StatusJudgmentContext,
+): string {
+  if (!step.rules || step.rules.length === 0) {
+    throw new Error(`buildStatusJudgmentInstruction called for step "${step.name}" which has no rules`);
+  }
+
+  const language = context.language ?? 'en';
+  const s = STATUS_JUDGMENT_STRINGS[language];
+  const sections: string[] = [];
+
+  // Header
+  sections.push(s.header);
+
+  // Status rules (criteria table + output format)
+  const generatedPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
+  sections.push(generatedPrompt);
 
   return sections.join('\n\n');
 }

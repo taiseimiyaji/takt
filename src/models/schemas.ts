@@ -13,7 +13,6 @@ export const AgentTypeSchema = z.enum(['coder', 'architect', 'supervisor', 'cust
 /** Status schema */
 export const StatusSchema = z.enum([
   'pending',
-  'in_progress',
   'done',
   'blocked',
   'approved',
@@ -81,10 +80,28 @@ export const WorkflowRuleSchema = z.object({
   appendix: z.string().optional(),
 });
 
+/** Sub-step schema for parallel execution (agent is required) */
+export const ParallelSubStepRawSchema = z.object({
+  name: z.string().min(1),
+  agent: z.string().min(1),
+  agent_name: z.string().optional(),
+  allowed_tools: z.array(z.string()).optional(),
+  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  model: z.string().optional(),
+  permission_mode: PermissionModeSchema.optional(),
+  edit: z.boolean().optional(),
+  instruction: z.string().optional(),
+  instruction_template: z.string().optional(),
+  rules: z.array(WorkflowRuleSchema).optional(),
+  report: ReportFieldSchema.optional(),
+  pass_previous_response: z.boolean().optional().default(true),
+});
+
 /** Workflow step schema - raw YAML format */
 export const WorkflowStepRawSchema = z.object({
   name: z.string().min(1),
-  agent: z.string().min(1),
+  /** Agent is required for normal steps, optional for parallel container steps */
+  agent: z.string().optional(),
   /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
   agent_name: z.string().optional(),
   allowed_tools: z.array(z.string()).optional(),
@@ -101,7 +118,12 @@ export const WorkflowStepRawSchema = z.object({
   /** Report file(s) for this step */
   report: ReportFieldSchema.optional(),
   pass_previous_response: z.boolean().optional().default(true),
-});
+  /** Sub-steps to execute in parallel */
+  parallel: z.array(ParallelSubStepRawSchema).optional(),
+}).refine(
+  (data) => data.agent || (data.parallel && data.parallel.length > 0),
+  { message: 'Step must have either an agent or parallel sub-steps' },
+);
 
 /** Workflow configuration schema - raw YAML format */
 export const WorkflowConfigRawSchema = z.object({

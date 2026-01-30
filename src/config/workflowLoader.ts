@@ -120,6 +120,81 @@ function normalizeReport(
   );
 }
 
+/** Regex to detect ai("...") condition expressions */
+const AI_CONDITION_REGEX = /^ai\("(.+)"\)$/;
+
+/** Regex to detect all("...")/any("...") aggregate condition expressions */
+const AGGREGATE_CONDITION_REGEX = /^(all|any)\("(.+)"\)$/;
+
+/**
+ * Parse a rule's condition for ai() and all()/any() expressions.
+ * - `ai("text")` → sets isAiCondition and aiConditionText
+ * - `all("text")` / `any("text")` → sets isAggregateCondition, aggregateType, aggregateConditionText
+ */
+function normalizeRule(r: { condition: string; next: string; appendix?: string }): WorkflowRule {
+  const aiMatch = r.condition.match(AI_CONDITION_REGEX);
+  if (aiMatch?.[1]) {
+    return {
+      condition: r.condition,
+      next: r.next,
+      appendix: r.appendix,
+      isAiCondition: true,
+      aiConditionText: aiMatch[1],
+    };
+  }
+
+  const aggMatch = r.condition.match(AGGREGATE_CONDITION_REGEX);
+  if (aggMatch?.[1] && aggMatch[2]) {
+    return {
+      condition: r.condition,
+      next: r.next,
+      appendix: r.appendix,
+      isAggregateCondition: true,
+      aggregateType: aggMatch[1] as 'all' | 'any',
+      aggregateConditionText: aggMatch[2],
+    };
+  }
+
+  return {
+    condition: r.condition,
+    next: r.next,
+    appendix: r.appendix,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RawStep = any;
+
+/**
+ * Normalize a raw step into internal WorkflowStep format.
+ */
+function normalizeStepFromRaw(step: RawStep, workflowDir: string): WorkflowStep {
+  const rules: WorkflowRule[] | undefined = step.rules?.map(normalizeRule);
+  const agentSpec: string = step.agent ?? '';
+
+  const result: WorkflowStep = {
+    name: step.name,
+    agent: agentSpec,
+    agentDisplayName: step.agent_name || (agentSpec ? extractAgentDisplayName(agentSpec) : step.name),
+    agentPath: agentSpec ? resolveAgentPathForWorkflow(agentSpec, workflowDir) : undefined,
+    allowedTools: step.allowed_tools,
+    provider: step.provider,
+    model: step.model,
+    permissionMode: step.permission_mode,
+    edit: step.edit,
+    instructionTemplate: resolveContentPath(step.instruction_template, workflowDir) || step.instruction || '{task}',
+    rules,
+    report: normalizeReport(step.report, workflowDir),
+    passPreviousResponse: step.pass_previous_response ?? true,
+  };
+
+  if (step.parallel && step.parallel.length > 0) {
+    result.parallel = step.parallel.map((sub: RawStep) => normalizeStepFromRaw(sub, workflowDir));
+  }
+
+  return result;
+}
+
 /**
  * Convert raw YAML workflow config to internal format.
  * Agent paths are resolved relative to the workflow directory.
@@ -127,29 +202,9 @@ function normalizeReport(
 function normalizeWorkflowConfig(raw: unknown, workflowDir: string): WorkflowConfig {
   const parsed = WorkflowConfigRawSchema.parse(raw);
 
-  const steps: WorkflowStep[] = parsed.steps.map((step) => {
-    const rules: WorkflowRule[] | undefined = step.rules?.map((r) => ({
-      condition: r.condition,
-      next: r.next,
-      appendix: r.appendix,
-    }));
-
-    return {
-      name: step.name,
-      agent: step.agent,
-      agentDisplayName: step.agent_name || extractAgentDisplayName(step.agent),
-      agentPath: resolveAgentPathForWorkflow(step.agent, workflowDir),
-      allowedTools: step.allowed_tools,
-      provider: step.provider,
-      model: step.model,
-      permissionMode: step.permission_mode,
-      edit: step.edit,
-      instructionTemplate: resolveContentPath(step.instruction_template, workflowDir) || step.instruction || '{task}',
-      rules,
-      report: normalizeReport(step.report, workflowDir),
-      passPreviousResponse: step.pass_previous_response,
-    };
-  });
+  const steps: WorkflowStep[] = parsed.steps.map((step) =>
+    normalizeStepFromRaw(step, workflowDir),
+  );
 
   return {
     name: parsed.name,

@@ -24,6 +24,10 @@ export interface SessionLog {
     timestamp: string;
     content: string;
     error?: string;
+    /** Matched rule index (0-based) when rules-based detection was used */
+    matchedRuleIndex?: number;
+    /** How the rule match was detected */
+    matchedRuleMethod?: string;
   }>;
 }
 
@@ -88,6 +92,8 @@ export function addToSessionLog(
     timestamp: response.timestamp.toISOString(),
     content: response.content,
     ...(response.error ? { error: response.error } : {}),
+    ...(response.matchedRuleIndex != null ? { matchedRuleIndex: response.matchedRuleIndex } : {}),
+    ...(response.matchedRuleMethod ? { matchedRuleMethod: response.matchedRuleMethod } : {}),
   });
   log.iterations++;
 }

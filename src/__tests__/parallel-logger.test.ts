@@ -1,0 +1,417 @@
+/**
+ * Tests for parallel-logger module
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ParallelLogger } from '../workflow/parallel-logger.js';
+import type { StreamEvent } from '../claude/types.js';
+
+describe('ParallelLogger', () => {
+  let output: string[];
+  let writeFn: (text: string) => void;
+
+  beforeEach(() => {
+    output = [];
+    writeFn = (text: string) => output.push(text);
+  });
+
+  describe('buildPrefix', () => {
+    it('should build colored prefix with padding', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['arch-review', 'sec'],
+        writeFn,
+      });
+
+      // arch-review is longest (11 chars), sec gets padding
+      const prefix = logger.buildPrefix('sec', 1);
+      // yellow color for index 1
+      expect(prefix).toContain('[sec]');
+      expect(prefix).toContain('\x1b[33m'); // yellow
+      expect(prefix).toContain('\x1b[0m');  // reset
+      // 11 - 3 = 8 spaces of padding
+      expect(prefix).toMatch(/\x1b\[0m {8} $/);
+    });
+
+    it('should cycle colors for index >= 4', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['a', 'b', 'c', 'd', 'e'],
+        writeFn,
+      });
+
+      const prefix0 = logger.buildPrefix('a', 0);
+      const prefix4 = logger.buildPrefix('e', 4);
+      // Both should use cyan (\x1b[36m)
+      expect(prefix0).toContain('\x1b[36m');
+      expect(prefix4).toContain('\x1b[36m');
+    });
+
+    it('should assign correct colors in order', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['a', 'b', 'c', 'd'],
+        writeFn,
+      });
+
+      expect(logger.buildPrefix('a', 0)).toContain('\x1b[36m'); // cyan
+      expect(logger.buildPrefix('b', 1)).toContain('\x1b[33m'); // yellow
+      expect(logger.buildPrefix('c', 2)).toContain('\x1b[35m'); // magenta
+      expect(logger.buildPrefix('d', 3)).toContain('\x1b[32m'); // green
+    });
+
+    it('should have no extra padding for longest name', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['long-name', 'short'],
+        writeFn,
+      });
+
+      const prefix = logger.buildPrefix('long-name', 0);
+      // No padding needed (0 spaces)
+      expect(prefix).toMatch(/\x1b\[0m $/);
+    });
+  });
+
+  describe('text event line buffering', () => {
+    it('should buffer partial line and output on newline', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('step-a', 0);
+
+      // Partial text (no newline)
+      handler({ type: 'text', data: { text: 'Hello' } } as StreamEvent);
+      expect(output).toHaveLength(0);
+
+      // Complete the line
+      handler({ type: 'text', data: { text: ' World\n' } } as StreamEvent);
+      expect(output).toHaveLength(1);
+      expect(output[0]).toContain('[step-a]');
+      expect(output[0]).toContain('Hello World');
+      expect(output[0]).toMatch(/\n$/);
+    });
+
+    it('should handle multiple lines in single text event', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('step-a', 0);
+
+      handler({ type: 'text', data: { text: 'Line 1\nLine 2\n' } } as StreamEvent);
+      expect(output).toHaveLength(2);
+      expect(output[0]).toContain('Line 1');
+      expect(output[1]).toContain('Line 2');
+    });
+
+    it('should output empty line without prefix', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('step-a', 0);
+
+      handler({ type: 'text', data: { text: 'Hello\n\nWorld\n' } } as StreamEvent);
+      expect(output).toHaveLength(3);
+      expect(output[0]).toContain('Hello');
+      expect(output[1]).toBe('\n'); // empty line without prefix
+      expect(output[2]).toContain('World');
+    });
+
+    it('should keep trailing partial in buffer', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('step-a', 0);
+
+      handler({ type: 'text', data: { text: 'Complete\nPartial' } } as StreamEvent);
+      expect(output).toHaveLength(1);
+      expect(output[0]).toContain('Complete');
+
+      // Flush remaining
+      logger.flush();
+      expect(output).toHaveLength(2);
+      expect(output[1]).toContain('Partial');
+    });
+  });
+
+  describe('block events (tool_use, tool_result, tool_output, thinking)', () => {
+    it('should prefix tool_use events', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      handler({
+        type: 'tool_use',
+        data: { tool: 'Read', input: {}, id: '1' },
+      } as StreamEvent);
+
+      expect(output).toHaveLength(1);
+      expect(output[0]).toContain('[sub-a]');
+      expect(output[0]).toContain('[tool] Read');
+    });
+
+    it('should prefix tool_result events', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      handler({
+        type: 'tool_result',
+        data: { content: 'File content here', isError: false },
+      } as StreamEvent);
+
+      expect(output).toHaveLength(1);
+      expect(output[0]).toContain('File content here');
+    });
+
+    it('should prefix multi-line tool output', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      handler({
+        type: 'tool_output',
+        data: { tool: 'Bash', output: 'line1\nline2' },
+      } as StreamEvent);
+
+      expect(output).toHaveLength(2);
+      expect(output[0]).toContain('line1');
+      expect(output[1]).toContain('line2');
+    });
+
+    it('should prefix thinking events', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      handler({
+        type: 'thinking',
+        data: { thinking: 'Considering options...' },
+      } as StreamEvent);
+
+      expect(output).toHaveLength(1);
+      expect(output[0]).toContain('Considering options...');
+    });
+  });
+
+  describe('delegated events (init, result, error)', () => {
+    it('should delegate init event to parent callback', () => {
+      const parentEvents: StreamEvent[] = [];
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        parentOnStream: (event) => parentEvents.push(event),
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      const initEvent: StreamEvent = {
+        type: 'init',
+        data: { model: 'claude-3', sessionId: 'sess-1' },
+      };
+      handler(initEvent);
+
+      expect(parentEvents).toHaveLength(1);
+      expect(parentEvents[0]).toBe(initEvent);
+      expect(output).toHaveLength(0); // Not written to stdout
+    });
+
+    it('should delegate result event to parent callback', () => {
+      const parentEvents: StreamEvent[] = [];
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        parentOnStream: (event) => parentEvents.push(event),
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      const resultEvent: StreamEvent = {
+        type: 'result',
+        data: { result: 'done', sessionId: 'sess-1', success: true },
+      };
+      handler(resultEvent);
+
+      expect(parentEvents).toHaveLength(1);
+      expect(parentEvents[0]).toBe(resultEvent);
+    });
+
+    it('should delegate error event to parent callback', () => {
+      const parentEvents: StreamEvent[] = [];
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        parentOnStream: (event) => parentEvents.push(event),
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      const errorEvent: StreamEvent = {
+        type: 'error',
+        data: { message: 'Something went wrong' },
+      };
+      handler(errorEvent);
+
+      expect(parentEvents).toHaveLength(1);
+      expect(parentEvents[0]).toBe(errorEvent);
+    });
+
+    it('should not crash when no parent callback for delegated events', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['sub-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('sub-a', 0);
+
+      // Should not throw
+      handler({ type: 'init', data: { model: 'claude-3', sessionId: 'sess-1' } } as StreamEvent);
+      handler({ type: 'result', data: { result: 'done', sessionId: 'sess-1', success: true } } as StreamEvent);
+      handler({ type: 'error', data: { message: 'err' } } as StreamEvent);
+
+      expect(output).toHaveLength(0);
+    });
+  });
+
+  describe('flush', () => {
+    it('should output remaining buffered content', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a', 'step-b'],
+        writeFn,
+      });
+      const handlerA = logger.createStreamHandler('step-a', 0);
+      const handlerB = logger.createStreamHandler('step-b', 1);
+
+      handlerA({ type: 'text', data: { text: 'partial-a' } } as StreamEvent);
+      handlerB({ type: 'text', data: { text: 'partial-b' } } as StreamEvent);
+
+      expect(output).toHaveLength(0);
+
+      logger.flush();
+
+      expect(output).toHaveLength(2);
+      expect(output[0]).toContain('partial-a');
+      expect(output[1]).toContain('partial-b');
+    });
+
+    it('should not output empty buffers', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a', 'step-b'],
+        writeFn,
+      });
+      const handlerA = logger.createStreamHandler('step-a', 0);
+
+      handlerA({ type: 'text', data: { text: 'content\n' } } as StreamEvent);
+      output.length = 0; // Clear previous output
+
+      logger.flush();
+      expect(output).toHaveLength(0); // Nothing to flush
+    });
+  });
+
+  describe('printSummary', () => {
+    it('should print completion summary', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['arch-review', 'security-review'],
+        writeFn,
+      });
+
+      logger.printSummary('parallel-review', [
+        { name: 'arch-review', condition: 'approved' },
+        { name: 'security-review', condition: 'rejected' },
+      ]);
+
+      const fullOutput = output.join('');
+      expect(fullOutput).toContain('parallel-review results');
+      expect(fullOutput).toContain('arch-review:');
+      expect(fullOutput).toContain('approved');
+      expect(fullOutput).toContain('security-review:');
+      expect(fullOutput).toContain('rejected');
+      // Header and footer contain ─
+      expect(fullOutput).toContain('─');
+    });
+
+    it('should show (no result) for undefined condition', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+
+      logger.printSummary('parallel-step', [
+        { name: 'step-a', condition: undefined },
+      ]);
+
+      const fullOutput = output.join('');
+      expect(fullOutput).toContain('(no result)');
+    });
+
+    it('should right-pad sub-step names to align results', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['short', 'very-long-name'],
+        writeFn,
+      });
+
+      logger.printSummary('test', [
+        { name: 'short', condition: 'done' },
+        { name: 'very-long-name', condition: 'done' },
+      ]);
+
+      // Find the result lines (indented with 2 spaces)
+      const resultLines = output.filter((l) => l.startsWith('  '));
+      expect(resultLines).toHaveLength(2);
+
+      // Both 'done' values should be at the same column
+      const doneIndex0 = resultLines[0]!.indexOf('done');
+      const doneIndex1 = resultLines[1]!.indexOf('done');
+      expect(doneIndex0).toBe(doneIndex1);
+    });
+
+    it('should flush remaining buffers before printing summary', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a'],
+        writeFn,
+      });
+      const handler = logger.createStreamHandler('step-a', 0);
+
+      // Leave partial content in buffer
+      handler({ type: 'text', data: { text: 'trailing content' } } as StreamEvent);
+
+      logger.printSummary('test', [
+        { name: 'step-a', condition: 'done' },
+      ]);
+
+      // First output should be the flushed buffer
+      expect(output[0]).toContain('trailing content');
+      // Then the summary
+      const fullOutput = output.join('');
+      expect(fullOutput).toContain('test results');
+    });
+  });
+
+  describe('interleaved output from multiple sub-steps', () => {
+    it('should correctly interleave prefixed output', () => {
+      const logger = new ParallelLogger({
+        subStepNames: ['step-a', 'step-b'],
+        writeFn,
+      });
+      const handlerA = logger.createStreamHandler('step-a', 0);
+      const handlerB = logger.createStreamHandler('step-b', 1);
+
+      handlerA({ type: 'text', data: { text: 'A output\n' } } as StreamEvent);
+      handlerB({ type: 'text', data: { text: 'B output\n' } } as StreamEvent);
+      handlerA({ type: 'text', data: { text: 'A second\n' } } as StreamEvent);
+
+      expect(output).toHaveLength(3);
+      expect(output[0]).toContain('[step-a]');
+      expect(output[0]).toContain('A output');
+      expect(output[1]).toContain('[step-b]');
+      expect(output[1]).toContain('B output');
+      expect(output[2]).toContain('[step-a]');
+      expect(output[2]).toContain('A second');
+    });
+  });
+});
