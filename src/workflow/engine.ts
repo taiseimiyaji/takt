@@ -10,6 +10,7 @@ import type {
   WorkflowState,
   WorkflowStep,
   AgentResponse,
+  RuleMatchMethod,
 } from '../models/types.js';
 import { runAgent, type RunAgentOptions } from '../agents/runner.js';
 import { COMPLETE_STEP, ABORT_STEP, ERROR_MESSAGES } from './constants.js';
@@ -19,6 +20,7 @@ import { detectRuleIndex, callAiJudge } from '../claude/client.js';
 import { buildInstruction as buildInstructionFromTemplate, buildReportInstruction as buildReportInstructionFromTemplate, buildStatusJudgmentInstruction as buildStatusJudgmentInstructionFromTemplate, isReportObjectConfig } from './instruction-builder.js';
 import { LoopDetector } from './loop-detector.js';
 import { handleBlocked } from './blocked-handler.js';
+import { ParallelLogger } from './parallel-logger.js';
 import {
   createInitialState,
   addUserInput,
@@ -263,8 +265,10 @@ export class WorkflowEngine extends EventEmitter {
    * Detect matched rule for a step's response.
    * Evaluation order (first match wins):
    * 1. Aggregate conditions: all()/any() — evaluate sub-step results
-   * 2. Standard [STEP:N] tag detection (from tagContent, i.e. Phase 3 output)
-   * 3. ai() condition evaluation via AI judge (from agentContent, i.e. Phase 1 output)
+   * 2. Tag detection from Phase 3 output
+   * 3. Tag detection from Phase 1 output (fallback)
+   * 4. ai() condition evaluation via AI judge
+   * 5. All-conditions AI judge (final fallback)
    *
    * Returns undefined for steps without rules.
    * Throws if rules exist but no rule matched (Fail Fast).
@@ -273,27 +277,41 @@ export class WorkflowEngine extends EventEmitter {
    * @param agentContent - Phase 1 output (main execution)
    * @param tagContent - Phase 3 output (status judgment); empty string skips tag detection
    */
-  private async detectMatchedRule(step: WorkflowStep, agentContent: string, tagContent: string): Promise<number | undefined> {
+  private async detectMatchedRule(step: WorkflowStep, agentContent: string, tagContent: string): Promise<{ index: number; method: RuleMatchMethod } | undefined> {
     if (!step.rules || step.rules.length === 0) return undefined;
 
     // 1. Aggregate conditions (all/any) — only meaningful for parallel parent steps
     const aggIndex = this.evaluateAggregateConditions(step);
     if (aggIndex >= 0) {
-      return aggIndex;
+      return { index: aggIndex, method: 'aggregate' };
     }
 
-    // 2. Standard tag detection (from Phase 3 output)
+    // 2. Tag detection from Phase 3 output
     if (tagContent) {
       const ruleIndex = detectRuleIndex(tagContent, step.name);
       if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
-        return ruleIndex;
+        return { index: ruleIndex, method: 'phase3_tag' };
       }
     }
 
-    // 3. AI judge fallback (from Phase 1 output)
+    // 3. Tag detection from Phase 1 output (fallback)
+    if (agentContent) {
+      const ruleIndex = detectRuleIndex(agentContent, step.name);
+      if (ruleIndex >= 0 && ruleIndex < step.rules.length) {
+        return { index: ruleIndex, method: 'phase1_tag' };
+      }
+    }
+
+    // 4. AI judge for ai() conditions only
     const aiRuleIndex = await this.evaluateAiConditions(step, agentContent);
     if (aiRuleIndex >= 0) {
-      return aiRuleIndex;
+      return { index: aiRuleIndex, method: 'ai_judge' };
+    }
+
+    // 5. AI judge for all conditions (final fallback)
+    const fallbackIndex = await this.evaluateAllConditionsViaAiJudge(step, agentContent);
+    if (fallbackIndex >= 0) {
+      return { index: fallbackIndex, method: 'ai_judge_fallback' };
     }
 
     throw new Error(`Status not found for step "${step.name}": no rule matched after all detection phases`);
@@ -381,9 +399,10 @@ export class WorkflowEngine extends EventEmitter {
       tagContent = await this.runStatusJudgmentPhase(step);
     }
 
-    const matchedRuleIndex = await this.detectMatchedRule(step, response.content, tagContent);
-    if (matchedRuleIndex != null) {
-      response = { ...response, matchedRuleIndex };
+    const match = await this.detectMatchedRule(step, response.content, tagContent);
+    if (match) {
+      log.debug('Rule matched', { step: step.name, ruleIndex: match.index, method: match.method });
+      response = { ...response, matchedRuleIndex: match.index, matchedRuleMethod: match.method };
     }
 
     this.state.stepOutputs.set(step.name, response);
@@ -454,7 +473,7 @@ export class WorkflowEngine extends EventEmitter {
 
     const judgmentOptions = this.buildResumeOptions(step, sessionId, {
       allowedTools: [],
-      maxTurns: 1,
+      maxTurns: 3,
     });
 
     const judgmentResponse = await runAgent(step.agent, judgmentInstruction, judgmentOptions);
@@ -469,6 +488,9 @@ export class WorkflowEngine extends EventEmitter {
   /**
    * Run a parallel step: execute all sub-steps concurrently, then aggregate results.
    * The aggregated output becomes the parent step's response for rules evaluation.
+   *
+   * When onStream is provided, uses ParallelLogger to prefix each sub-step's
+   * output with `[name]` for readable interleaved display.
    */
   private async runParallelStep(step: WorkflowStep): Promise<{ response: AgentResponse; instruction: string }> {
     const subSteps = step.parallel!;
@@ -479,14 +501,28 @@ export class WorkflowEngine extends EventEmitter {
       stepIteration,
     });
 
+    // Create parallel logger for prefixed output (only when streaming is enabled)
+    const parallelLogger = this.options.onStream
+      ? new ParallelLogger({
+          subStepNames: subSteps.map((s) => s.name),
+          parentOnStream: this.options.onStream,
+        })
+      : undefined;
+
     // Run all sub-steps concurrently
     const subResults = await Promise.all(
-      subSteps.map(async (subStep) => {
+      subSteps.map(async (subStep, index) => {
         const subIteration = incrementStepIteration(this.state, subStep.name);
         const subInstruction = this.buildInstruction(subStep, subIteration);
 
         // Phase 1: main execution (Write excluded if sub-step has report)
         const agentOptions = this.buildAgentOptions(subStep);
+
+        // Override onStream with parallel logger's prefixed handler
+        if (parallelLogger) {
+          agentOptions.onStream = parallelLogger.createStreamHandler(subStep.name, index);
+        }
+
         const subResponse = await runAgent(subStep.agent, subInstruction, agentOptions);
         this.updateAgentSession(subStep.agent, subResponse.sessionId);
 
@@ -501,9 +537,9 @@ export class WorkflowEngine extends EventEmitter {
           subTagContent = await this.runStatusJudgmentPhase(subStep);
         }
 
-        const matchedRuleIndex = await this.detectMatchedRule(subStep, subResponse.content, subTagContent);
-        const finalResponse = matchedRuleIndex != null
-          ? { ...subResponse, matchedRuleIndex }
+        const match = await this.detectMatchedRule(subStep, subResponse.content, subTagContent);
+        const finalResponse = match
+          ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
           : subResponse;
 
         this.state.stepOutputs.set(subStep.name, finalResponse);
@@ -512,6 +548,19 @@ export class WorkflowEngine extends EventEmitter {
         return { subStep, response: finalResponse, instruction: subInstruction };
       }),
     );
+
+    // Print completion summary
+    if (parallelLogger) {
+      parallelLogger.printSummary(
+        step.name,
+        subResults.map((r) => ({
+          name: r.subStep.name,
+          condition: r.response.matchedRuleIndex != null && r.subStep.rules
+            ? r.subStep.rules[r.response.matchedRuleIndex]?.condition
+            : undefined,
+        })),
+      );
+    }
 
     // Aggregate sub-step outputs into parent step's response
     const aggregatedContent = subResults
@@ -523,14 +572,14 @@ export class WorkflowEngine extends EventEmitter {
       .join('\n\n');
 
     // Parent step uses aggregate conditions, so tagContent is empty
-    const matchedRuleIndex = await this.detectMatchedRule(step, aggregatedContent, '');
+    const match = await this.detectMatchedRule(step, aggregatedContent, '');
 
     const aggregatedResponse: AgentResponse = {
       agent: step.name,
       status: 'done',
       content: aggregatedContent,
       timestamp: new Date(),
-      ...(matchedRuleIndex != null && { matchedRuleIndex }),
+      ...(match && { matchedRuleIndex: match.index, matchedRuleMethod: match.method }),
     };
 
     this.state.stepOutputs.set(step.name, aggregatedResponse);
@@ -577,6 +626,37 @@ export class WorkflowEngine extends EventEmitter {
     }
 
     log.debug('AI judge did not match any condition', { step: step.name });
+    return -1;
+  }
+
+  /**
+   * Final fallback: evaluate ALL rule conditions via AI judge.
+   * Unlike evaluateAiConditions (which only handles ai() flagged rules),
+   * this sends every rule's condition text to the judge.
+   * Returns the 0-based rule index, or -1 if no match.
+   */
+  private async evaluateAllConditionsViaAiJudge(step: WorkflowStep, agentOutput: string): Promise<number> {
+    if (!step.rules || step.rules.length === 0) return -1;
+
+    const conditions = step.rules.map((rule, i) => ({ index: i, text: rule.condition }));
+
+    log.debug('Evaluating all conditions via AI judge (final fallback)', {
+      step: step.name,
+      conditionCount: conditions.length,
+    });
+
+    const judgeResult = await callAiJudge(agentOutput, conditions, { cwd: this.cwd });
+
+    if (judgeResult >= 0 && judgeResult < conditions.length) {
+      log.debug('AI judge (fallback) matched condition', {
+        step: step.name,
+        ruleIndex: judgeResult,
+        condition: conditions[judgeResult]!.text,
+      });
+      return judgeResult;
+    }
+
+    log.debug('AI judge (fallback) did not match any condition', { step: step.name });
     return -1;
   }
 

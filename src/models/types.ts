@@ -17,6 +17,14 @@ export type Status =
   | 'interrupted'
   | 'answer';
 
+/** How a rule match was detected */
+export type RuleMatchMethod =
+  | 'aggregate'
+  | 'phase3_tag'
+  | 'phase1_tag'
+  | 'ai_judge'
+  | 'ai_judge_fallback';
+
 /** Response from an agent execution */
 export interface AgentResponse {
   agent: string;
@@ -28,6 +36,8 @@ export interface AgentResponse {
   error?: string;
   /** Matched rule index (0-based) when rules-based detection was used */
   matchedRuleIndex?: number;
+  /** How the rule match was detected */
+  matchedRuleMethod?: RuleMatchMethod;
 }
 
 /** Session state for workflow execution */

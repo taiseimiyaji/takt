@@ -190,6 +190,7 @@ export async function executeWorkflow(
       step: step.name,
       status: response.status,
       matchedRuleIndex: response.matchedRuleIndex,
+      matchedRuleMethod: response.matchedRuleMethod,
       contentLength: response.content.length,
       sessionId: response.sessionId,
       error: response.error,
@@ -203,7 +204,8 @@ export async function executeWorkflow(
     if (response.matchedRuleIndex != null && step.rules) {
       const rule = step.rules[response.matchedRuleIndex];
       if (rule) {
-        status('Status', rule.condition);
+        const methodLabel = response.matchedRuleMethod ? ` (${response.matchedRuleMethod})` : '';
+        status('Status', `${rule.condition}${methodLabel}`);
       } else {
         status('Status', response.status);
       }
