@@ -3,10 +3,12 @@
  *
  * Builds the instruction string for agent execution by:
  * 1. Auto-injecting standard sections (Execution Context, Workflow Context,
- *    User Request, Previous Response, Additional User Inputs, Instructions header)
+ *    User Request, Previous Response, Additional User Inputs, Instructions header,
+ *    Status Output Rules)
  * 2. Replacing template placeholders with actual values
  *
- * Status judgment is handled separately in Phase 3 (buildStatusJudgmentInstruction).
+ * Status rules are injected into Phase 1 for tag-based detection,
+ * and also used in Phase 3 (buildStatusJudgmentInstruction) as a dedicated follow-up.
  */
 
 import type { WorkflowStep, WorkflowRule, AgentResponse, Language, ReportConfig, ReportObjectConfig } from '../models/types.js';
@@ -406,8 +408,7 @@ function replaceTemplatePlaceholders(
  * 4. Previous Response — if passPreviousResponse and has content, unless template contains {previous_response}
  * 5. Additional User Inputs — unless template contains {user_inputs}
  * 6. Instructions header + instruction_template content — always
- *
- * Status judgment is handled separately in Phase 3 (buildStatusJudgmentInstruction).
+ * 7. Status Output Rules — when step has tag-based rules (not all ai()/aggregate)
  *
  * Template placeholders ({task}, {previous_response}, etc.) are still replaced
  * within the instruction_template body for backward compatibility.
@@ -461,6 +462,16 @@ export function buildInstruction(
     context,
   );
   sections.push(`${s.instructions}\n${processedTemplate}`);
+
+  // 7. Status Output Rules (for tag-based detection in Phase 1)
+  // Skip if all rules are ai() or aggregate conditions (no tags needed)
+  if (step.rules && step.rules.length > 0) {
+    const allNonTagConditions = step.rules.every((r) => r.isAiCondition || r.isAggregateCondition);
+    if (!allNonTagConditions) {
+      const statusRulesPrompt = generateStatusRulesFromRules(step.name, step.rules, language);
+      sections.push(statusRulesPrompt);
+    }
+  }
 
   return sections.join('\n\n');
 }

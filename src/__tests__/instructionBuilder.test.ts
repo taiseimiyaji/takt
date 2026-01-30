@@ -362,8 +362,8 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('buildInstruction with rules (Phase 1 — no status tags)', () => {
-    it('should NOT include status rules even when rules exist (phase separation)', () => {
+  describe('buildInstruction with rules (Phase 1 — status rules injection)', () => {
+    it('should include status rules when tag-based rules exist', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
       step.rules = [
@@ -374,10 +374,9 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      // Phase 1 should NOT contain status header or criteria
-      expect(result).not.toContain('Status Output Rules');
-      expect(result).not.toContain('Decision Criteria');
-      expect(result).not.toContain('[PLAN:');
+      expect(result).toContain('Decision Criteria');
+      expect(result).toContain('[PLAN:1]');
+      expect(result).toContain('[PLAN:2]');
     });
 
     it('should not add status rules when rules do not exist', () => {
@@ -386,7 +385,6 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
       expect(result).not.toContain('Decision Criteria');
     });
 
@@ -397,7 +395,6 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
       expect(result).not.toContain('Decision Criteria');
     });
   });
@@ -859,8 +856,8 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('phase separation — buildInstruction never includes status rules', () => {
-    it('should NOT include status rules even with ai() conditions', () => {
+  describe('status rules injection — skip when all rules are ai()/aggregate', () => {
+    it('should NOT include status rules when all rules are ai() conditions', () => {
       const step = createMinimalStep('Do work');
       step.rules = [
         { condition: 'ai("No issues")', next: 'COMPLETE', isAiCondition: true, aiConditionText: 'No issues' },
@@ -870,12 +867,13 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).not.toContain('Decision Criteria');
       expect(result).not.toContain('[TEST-STEP:');
     });
 
-    it('should NOT include status rules with mixed regular and ai() conditions', () => {
+    it('should include status rules with mixed regular and ai() conditions', () => {
       const step = createMinimalStep('Do work');
+      step.name = 'review';
       step.rules = [
         { condition: 'Error occurred', next: 'ABORT' },
         { condition: 'ai("Issues found")', next: 'fix', isAiCondition: true, aiConditionText: 'Issues found' },
@@ -884,11 +882,13 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).toContain('Decision Criteria');
+      expect(result).toContain('[REVIEW:1]');
     });
 
-    it('should NOT include status rules with regular conditions only', () => {
+    it('should include status rules with regular conditions only', () => {
       const step = createMinimalStep('Do work');
+      step.name = 'plan';
       step.rules = [
         { condition: 'Done', next: 'COMPLETE' },
         { condition: 'Blocked', next: 'ABORT' },
@@ -897,10 +897,12 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).toContain('Decision Criteria');
+      expect(result).toContain('[PLAN:1]');
+      expect(result).toContain('[PLAN:2]');
     });
 
-    it('should NOT include status rules with aggregate conditions', () => {
+    it('should NOT include status rules when all rules are aggregate conditions', () => {
       const step = createMinimalStep('Do work');
       step.rules = [
         { condition: 'all("approved")', next: 'COMPLETE', isAggregateCondition: true, aggregateType: 'all' as const, aggregateConditionText: 'approved' },
@@ -910,10 +912,10 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).not.toContain('Decision Criteria');
     });
 
-    it('should NOT include status rules with mixed ai() and aggregate conditions', () => {
+    it('should NOT include status rules when all rules are ai() + aggregate', () => {
       const step = createMinimalStep('Do work');
       step.rules = [
         { condition: 'all("approved")', next: 'COMPLETE', isAggregateCondition: true, aggregateType: 'all' as const, aggregateConditionText: 'approved' },
@@ -924,11 +926,12 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).not.toContain('Decision Criteria');
     });
 
-    it('should NOT include status rules with mixed aggregate and regular conditions', () => {
+    it('should include status rules with mixed aggregate and regular conditions', () => {
       const step = createMinimalStep('Do work');
+      step.name = 'supervise';
       step.rules = [
         { condition: 'all("approved")', next: 'COMPLETE', isAggregateCondition: true, aggregateType: 'all' as const, aggregateConditionText: 'approved' },
         { condition: 'Error occurred', next: 'ABORT' },
@@ -937,7 +940,8 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Status Output Rules');
+      expect(result).toContain('Decision Criteria');
+      expect(result).toContain('[SUPERVISE:1]');
     });
   });
 
