@@ -2,13 +2,12 @@
 # Review workflow with CQRS+ES, Frontend, Security, and QA experts
 #
 # Flow:
-# plan -> implement -> ai_review -> cqrs_es_review -> frontend_review -> security_review -> qa_review -> supervise -> COMPLETE
-#                          ↓            ↓                  ↓                  ↓                ↓            ↓
-#                        ai_fix    fix_cqrs_es       fix_frontend        fix_security       fix_qa    fix_supervisor
-#
-# Fix destination is determined by Coder based on change impact:
-# - fix_security: MINOR->security_review, MAJOR->cqrs_es_review
-# - fix_qa: MINOR->qa_review, SECURITY->security_review, MAJOR->cqrs_es_review
+# plan -> implement -> ai_review -> reviewers (parallel) -> supervise -> COMPLETE
+#                          ↓              ├─ cqrs-es-review      ↓
+#                        ai_fix           ├─ frontend-review   fix_supervisor
+#                                         ├─ security-review
+#                                         └─ qa-review
+#                                    any("needs_fix") → fix → reviewers
 #
 # Template Variables:
 #   {iteration}      - Workflow-wide turn count (total steps executed across all agents)
@@ -190,7 +189,7 @@ steps:
       - Scope creep detection
     rules:
       - condition: No AI-specific issues found
-        next: cqrs_es_review
+        next: reviewers
       - condition: AI-specific issues detected
         next: ai_fix
 
@@ -224,331 +223,220 @@ steps:
         next: plan
 
   # ===========================================
-  # Phase 3: CQRS+ES Review
+  # Phase 3: Expert Reviews (Parallel)
   # ===========================================
-  - name: cqrs_es_review
-    edit: false
-    agent: ../agents/expert-cqrs/cqrs-es-reviewer.md
-    report:
-      name: 04-cqrs-es-review.md
-      format: |
-        ```markdown
-        # CQRS+ES Review
+  - name: reviewers
+    parallel:
+      - name: cqrs-es-review
+        edit: false
+        agent: ../agents/expert-cqrs/cqrs-es-reviewer.md
+        report:
+          name: 04-cqrs-es-review.md
+          format: |
+            ```markdown
+            # CQRS+ES Review
 
-        ## Result: APPROVE / REJECT
+            ## Result: APPROVE / REJECT
 
-        ## Summary
-        {1-2 sentences summarizing result}
+            ## Summary
+            {1-2 sentences summarizing result}
 
-        ## Reviewed Perspectives
-        | Perspective | Result | Notes |
-        |-------------|--------|-------|
-        | Aggregate Design | ✅ | - |
-        | Event Design | ✅ | - |
-        | Command/Query Separation | ✅ | - |
-        | Projections | ✅ | - |
-        | Eventual Consistency | ✅ | - |
+            ## Reviewed Perspectives
+            | Perspective | Result | Notes |
+            |-------------|--------|-------|
+            | Aggregate Design | ✅ | - |
+            | Event Design | ✅ | - |
+            | Command/Query Separation | ✅ | - |
+            | Projections | ✅ | - |
+            | Eventual Consistency | ✅ | - |
 
-        ## Issues (if REJECT)
-        | # | Location | Issue | Fix |
-        |---|----------|-------|-----|
-        | 1 | `src/file.ts:42` | Issue description | Fix method |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      Review the changes above from the CQRS (Command Query Responsibility Segregation)
-      and Event Sourcing perspective.
+            ## Issues (if REJECT)
+            | # | Location | Issue | Fix |
+            |---|----------|-------|-----|
+            | 1 | `src/file.ts:42` | Issue description | Fix method |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          Review the changes from the CQRS (Command Query Responsibility Segregation)
+          and Event Sourcing perspective. Do NOT review AI-specific issues (that's the ai_review step).
 
-      **Review Criteria:**
-      - Aggregate design validity
-      - Event design (granularity, naming, schema)
-      - Command/Query separation
-      - Projection design
-      - Eventual consistency considerations
+          **Review Criteria:**
+          - Aggregate design validity
+          - Event design (granularity, naming, schema)
+          - Command/Query separation
+          - Projection design
+          - Eventual consistency considerations
 
-      **Note**: If this project does not use CQRS+ES patterns,
-      review from a general domain design perspective.
+          **Note**: If this project does not use CQRS+ES patterns,
+          review from a general domain design perspective.
+
+      - name: frontend-review
+        edit: false
+        agent: ../agents/expert/frontend-reviewer.md
+        report:
+          name: 05-frontend-review.md
+          format: |
+            ```markdown
+            # Frontend Review
+
+            ## Result: APPROVE / REJECT
+
+            ## Summary
+            {1-2 sentences summarizing result}
+
+            ## Reviewed Perspectives
+            | Perspective | Result | Notes |
+            |-------------|--------|-------|
+            | Component Design | ✅ | - |
+            | State Management | ✅ | - |
+            | Performance | ✅ | - |
+            | Accessibility | ✅ | - |
+            | Type Safety | ✅ | - |
+
+            ## Issues (if REJECT)
+            | # | Location | Issue | Fix |
+            |---|----------|-------|-----|
+            | 1 | `src/file.tsx:42` | Issue description | Fix method |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          Review the changes from the frontend development perspective.
+
+          **Review Criteria:**
+          - Component design (separation of concerns, granularity)
+          - State management (local/global decisions)
+          - Performance (re-rendering, memoization)
+          - Accessibility (keyboard support, ARIA)
+          - Data fetching patterns
+          - TypeScript type safety
+
+          **Note**: If this project does not include frontend code,
+          approve and proceed to the next step.
+
+      - name: security-review
+        edit: false
+        agent: ../agents/expert/security-reviewer.md
+        report:
+          name: 06-security-review.md
+          format: |
+            ```markdown
+            # Security Review
+
+            ## Result: APPROVE / REJECT
+
+            ## Severity: None / Low / Medium / High / Critical
+
+            ## Check Results
+            | Category | Result | Notes |
+            |----------|--------|-------|
+            | Injection | ✅ | - |
+            | Auth/Authz | ✅ | - |
+            | Data Protection | ✅ | - |
+            | Dependencies | ✅ | - |
+
+            ## Vulnerabilities (if REJECT)
+            | # | Severity | Type | Location | Fix |
+            |---|----------|------|----------|-----|
+            | 1 | High | SQLi | `src/db.ts:42` | Use parameterized query |
+
+            ## Warnings (non-blocking)
+            - {Security recommendations}
+            ```
+
+            **Cognitive load reduction rules:**
+            - No issues -> Check table only (10 lines or less)
+            - Warnings -> + Warnings 1-2 lines (15 lines or less)
+            - Vulnerabilities -> + Table format (30 lines or less)
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          Perform security review on the changes. Check for vulnerabilities including:
+          - Injection attacks (SQL, Command, XSS)
+          - Authentication/Authorization issues
+          - Data exposure risks
+          - Cryptographic weaknesses
+
+      - name: qa-review
+        edit: false
+        agent: ../agents/expert/qa-reviewer.md
+        report:
+          name: 07-qa-review.md
+          format: |
+            ```markdown
+            # QA Review
+
+            ## Result: APPROVE / REJECT
+
+            ## Summary
+            {1-2 sentences summarizing result}
+
+            ## Reviewed Perspectives
+            | Perspective | Result | Notes |
+            |-------------|--------|-------|
+            | Test Coverage | ✅ | - |
+            | Test Quality | ✅ | - |
+            | Error Handling | ✅ | - |
+            | Documentation | ✅ | - |
+            | Maintainability | ✅ | - |
+
+            ## Issues (if REJECT)
+            | # | Category | Issue | Fix |
+            |---|----------|-------|-----|
+            | 1 | Testing | Issue description | Fix method |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          Review the changes from the quality assurance perspective.
+
+          **Review Criteria:**
+          - Test coverage and quality
+          - Test strategy (unit/integration/E2E)
+          - Documentation (in-code and external)
+          - Error handling
+          - Logging and monitoring
+          - Maintainability
     rules:
-      - condition: CQRS+ES design is sound with no issues
-        next: frontend_review
-      - condition: CQRS+ES design issues found
-        next: fix_cqrs_es
-
-  - name: fix_cqrs_es
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## CQRS+ES Review Feedback (This is the latest instruction - prioritize this)
-      {previous_response}
-
-      **Important**: Fix the issues pointed out by the CQRS+ES expert.
-
-      Areas of concern:
-      - Aggregate design
-      - Event design
-      - Command/Query separation
-      - Projections
-      - Eventual consistency
-    pass_previous_response: true
-    rules:
-      - condition: CQRS+ES issues have been fixed
-        next: cqrs_es_review
-      - condition: Unable to proceed with fixes
-        next: plan
-
-  # ===========================================
-  # Phase 4: Frontend Review
-  # ===========================================
-  - name: frontend_review
-    edit: false
-    agent: ../agents/expert/frontend-reviewer.md
-    report:
-      name: 05-frontend-review.md
-      format: |
-        ```markdown
-        # Frontend Review
-
-        ## Result: APPROVE / REJECT
-
-        ## Summary
-        {1-2 sentences summarizing result}
-
-        ## Reviewed Perspectives
-        | Perspective | Result | Notes |
-        |-------------|--------|-------|
-        | Component Design | ✅ | - |
-        | State Management | ✅ | - |
-        | Performance | ✅ | - |
-        | Accessibility | ✅ | - |
-        | Type Safety | ✅ | - |
-
-        ## Issues (if REJECT)
-        | # | Location | Issue | Fix |
-        |---|----------|-------|-----|
-        | 1 | `src/file.tsx:42` | Issue description | Fix method |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      Review the changes above from the frontend development perspective.
-
-      **Review Criteria:**
-      - Component design (separation of concerns, granularity)
-      - State management (local/global decisions)
-      - Performance (re-rendering, memoization)
-      - Accessibility (keyboard support, ARIA)
-      - Data fetching patterns
-      - TypeScript type safety
-
-      **Note**: If this project does not include frontend code,
-      approve and proceed to the next step.
-    rules:
-      - condition: Frontend design is sound with no issues
-        next: security_review
-      - condition: Frontend design issues found
-        next: fix_frontend
-
-  - name: fix_frontend
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## Frontend Review Feedback (This is the latest instruction - prioritize this)
-      {previous_response}
-
-      **Important**: Fix the issues pointed out by the frontend expert.
-
-      Areas of concern:
-      - Component design
-      - State management
-      - Performance
-      - Accessibility
-      - Type safety
-    pass_previous_response: true
-    rules:
-      - condition: Frontend issues have been fixed
-        next: frontend_review
-      - condition: Unable to proceed with fixes
-        next: plan
-
-  # ===========================================
-  # Phase 5: Security Review
-  # ===========================================
-  - name: security_review
-    edit: false
-    agent: ../agents/expert/security-reviewer.md
-    report:
-      name: 06-security-review.md
-      format: |
-        ```markdown
-        # Security Review
-
-        ## Result: APPROVE / REJECT
-
-        ## Severity: None / Low / Medium / High / Critical
-
-        ## Check Results
-        | Category | Result | Notes |
-        |----------|--------|-------|
-        | Injection | ✅ | - |
-        | Auth/Authz | ✅ | - |
-        | Data Protection | ✅ | - |
-        | Dependencies | ✅ | - |
-
-        ## Vulnerabilities (if REJECT)
-        | # | Severity | Type | Location | Fix |
-        |---|----------|------|----------|-----|
-        | 1 | High | SQLi | `src/db.ts:42` | Use parameterized query |
-
-        ## Warnings (non-blocking)
-        - {Security recommendations}
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      Review the changes above from the security perspective.
-
-      **Review Criteria:**
-      - Injection attacks (SQL, command, XSS)
-      - Authentication/authorization flaws
-      - Sensitive information handling
-      - Encryption appropriateness
-      - OWASP Top 10
-    rules:
-      - condition: No security issues found
-        next: qa_review
-      - condition: Security vulnerabilities detected
-        next: fix_security
-
-  - name: fix_security
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## Security Review Feedback (This is the latest instruction - prioritize this)
-      {previous_response}
-
-      **Important**: Fix the issues pointed out by the security expert.
-      Security issues should be addressed with highest priority.
-
-      Areas of concern:
-      - Injection vulnerabilities
-      - Authentication/authorization flaws
-      - Sensitive information exposure
-      - Encryption issues
-
-      ## Completion: Determine Change Impact
-      When fix is complete, judge the **impact scope of changes**:
-
-      - Minor fix (re-run security review only)
-        - Examples: Add validation, add escaping, configuration changes
-      - Major fix (restart from CQRS+ES review)
-        - Examples: Data flow changes, API design changes, auth method changes, domain model changes
-    pass_previous_response: true
-    rules:
-      - condition: Minor security fix is complete
-        next: security_review
-      - condition: Major fix applied requiring CQRS+ES re-review
-        next: cqrs_es_review
-      - condition: Unable to proceed with fixes
-        next: plan
-
-  # ===========================================
-  # Phase 6: QA Review
-  # ===========================================
-  - name: qa_review
-    edit: false
-    agent: ../agents/expert/qa-reviewer.md
-    report:
-      name: 07-qa-review.md
-      format: |
-        ```markdown
-        # QA Review
-
-        ## Result: APPROVE / REJECT
-
-        ## Summary
-        {1-2 sentences summarizing result}
-
-        ## Reviewed Perspectives
-        | Perspective | Result | Notes |
-        |-------------|--------|-------|
-        | Test Coverage | ✅ | - |
-        | Test Quality | ✅ | - |
-        | Error Handling | ✅ | - |
-        | Documentation | ✅ | - |
-        | Maintainability | ✅ | - |
-
-        ## Issues (if REJECT)
-        | # | Category | Issue | Fix |
-        |---|----------|-------|-----|
-        | 1 | Testing | Issue description | Fix method |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      Review the changes above from the quality assurance perspective.
-
-      **Review Criteria:**
-      - Test coverage and quality
-      - Test strategy (unit/integration/E2E)
-      - Documentation (in-code and external)
-      - Error handling
-      - Logging and monitoring
-      - Maintainability
-    rules:
-      - condition: Quality standards are met
+      - condition: all("approved")
         next: supervise
-      - condition: Quality issues found
-        next: fix_qa
+      - condition: any("needs_fix")
+        next: fix
 
-  - name: fix_qa
+  - name: fix
     edit: true
     agent: ../agents/default/coder.md
     allowed_tools:
@@ -560,41 +448,23 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
+    permission_mode: acceptEdits
+    rules:
+      - condition: Fix complete
+        next: reviewers
+      - condition: Cannot proceed, insufficient info
+        next: plan
     instruction_template: |
-      ## QA Review Feedback (This is the latest instruction - prioritize this)
+      ## Review Feedback (This is the latest instruction - prioritize this)
       {previous_response}
 
-      **Important**: Fix the issues pointed out by the QA expert.
-
-      Areas of concern:
-      - Adding/improving tests
-      - Adding/fixing documentation
-      - Error handling
-      - Log output
-      - Code quality
-
-      ## Completion: Determine Change Impact
-      When fix is complete, judge the **impact scope of changes**:
-
-      - Minor fix (re-run QA review only)
-        - Examples: Add tests, add documentation, add logs, add comments
-      - Security-impacting fix (restart from security review)
-        - Examples: Error handling changes (error message content changes), input validation changes
-      - Major fix (restart from CQRS+ES review)
-        - Examples: Business logic changes, data model changes, API changes
+      **Important**: Address the feedback from the reviewers.
+      The "Original User Request" is reference information, not the latest instruction.
+      Review the session conversation history and fix the issues raised by the reviewers.
     pass_previous_response: true
-    rules:
-      - condition: Minor QA fix is complete
-        next: qa_review
-      - condition: Security-impacting fix applied
-        next: security_review
-      - condition: Major fix applied requiring CQRS+ES re-review
-        next: cqrs_es_review
-      - condition: Unable to proceed with fixes
-        next: plan
 
   # ===========================================
-  # Phase 7: Supervision
+  # Phase 4: Supervision
   # ===========================================
   - name: supervise
     edit: false

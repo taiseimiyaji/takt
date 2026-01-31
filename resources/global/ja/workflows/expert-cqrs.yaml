@@ -2,13 +2,12 @@
 # CQRS+ES、フロントエンド、セキュリティ、QAの専門家によるレビューワークフロー
 #
 # フロー:
-# plan -> implement -> ai_review -> cqrs_es_review -> frontend_review -> security_review -> qa_review -> supervise -> COMPLETE
-#                          ↓            ↓                  ↓                  ↓                ↓            ↓
-#                        ai_fix    fix_cqrs_es       fix_frontend       fix_security       fix_qa    fix_supervisor
-#
-# 修正時の戻り先はCoderが判断:
-# - fix_security: MINOR→security_review, MAJOR→cqrs_es_review
-# - fix_qa: MINOR→qa_review, SECURITY→security_review, MAJOR→cqrs_es_review
+# plan -> implement -> ai_review -> reviewers (parallel) -> supervise -> COMPLETE
+#                          ↓              ├─ cqrs-es-review      ↓
+#                        ai_fix           ├─ frontend-review   fix_supervisor
+#                                         ├─ security-review
+#                                         └─ qa-review
+#                                    any("needs_fix") → fix → reviewers
 #
 # ボイラープレートセクション（Workflow Context, User Request, Previous Response,
 # Additional User Inputs, Instructions heading）はbuildInstruction()が自動挿入。
@@ -199,7 +198,7 @@ steps:
       - スコープクリープの検出
     rules:
       - condition: AI特有の問題が見つからない
-        next: cqrs_es_review
+        next: reviewers
       - condition: AI特有の問題が検出された
         next: ai_fix
 
@@ -233,331 +232,220 @@ steps:
         next: plan
 
   # ===========================================
-  # Phase 3: CQRS+ES Review
+  # Phase 3: Expert Reviews (Parallel)
   # ===========================================
-  - name: cqrs_es_review
-    edit: false
-    agent: ../agents/expert-cqrs/cqrs-es-reviewer.md
-    report:
-      name: 04-cqrs-es-review.md
-      format: |
-        ```markdown
-        # CQRS+ESレビュー
+  - name: reviewers
+    parallel:
+      - name: cqrs-es-review
+        edit: false
+        agent: ../agents/expert-cqrs/cqrs-es-reviewer.md
+        report:
+          name: 04-cqrs-es-review.md
+          format: |
+            ```markdown
+            # CQRS+ESレビュー
 
-        ## 結果: APPROVE / REJECT
+            ## 結果: APPROVE / REJECT
 
-        ## サマリー
-        {1-2文で結果を要約}
+            ## サマリー
+            {1-2文で結果を要約}
 
-        ## 確認した観点
-        | 観点 | 結果 | 備考 |
-        |------|------|------|
-        | Aggregate設計 | ✅ | - |
-        | イベント設計 | ✅ | - |
-        | Command/Query分離 | ✅ | - |
-        | プロジェクション | ✅ | - |
-        | 結果整合性 | ✅ | - |
+            ## 確認した観点
+            | 観点 | 結果 | 備考 |
+            |------|------|------|
+            | Aggregate設計 | ✅ | - |
+            | イベント設計 | ✅ | - |
+            | Command/Query分離 | ✅ | - |
+            | プロジェクション | ✅ | - |
+            | 結果整合性 | ✅ | - |
 
-        ## 問題点（REJECTの場合）
-        | # | 場所 | 問題 | 修正案 |
-        |---|------|------|--------|
-        | 1 | `src/file.ts:42` | 問題の説明 | 修正方法 |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      CQRS（コマンドクエリ責務分離）とEvent Sourcing（イベントソーシング）の観点から
-      上記の変更をレビューしてください。
+            ## 問題点（REJECTの場合）
+            | # | 場所 | 問題 | 修正案 |
+            |---|------|------|--------|
+            | 1 | `src/file.ts:42` | 問題の説明 | 修正方法 |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          CQRS（コマンドクエリ責務分離）とEvent Sourcing（イベントソーシング）の観点から
+          変更をレビューしてください。AI特有の問題のレビューは不要です（ai_reviewステップで実施済み）。
 
-      **レビュー観点:**
-      - Aggregate設計の妥当性
-      - イベント設計（粒度、命名、スキーマ）
-      - Command/Queryの分離
-      - プロジェクション設計
-      - 結果整合性の考慮
+          **レビュー観点:**
+          - Aggregate設計の妥当性
+          - イベント設計（粒度、命名、スキーマ）
+          - Command/Queryの分離
+          - プロジェクション設計
+          - 結果整合性の考慮
 
-      **注意**: このプロジェクトがCQRS+ESパターンを使用していない場合は、
-      一般的なドメイン設計の観点からレビューしてください。
+          **注意**: このプロジェクトがCQRS+ESパターンを使用していない場合は、
+          一般的なドメイン設計の観点からレビューしてください。
+
+      - name: frontend-review
+        edit: false
+        agent: ../agents/expert/frontend-reviewer.md
+        report:
+          name: 05-frontend-review.md
+          format: |
+            ```markdown
+            # フロントエンドレビュー
+
+            ## 結果: APPROVE / REJECT
+
+            ## サマリー
+            {1-2文で結果を要約}
+
+            ## 確認した観点
+            | 観点 | 結果 | 備考 |
+            |------|------|------|
+            | コンポーネント設計 | ✅ | - |
+            | 状態管理 | ✅ | - |
+            | パフォーマンス | ✅ | - |
+            | アクセシビリティ | ✅ | - |
+            | 型安全性 | ✅ | - |
+
+            ## 問題点（REJECTの場合）
+            | # | 場所 | 問題 | 修正案 |
+            |---|------|------|--------|
+            | 1 | `src/file.tsx:42` | 問題の説明 | 修正方法 |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          フロントエンド開発の観点から変更をレビューしてください。
+
+          **レビュー観点:**
+          - コンポーネント設計（責務分離、粒度）
+          - 状態管理（ローカル/グローバルの判断）
+          - パフォーマンス（再レンダリング、メモ化）
+          - アクセシビリティ（キーボード操作、ARIA）
+          - データフェッチパターン
+          - TypeScript型安全性
+
+          **注意**: このプロジェクトがフロントエンドを含まない場合は、
+          問題なしとして次に進んでください。
+
+      - name: security-review
+        edit: false
+        agent: ../agents/expert/security-reviewer.md
+        report:
+          name: 06-security-review.md
+          format: |
+            ```markdown
+            # セキュリティレビュー
+
+            ## 結果: APPROVE / REJECT
+
+            ## 重大度: None / Low / Medium / High / Critical
+
+            ## チェック結果
+            | カテゴリ | 結果 | 備考 |
+            |---------|------|------|
+            | インジェクション | ✅ | - |
+            | 認証・認可 | ✅ | - |
+            | データ保護 | ✅ | - |
+            | 依存関係 | ✅ | - |
+
+            ## 脆弱性（REJECTの場合）
+            | # | 重大度 | 種類 | 場所 | 修正案 |
+            |---|--------|------|------|--------|
+            | 1 | High | SQLi | `src/db.ts:42` | パラメータ化クエリを使用 |
+
+            ## 警告（ブロッキングではない）
+            - {セキュリティに関する推奨事項}
+            ```
+
+            **認知負荷軽減ルール:**
+            - 問題なし → チェック表のみ（10行以内）
+            - 警告 → + 警告1-2行（15行以内）
+            - 脆弱性 → + 表形式（30行以内）
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          セキュリティの観点から変更をレビューしてください。以下の脆弱性をチェック:
+          - インジェクション攻撃（SQL, コマンド, XSS）
+          - 認証・認可の不備
+          - データ露出リスク
+          - 暗号化の弱点
+
+      - name: qa-review
+        edit: false
+        agent: ../agents/expert/qa-reviewer.md
+        report:
+          name: 07-qa-review.md
+          format: |
+            ```markdown
+            # QAレビュー
+
+            ## 結果: APPROVE / REJECT
+
+            ## サマリー
+            {1-2文で結果を要約}
+
+            ## 確認した観点
+            | 観点 | 結果 | 備考 |
+            |------|------|------|
+            | テストカバレッジ | ✅ | - |
+            | テスト品質 | ✅ | - |
+            | エラーハンドリング | ✅ | - |
+            | ドキュメント | ✅ | - |
+            | 保守性 | ✅ | - |
+
+            ## 問題点（REJECTの場合）
+            | # | カテゴリ | 問題 | 修正案 |
+            |---|---------|------|--------|
+            | 1 | テスト | 問題の説明 | 修正方法 |
+            ```
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - WebSearch
+          - WebFetch
+        rules:
+          - condition: approved
+          - condition: needs_fix
+        instruction_template: |
+          品質保証の観点から変更をレビューしてください。
+
+          **レビュー観点:**
+          - テストカバレッジと品質
+          - テスト戦略（単体/統合/E2E）
+          - ドキュメント（コード内・外部）
+          - エラーハンドリング
+          - ログとモニタリング
+          - 保守性
     rules:
-      - condition: CQRS+ES設計に問題がない
-        next: frontend_review
-      - condition: CQRS+ES設計に問題がある
-        next: fix_cqrs_es
-
-  - name: fix_cqrs_es
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## CQRS+ES Review Feedback (これが最新の指示です - 優先して対応してください)
-      {previous_response}
-
-      **重要**: CQRS+ES専門家からの指摘を修正してください。
-
-      指摘されたポイント:
-      - Aggregate設計
-      - イベント設計
-      - Command/Query分離
-      - プロジェクション
-      - 結果整合性
-    pass_previous_response: true
-    rules:
-      - condition: CQRS+ES専門家の指摘に対する修正が完了した
-        next: cqrs_es_review
-      - condition: 修正を進行できない
-        next: plan
-
-  # ===========================================
-  # Phase 4: Frontend Review
-  # ===========================================
-  - name: frontend_review
-    edit: false
-    agent: ../agents/expert/frontend-reviewer.md
-    report:
-      name: 05-frontend-review.md
-      format: |
-        ```markdown
-        # フロントエンドレビュー
-
-        ## 結果: APPROVE / REJECT
-
-        ## サマリー
-        {1-2文で結果を要約}
-
-        ## 確認した観点
-        | 観点 | 結果 | 備考 |
-        |------|------|------|
-        | コンポーネント設計 | ✅ | - |
-        | 状態管理 | ✅ | - |
-        | パフォーマンス | ✅ | - |
-        | アクセシビリティ | ✅ | - |
-        | 型安全性 | ✅ | - |
-
-        ## 問題点（REJECTの場合）
-        | # | 場所 | 問題 | 修正案 |
-        |---|------|------|--------|
-        | 1 | `src/file.tsx:42` | 問題の説明 | 修正方法 |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      フロントエンド開発の観点から上記の変更をレビューしてください。
-
-      **レビュー観点:**
-      - コンポーネント設計（責務分離、粒度）
-      - 状態管理（ローカル/グローバルの判断）
-      - パフォーマンス（再レンダリング、メモ化）
-      - アクセシビリティ（キーボード操作、ARIA）
-      - データフェッチパターン
-      - TypeScript型安全性
-
-      **注意**: このプロジェクトがフロントエンドを含まない場合は、
-      問題なしとして次に進んでください。
-    rules:
-      - condition: フロントエンド設計に問題がない
-        next: security_review
-      - condition: フロントエンド設計に問題がある
-        next: fix_frontend
-
-  - name: fix_frontend
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## Frontend Review Feedback (これが最新の指示です - 優先して対応してください)
-      {previous_response}
-
-      **重要**: フロントエンド専門家からの指摘を修正してください。
-
-      指摘されたポイント:
-      - コンポーネント設計
-      - 状態管理
-      - パフォーマンス
-      - アクセシビリティ
-      - 型安全性
-    pass_previous_response: true
-    rules:
-      - condition: フロントエンドの指摘に対する修正が完了した
-        next: frontend_review
-      - condition: 修正を進行できない
-        next: plan
-
-  # ===========================================
-  # Phase 5: Security Review
-  # ===========================================
-  - name: security_review
-    edit: false
-    agent: ../agents/expert/security-reviewer.md
-    report:
-      name: 06-security-review.md
-      format: |
-        ```markdown
-        # セキュリティレビュー
-
-        ## 結果: APPROVE / REJECT
-
-        ## 重大度: None / Low / Medium / High / Critical
-
-        ## チェック結果
-        | カテゴリ | 結果 | 備考 |
-        |---------|------|------|
-        | インジェクション | ✅ | - |
-        | 認証・認可 | ✅ | - |
-        | データ保護 | ✅ | - |
-        | 依存関係 | ✅ | - |
-
-        ## 脆弱性（REJECTの場合）
-        | # | 重大度 | 種類 | 場所 | 修正案 |
-        |---|--------|------|------|--------|
-        | 1 | High | SQLi | `src/db.ts:42` | パラメータ化クエリを使用 |
-
-        ## 警告（ブロッキングではない）
-        - {セキュリティに関する推奨事項}
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      セキュリティの観点から上記の変更をレビューしてください。
-
-      **レビュー観点:**
-      - インジェクション攻撃（SQL, コマンド, XSS）
-      - 認証・認可の不備
-      - 機密情報の取り扱い
-      - 暗号化の適切性
-      - OWASP Top 10
-    rules:
-      - condition: セキュリティ上の問題がない
-        next: qa_review
-      - condition: セキュリティ上の脆弱性が検出された
-        next: fix_security
-
-  - name: fix_security
-    edit: true
-    agent: ../agents/default/coder.md
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      ## Security Review Feedback (これが最新の指示です - 優先して対応してください)
-      {previous_response}
-
-      **重要**: セキュリティ専門家からの指摘を修正してください。
-      セキュリティ問題は最優先で対応してください。
-
-      指摘されたポイント:
-      - インジェクション脆弱性
-      - 認証・認可の不備
-      - 機密情報の露出
-      - 暗号化の問題
-
-      ## 修正完了時の判断
-      修正が完了したら、**変更の影響範囲**を判断してください：
-
-      - 軽微な修正（セキュリティレビューのみ再実施）
-        - 例: バリデーション追加、エスケープ処理追加、設定変更
-      - 大きな修正（CQRS+ESレビューからやり直し）
-        - 例: データフロー変更、API設計変更、認証方式変更、ドメインモデル変更
-    pass_previous_response: true
-    rules:
-      - condition: 軽微なセキュリティ修正が完了した
-        next: security_review
-      - condition: 大きな修正を行い、CQRS+ESレビューからやり直す必要がある
-        next: cqrs_es_review
-      - condition: 修正を進行できない
-        next: plan
-
-  # ===========================================
-  # Phase 6: QA Review
-  # ===========================================
-  - name: qa_review
-    edit: false
-    agent: ../agents/expert/qa-reviewer.md
-    report:
-      name: 07-qa-review.md
-      format: |
-        ```markdown
-        # QAレビュー
-
-        ## 結果: APPROVE / REJECT
-
-        ## サマリー
-        {1-2文で結果を要約}
-
-        ## 確認した観点
-        | 観点 | 結果 | 備考 |
-        |------|------|------|
-        | テストカバレッジ | ✅ | - |
-        | テスト品質 | ✅ | - |
-        | エラーハンドリング | ✅ | - |
-        | ドキュメント | ✅ | - |
-        | 保守性 | ✅ | - |
-
-        ## 問題点（REJECTの場合）
-        | # | カテゴリ | 問題 | 修正案 |
-        |---|---------|------|--------|
-        | 1 | テスト | 問題の説明 | 修正方法 |
-        ```
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - WebSearch
-      - WebFetch
-    instruction_template: |
-      品質保証の観点から上記の変更をレビューしてください。
-
-      **レビュー観点:**
-      - テストカバレッジと品質
-      - テスト戦略（単体/統合/E2E）
-      - ドキュメント（コード内・外部）
-      - エラーハンドリング
-      - ログとモニタリング
-      - 保守性
-    rules:
-      - condition: 品質基準を満たしている
+      - condition: all("approved")
         next: supervise
-      - condition: 品質に問題がある
-        next: fix_qa
+      - condition: any("needs_fix")
+        next: fix
 
-  - name: fix_qa
+  - name: fix
     edit: true
     agent: ../agents/default/coder.md
     allowed_tools:
@@ -569,41 +457,23 @@ steps:
       - Bash
       - WebSearch
       - WebFetch
-    instruction_template: |
-      ## QA Review Feedback (これが最新の指示です - 優先して対応してください)
-      {previous_response}
-
-      **重要**: QA専門家からの指摘を修正してください。
-
-      指摘されたポイント:
-      - テストの追加・改善
-      - ドキュメントの追加・修正
-      - エラーハンドリング
-      - ログ出力
-      - コード品質
-
-      ## 修正完了時の判断
-      修正が完了したら、**変更の影響範囲**を判断してください：
-
-      - 軽微な修正（QAレビューのみ再実施）
-        - 例: テスト追加、ドキュメント追加、ログ追加、コメント追加
-      - セキュリティに影響する修正（セキュリティレビューからやり直し）
-        - 例: エラーハンドリング変更（エラーメッセージの内容変更）、入力検証の変更
-      - 大きな修正（CQRS+ESレビューからやり直し）
-        - 例: ビジネスロジック変更、データモデル変更、API変更
-    pass_previous_response: true
+    permission_mode: acceptEdits
     rules:
-      - condition: 軽微なQA修正が完了した
-        next: qa_review
-      - condition: セキュリティに影響する修正を行った
-        next: security_review
-      - condition: 大きな修正を行い、CQRS+ESレビューからやり直す必要がある
-        next: cqrs_es_review
+      - condition: 修正が完了した
+        next: reviewers
       - condition: 修正を進行できない
         next: plan
+    instruction_template: |
+      ## Review Feedback (これが最新の指示です - 優先して対応してください)
+      {previous_response}
+
+      **重要**: レビュアーからのフィードバックに対応してください。
+      「Original User Request」は参考情報であり、最新の指示ではありません。
+      セッションの会話履歴を確認し、レビュアーの指摘事項を修正してください。
+    pass_previous_response: true
 
   # ===========================================
-  # Phase 7: Supervision
+  # Phase 4: Supervision
   # ===========================================
   - name: supervise
     edit: false
