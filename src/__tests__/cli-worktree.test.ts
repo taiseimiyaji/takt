@@ -200,5 +200,25 @@ describe('confirmAndCreateWorktree', () => {
     // Then
     expect(mockInfo).toHaveBeenCalledWith('Generating branch name...');
   });
-});
 
+  it('should skip prompt when override is false', async () => {
+    const result = await confirmAndCreateWorktree('/project', 'task', false);
+
+    expect(result.execCwd).toBe('/project');
+    expect(result.isWorktree).toBe(false);
+    expect(mockConfirm).not.toHaveBeenCalled();
+  });
+
+  it('should skip prompt when override is true and still create clone', async () => {
+    mockSummarizeTaskName.mockResolvedValue('task');
+    mockCreateSharedClone.mockReturnValue({
+      path: '/project/../20260128T0504-task',
+      branch: 'takt/20260128T0504-task',
+    });
+
+    const result = await confirmAndCreateWorktree('/project', 'task', true);
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+    expect(result.isWorktree).toBe(true);
+  });
+});

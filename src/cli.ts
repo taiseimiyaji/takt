@@ -107,20 +107,31 @@ async function selectWorkflow(cwd: string): Promise<string | null> {
  * Execute a task with workflow selection, optional worktree, and auto-commit.
  * Shared by direct task execution and interactive mode.
  */
+export interface SelectAndExecuteOptions {
+  autoPr?: boolean;
+  repo?: string;
+  workflow?: string;
+  createWorktree?: boolean | undefined;
+}
+
 async function selectAndExecuteTask(
   cwd: string,
   task: string,
-  options?: { autoPr?: boolean; repo?: string },
+  options?: SelectAndExecuteOptions,
   agentOverrides?: TaskExecutionOptions,
 ): Promise<void> {
-  const selectedWorkflow = await selectWorkflow(cwd);
+  const selectedWorkflow = await determineWorkflow(cwd, options?.workflow);
 
   if (selectedWorkflow === null) {
     info('Cancelled');
     return;
   }
 
-  const { execCwd, isWorktree, branch } = await confirmAndCreateWorktree(cwd, task);
+  const { execCwd, isWorktree, branch } = await confirmAndCreateWorktree(
+    cwd,
+    task,
+    options?.createWorktree,
+  );
 
   log.info('Starting task execution', { workflow: selectedWorkflow, worktree: isWorktree });
   const taskSuccess = await executeTask(task, execCwd, selectedWorkflow, cwd, agentOverrides);
@@ -164,11 +175,28 @@ async function selectAndExecuteTask(
  * Returns the execution directory and whether a clone was created.
  * Task name is summarized to English by AI for use in branch/clone names.
  */
+async function determineWorkflow(cwd: string, override?: string): Promise<string | null> {
+  if (override) {
+    const availableWorkflows = listWorkflows();
+    const knownWorkflows = availableWorkflows.length === 0 ? [DEFAULT_WORKFLOW_NAME] : availableWorkflows;
+    if (!knownWorkflows.includes(override)) {
+      error(`Workflow not found: ${override}`);
+      return null;
+    }
+    return override;
+  }
+  return selectWorkflow(cwd);
+}
+
 export async function confirmAndCreateWorktree(
   cwd: string,
   task: string,
+  createWorktreeOverride?: boolean | undefined,
 ): Promise<WorktreeConfirmationResult> {
-  const useWorktree = await confirm('Create worktree?', true);
+  const useWorktree =
+    typeof createWorktreeOverride === 'boolean'
+      ? createWorktreeOverride
+      : await confirm('Create worktree?', true);
 
   if (!useWorktree) {
     return { execCwd: cwd, isWorktree: false };
@@ -201,6 +229,23 @@ function resolveAgentOverrides(): TaskExecutionOptions | undefined {
   return { provider, model };
 }
 
+function parseCreateWorktreeOption(value?: string): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.toLowerCase();
+  if (normalized === 'yes' || normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'no' || normalized === 'false') {
+    return false;
+  }
+
+  error('Invalid value for --create-worktree. Use yes or no.');
+  process.exit(1);
+}
+
 program
   .name('takt')
   .description('TAKT: Task Agent Koordination Tool')
@@ -216,7 +261,8 @@ program
   .option('--provider <name>', 'Override agent provider (claude|codex|mock)')
   .option('--model <name>', 'Override agent model')
   .option('-t, --task <string>', 'Task content (triggers pipeline/non-interactive mode)')
-  .option('--skip-git', 'Skip branch creation, commit, and push (pipeline mode)');
+  .option('--skip-git', 'Skip branch creation, commit, and push (pipeline mode)')
+  .option('--create-worktree <yes|no>', 'Skip the worktree prompt by explicitly specifying yes or no');
 
 // Common initialization for all commands
 program.hook('preAction', async () => {
@@ -336,6 +382,13 @@ program
   .action(async (task?: string) => {
     const opts = program.opts();
     const agentOverrides = resolveAgentOverrides();
+    const createWorktreeOverride = parseCreateWorktreeOption(opts.createWorktree as string | undefined);
+    const selectOptions: SelectAndExecuteOptions = {
+      autoPr: opts.autoPr === true,
+      repo: opts.repo as string | undefined,
+      workflow: opts.workflow as string | undefined,
+      createWorktree: createWorktreeOverride,
+    };
 
     // --- Pipeline mode (non-interactive): triggered by --task ---
     if (pipelineMode) {
@@ -346,11 +399,11 @@ program
         branch: opts.branch as string | undefined,
         autoPr: opts.autoPr === true,
         repo: opts.repo as string | undefined,
-      skipGit: opts.skipGit === true,
-      cwd: resolvedCwd,
-      provider: agentOverrides?.provider,
-      model: agentOverrides?.model,
-    });
+        skipGit: opts.skipGit === true,
+        cwd: resolvedCwd,
+        provider: agentOverrides?.provider,
+        model: agentOverrides?.model,
+      });
 
       if (exitCode !== 0) {
         process.exit(exitCode);
@@ -360,17 +413,12 @@ program
 
     // --- Normal (interactive) mode ---
 
-    const prOptions = {
-      autoPr: opts.autoPr === true,
-      repo: opts.repo as string | undefined,
-    };
-
     // Resolve --issue N to task text (same as #N)
     const issueFromOption = opts.issue as number | undefined;
     if (issueFromOption) {
       try {
         const resolvedTask = resolveIssueTask(`#${issueFromOption}`);
-        await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions, agentOverrides);
+        await selectAndExecuteTask(resolvedCwd, resolvedTask, selectOptions, agentOverrides);
       } catch (e) {
         error(e instanceof Error ? e.message : String(e));
         process.exit(1);
@@ -391,7 +439,7 @@ program
         }
       }
 
-        await selectAndExecuteTask(resolvedCwd, resolvedTask, prOptions, agentOverrides);
+      await selectAndExecuteTask(resolvedCwd, resolvedTask, selectOptions, agentOverrides);
       return;
     }
 
@@ -402,7 +450,7 @@ program
       return;
     }
 
-    await selectAndExecuteTask(resolvedCwd, result.task, prOptions, agentOverrides);
+    await selectAndExecuteTask(resolvedCwd, result.task, selectOptions, agentOverrides);
   });
 
 program.parse();
