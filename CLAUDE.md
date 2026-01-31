@@ -284,6 +284,20 @@ Files: `.takt/logs/{sessionId}.jsonl`, with `latest.json` pointer. Legacy `.json
 
 **Instruction auto-injection over explicit placeholders.** The instruction builder auto-injects `{task}`, `{previous_response}`, `{user_inputs}`, and status rules. Templates should contain only step-specific instructions, not boilerplate.
 
+**Agent prompts contain only domain knowledge.** Agent prompt files (`resources/global/{lang}/agents/**/*.md`) must contain only domain expertise and behavioral principles — never workflow-specific procedures. Workflow-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the workflow YAML's `instruction_template`. This keeps agents reusable across different workflows.
+
+What belongs in agent prompts:
+- Role definition ("You are a ... specialist")
+- Domain expertise, review criteria, judgment standards
+- Do / Don't behavioral rules
+- Tool usage knowledge (general, not workflow-specific)
+
+What belongs in workflow `instruction_template`:
+- Step-specific procedures ("Read these specific reports")
+- References to other steps or their outputs
+- Specific report file names or formats
+- Comment/output templates with hardcoded review type names
+
 ## Isolated Execution (Shared Clone)
 
 When tasks specify `worktree: true` or `worktree: "path"`, code runs in a `git clone --shared` (lightweight clone with independent `.git` directory). Clones are ephemeral: created before task execution, auto-committed + pushed after success, then deleted.
