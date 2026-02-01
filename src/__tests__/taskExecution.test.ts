@@ -53,6 +53,10 @@ vi.mock('./workflowExecution.js', () => ({
   executeWorkflow: vi.fn(),
 }));
 
+vi.mock('../cli.js', () => ({
+  isQuietMode: vi.fn(() => false),
+}));
+
 vi.mock('../constants.js', () => ({
   DEFAULT_WORKFLOW_NAME: 'default',
   DEFAULT_LANGUAGE: 'en',

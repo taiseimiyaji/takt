@@ -20,6 +20,10 @@ vi.mock('../utils/debug.js', () => ({
   }),
 }));
 
+vi.mock('../cli.js', () => ({
+  isQuietMode: vi.fn(() => false),
+}));
+
 vi.mock('../config/paths.js', () => ({
   loadAgentSessions: vi.fn(() => ({})),
   updateAgentSession: vi.fn(),
