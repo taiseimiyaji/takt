@@ -73,18 +73,3 @@ export function getPreviousOutput(state: WorkflowState): AgentResponse | undefin
   return outputs[outputs.length - 1];
 }
 
-/**
- * Store a step output and update agent session.
- */
-export function storeStepOutput(
-  state: WorkflowState,
-  stepName: string,
-  agentName: string,
-  response: AgentResponse
-): void {
-  state.stepOutputs.set(stepName, response);
-
-  if (response.sessionId) {
-    state.agentSessions.set(agentName, response.sessionId);
-  }
-}

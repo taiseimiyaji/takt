@@ -6,7 +6,7 @@
  */
 
 // Main engine
-export { WorkflowEngine } from './engine.js';
+export { WorkflowEngine } from './engine/index.js';
 
 // Constants
 export { COMPLETE_STEP, ABORT_STEP, ERROR_MESSAGES } from './constants.js';
@@ -33,7 +33,6 @@ export {
   createInitialState,
   addUserInput,
   getPreviousOutput,
-  storeStepOutput,
 } from './state-manager.js';
 
 // Instruction building

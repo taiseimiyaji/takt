@@ -1,6 +1,7 @@
 /**
- * Re-export shim — actual implementation in global/globalConfig.ts
+ * Global configuration - barrel exports
  */
+
 export {
   invalidateGlobalConfigCache,
   loadGlobalConfig,
@@ -15,4 +16,13 @@ export {
   resolveOpenaiApiKey,
   loadProjectDebugConfig,
   getEffectiveDebugConfig,
-} from './global/globalConfig.js';
+} from './globalConfig.js';
+
+export {
+  needsLanguageSetup,
+  promptLanguageSelection,
+  promptProviderSelection,
+  initGlobalDirs,
+  initProjectDirs,
+  type InitGlobalDirsOptions,
+} from './initialization.js';

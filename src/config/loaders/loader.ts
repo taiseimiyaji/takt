@@ -1,5 +1,5 @@
 /**
- * Re-export shim — actual implementation in loaders/loader.ts
+ * Configuration loader for takt
  *
  * Re-exports from specialized loaders for backward compatibility.
  */
@@ -12,7 +12,7 @@ export {
   isWorkflowPath,
   loadAllWorkflows,
   listWorkflows,
-} from './loaders/workflowLoader.js';
+} from '../workflowLoader.js';
 
 // Agent loading
 export {
@@ -21,7 +21,7 @@ export {
   listCustomAgents,
   loadAgentPrompt,
   loadAgentPromptFromPath,
-} from './loaders/agentLoader.js';
+} from '../agentLoader.js';
 
 // Global configuration
 export {
@@ -32,4 +32,4 @@ export {
   isDirectoryTrusted,
   loadProjectDebugConfig,
   getEffectiveDebugConfig,
-} from './global/globalConfig.js';
+} from '../globalConfig.js';

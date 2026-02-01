@@ -1,6 +1,19 @@
 /**
- * Re-export shim — actual implementation in project/sessionStore.ts
+ * Project configuration - barrel exports
  */
+
+export {
+  loadProjectConfig,
+  saveProjectConfig,
+  updateProjectConfig,
+  getCurrentWorkflow,
+  setCurrentWorkflow,
+  isVerboseMode,
+  type PermissionMode,
+  type ProjectPermissionMode,
+  type ProjectLocalConfig,
+} from './projectConfig.js';
+
 export {
   writeFileAtomic,
   getInputHistoryPath,
@@ -21,4 +34,4 @@ export {
   updateWorktreeSession,
   getClaudeProjectSessionsDir,
   clearClaudeProjectSessions,
-} from './project/sessionStore.js';
+} from './sessionStore.js';
