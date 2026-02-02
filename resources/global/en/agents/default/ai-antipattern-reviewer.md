@@ -102,8 +102,14 @@ AI is confidently wrong—code that looks plausible but doesn't work, solutions 
 | Premature abstraction | Interfaces/abstractions for single implementations |
 | Over-configuration | Making things configurable when they don't need to be |
 | Gold plating | "Nice-to-have" additions that weren't asked for |
+| **Unnecessary legacy support** | **Adding mapping/normalization for old values without explicit instruction** |
 
 **Principle:** The best code is the minimum code that solves the problem.
+
+**Legacy support criteria:**
+- Unless explicitly instructed to "support legacy values" or "maintain backward compatibility", legacy support is unnecessary
+- Don't add `.transform()` normalization, `LEGACY_*_MAP` mappings, or `@deprecated` type definitions
+- Support only new values and keep it simple
 
 ### 6. Fallback & Default Argument Prohibition Review (REJECT criteria)
 
