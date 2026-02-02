@@ -11,8 +11,8 @@
  */
 
 import type { WorkflowStep, Language } from '../../models/types.js';
-import type { InstructionContext } from '../instruction-context.js';
-import { METADATA_STRINGS } from '../instruction-context.js';
+import type { InstructionContext } from './instruction-context.js';
+import { METADATA_STRINGS } from './instruction-context.js';
 import { replaceTemplatePlaceholders } from './escape.js';
 import { isReportObjectConfig, renderReportContext, renderReportOutputInstruction } from './InstructionBuilder.js';
 

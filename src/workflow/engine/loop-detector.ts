@@ -5,8 +5,8 @@
  * which may indicate an infinite loop.
  */
 
-import type { LoopDetectionConfig } from '../models/types.js';
-import type { LoopCheckResult } from './types.js';
+import type { LoopDetectionConfig } from '../../models/types.js';
+import type { LoopCheckResult } from '../types.js';
 
 /** Default loop detection settings */
 const DEFAULT_LOOP_DETECTION: Required<LoopDetectionConfig> = {

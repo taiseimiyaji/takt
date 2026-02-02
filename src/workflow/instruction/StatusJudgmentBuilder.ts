@@ -10,7 +10,7 @@
  */
 
 import type { WorkflowStep, Language } from '../../models/types.js';
-import { generateStatusRulesFromRules } from '../status-rules.js';
+import { generateStatusRulesFromRules } from './status-rules.js';
 
 /** Localized strings for status judgment phase */
 const STATUS_JUDGMENT_STRINGS = {

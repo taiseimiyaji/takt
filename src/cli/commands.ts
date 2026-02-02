@@ -1,0 +1,81 @@
+/**
+ * CLI subcommand definitions
+ *
+ * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config).
+ */
+
+import { clearAgentSessions, getCurrentWorkflow } from '../config/paths.js';
+import { success } from '../utils/ui.js';
+import {
+  runAllTasks,
+  switchWorkflow,
+  switchConfig,
+  addTask,
+  ejectBuiltin,
+  watchTasks,
+  listTasks,
+} from '../commands/index.js';
+import { program, resolvedCwd } from './program.js';
+import { resolveAgentOverrides } from './helpers.js';
+
+program
+  .command('run')
+  .description('Run all pending tasks from .takt/tasks/')
+  .action(async () => {
+    const workflow = getCurrentWorkflow(resolvedCwd);
+    await runAllTasks(resolvedCwd, workflow, resolveAgentOverrides(program));
+  });
+
+program
+  .command('watch')
+  .description('Watch for tasks and auto-execute')
+  .action(async () => {
+    await watchTasks(resolvedCwd, resolveAgentOverrides(program));
+  });
+
+program
+  .command('add')
+  .description('Add a new task (interactive AI conversation)')
+  .argument('[task]', 'Task description or GitHub issue reference (e.g. "#28")')
+  .action(async (task?: string) => {
+    await addTask(resolvedCwd, task);
+  });
+
+program
+  .command('list')
+  .description('List task branches (merge/delete)')
+  .action(async () => {
+    await listTasks(resolvedCwd, resolveAgentOverrides(program));
+  });
+
+program
+  .command('switch')
+  .description('Switch workflow interactively')
+  .argument('[workflow]', 'Workflow name')
+  .action(async (workflow?: string) => {
+    await switchWorkflow(resolvedCwd, workflow);
+  });
+
+program
+  .command('clear')
+  .description('Clear agent conversation sessions')
+  .action(() => {
+    clearAgentSessions(resolvedCwd);
+    success('Agent sessions cleared');
+  });
+
+program
+  .command('eject')
+  .description('Copy builtin workflow/agents to ~/.takt/ for customization')
+  .argument('[name]', 'Specific builtin to eject')
+  .action(async (name?: string) => {
+    await ejectBuiltin(name);
+  });
+
+program
+  .command('config')
+  .description('Configure settings (permission mode)')
+  .argument('[key]', 'Configuration key')
+  .action(async (key?: string) => {
+    await switchConfig(resolvedCwd, key);
+  });

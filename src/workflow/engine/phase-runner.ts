@@ -5,12 +5,12 @@
  * as session-resume operations.
  */
 
-import type { WorkflowStep, Language } from '../models/types.js';
-import { runAgent, type RunAgentOptions } from '../agents/runner.js';
-import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
-import { StatusJudgmentBuilder } from './instruction/StatusJudgmentBuilder.js';
-import { hasTagBasedRules } from './rule-utils.js';
-import { createLogger } from '../utils/debug.js';
+import type { WorkflowStep, Language } from '../../models/types.js';
+import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
+import { ReportInstructionBuilder } from '../instruction/ReportInstructionBuilder.js';
+import { StatusJudgmentBuilder } from '../instruction/StatusJudgmentBuilder.js';
+import { hasTagBasedRules } from '../evaluation/rule-utils.js';
+import { createLogger } from '../../utils/debug.js';
 
 const log = createLogger('phase-runner');
 

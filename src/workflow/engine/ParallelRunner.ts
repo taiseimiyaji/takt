@@ -11,10 +11,10 @@ import type {
   AgentResponse,
 } from '../../models/types.js';
 import { runAgent } from '../../agents/runner.js';
-import { ParallelLogger } from '../parallel-logger.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
+import { ParallelLogger } from './parallel-logger.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from './phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
-import { incrementStepIteration } from '../state-manager.js';
+import { incrementStepIteration } from './state-manager.js';
 import { createLogger } from '../../utils/debug.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
 import type { StepExecutor } from './StepExecutor.js';

@@ -5,7 +5,7 @@
  */
 
 import type { WorkflowStep } from '../../models/types.js';
-import type { InstructionContext } from '../instruction-context.js';
+import type { InstructionContext } from './instruction-context.js';
 
 /**
  * Escape special characters in dynamic content to prevent template injection.

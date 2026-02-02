@@ -18,15 +18,6 @@ export type {
 // Re-export from agent.ts
 export * from './agent.js';
 
-// Re-export from workflow.ts (Zod schemas only, not types)
-export {
-  WorkflowStepSchema,
-  WorkflowConfigSchema,
-  type WorkflowDefinition,
-  type WorkflowContext,
-  type StepResult,
-} from './workflow.js';
-
 // Re-export from config.ts
 export * from './config.js';
 

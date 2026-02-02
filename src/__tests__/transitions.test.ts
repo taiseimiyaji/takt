@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { determineNextStepByRules } from '../workflow/transitions.js';
+import { determineNextStepByRules } from '../workflow/engine/transitions.js';
 import type { WorkflowStep } from '../models/types.js';
 
 function createStepWithRules(rules: { condition: string; next: string }[]): WorkflowStep {

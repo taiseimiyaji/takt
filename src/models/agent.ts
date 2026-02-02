@@ -1,15 +1,7 @@
 import { z } from 'zod/v4';
+import { AgentModelSchema, AgentConfigSchema } from './schemas.js';
 
-export const AgentModelSchema = z.enum(['opus', 'sonnet', 'haiku']).default('sonnet');
-
-export const AgentConfigSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  model: AgentModelSchema,
-  systemPrompt: z.string().optional(),
-  allowedTools: z.array(z.string()).optional(),
-  maxTurns: z.number().int().positive().optional(),
-});
+export { AgentModelSchema, AgentConfigSchema };
 
 export type AgentModel = z.infer<typeof AgentModelSchema>;
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

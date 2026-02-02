@@ -22,28 +22,28 @@ export type {
   LoopCheckResult,
 } from './types.js';
 
-// Transitions
-export { determineNextStepByRules, extractBlockedPrompt } from './transitions.js';
+// Transitions (engine/)
+export { determineNextStepByRules, extractBlockedPrompt } from './engine/transitions.js';
 
-// Loop detection
-export { LoopDetector } from './loop-detector.js';
+// Loop detection (engine/)
+export { LoopDetector } from './engine/loop-detector.js';
 
-// State management
+// State management (engine/)
 export {
   createInitialState,
   addUserInput,
   getPreviousOutput,
-} from './state-manager.js';
+} from './engine/state-manager.js';
+
+// Blocked handling (engine/)
+export { handleBlocked, type BlockedHandlerResult } from './engine/blocked-handler.js';
 
 // Instruction building
 export { InstructionBuilder, isReportObjectConfig } from './instruction/InstructionBuilder.js';
 export { ReportInstructionBuilder, type ReportInstructionContext } from './instruction/ReportInstructionBuilder.js';
 export { StatusJudgmentBuilder, type StatusJudgmentContext } from './instruction/StatusJudgmentBuilder.js';
-export { buildExecutionMetadata, renderExecutionMetadata, type InstructionContext, type ExecutionMetadata } from './instruction-context.js';
+export { buildExecutionMetadata, renderExecutionMetadata, type InstructionContext, type ExecutionMetadata } from './instruction/instruction-context.js';
 
 // Rule evaluation
 export { RuleEvaluator, type RuleMatch, type RuleEvaluatorContext, detectMatchedRule, evaluateAggregateConditions } from './evaluation/index.js';
 export { AggregateEvaluator } from './evaluation/AggregateEvaluator.js';
-
-// Blocked handling
-export { handleBlocked, type BlockedHandlerResult } from './blocked-handler.js';

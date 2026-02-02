@@ -13,8 +13,8 @@ import {
   buildExecutionMetadata,
   renderExecutionMetadata,
   type InstructionContext,
-} from '../workflow/instruction-context.js';
-import { generateStatusRulesFromRules } from '../workflow/status-rules.js';
+} from '../workflow/instruction/instruction-context.js';
+import { generateStatusRulesFromRules } from '../workflow/instruction/status-rules.js';
 
 // Backward-compatible function wrappers for test readability
 function buildInstruction(step: WorkflowStep, ctx: InstructionContext): string {

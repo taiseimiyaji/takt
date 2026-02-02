@@ -30,7 +30,7 @@ const mockNeedsStatusJudgmentPhase = vi.fn();
 const mockRunReportPhase = vi.fn();
 const mockRunStatusJudgmentPhase = vi.fn();
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../workflow/engine/phase-runner.js', () => ({
   needsStatusJudgmentPhase: (...args: unknown[]) => mockNeedsStatusJudgmentPhase(...args),
   runReportPhase: (...args: unknown[]) => mockRunReportPhase(...args),
   runStatusJudgmentPhase: (...args: unknown[]) => mockRunStatusJudgmentPhase(...args),

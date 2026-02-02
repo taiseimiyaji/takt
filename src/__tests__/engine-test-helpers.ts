@@ -17,7 +17,7 @@ import type { WorkflowConfig, WorkflowStep, AgentResponse, WorkflowRule } from '
 import { runAgent } from '../agents/runner.js';
 import { detectMatchedRule } from '../workflow/evaluation/index.js';
 import type { RuleMatch } from '../workflow/evaluation/index.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../workflow/phase-runner.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../workflow/engine/phase-runner.js';
 import { generateReportDir } from '../utils/session.js';
 
 // --- Factory functions ---

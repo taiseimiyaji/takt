@@ -5,8 +5,8 @@
  * requesting user input to continue.
  */
 
-import type { WorkflowStep, AgentResponse } from '../models/types.js';
-import type { UserInputRequest, WorkflowEngineOptions } from './types.js';
+import type { WorkflowStep, AgentResponse } from '../../models/types.js';
+import type { UserInputRequest, WorkflowEngineOptions } from '../types.js';
 import { extractBlockedPrompt } from './transitions.js';
 
 /**

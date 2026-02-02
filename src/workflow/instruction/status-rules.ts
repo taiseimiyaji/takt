@@ -5,7 +5,7 @@
  * based on the step's rule configuration.
  */
 
-import type { WorkflowRule, Language } from '../models/types.js';
+import type { WorkflowRule, Language } from '../../models/types.js';
 
 /** Localized strings for rules-based status prompt */
 const RULES_PROMPT_STRINGS = {

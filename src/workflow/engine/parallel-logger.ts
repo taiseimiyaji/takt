@@ -6,7 +6,7 @@
  * aligned to the longest sub-step name.
  */
 
-import type { StreamCallback, StreamEvent } from '../claude/types.js';
+import type { StreamCallback, StreamEvent } from '../../claude/types.js';
 
 /** ANSI color codes for sub-step prefixes (cycled in order) */
 const COLORS = ['\x1b[36m', '\x1b[33m', '\x1b[35m', '\x1b[32m'] as const; // cyan, yellow, magenta, green

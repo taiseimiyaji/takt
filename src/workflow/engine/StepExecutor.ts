@@ -16,9 +16,9 @@ import type {
 } from '../../models/types.js';
 import { runAgent } from '../../agents/runner.js';
 import { InstructionBuilder, isReportObjectConfig } from '../instruction/InstructionBuilder.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from './phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
-import { incrementStepIteration, getPreviousOutput } from '../state-manager.js';
+import { incrementStepIteration, getPreviousOutput } from './state-manager.js';
 import { createLogger } from '../../utils/debug.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
 

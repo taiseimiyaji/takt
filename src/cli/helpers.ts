@@ -1,0 +1,62 @@
+/**
+ * CLI helper functions
+ *
+ * Utility functions for option parsing and task classification.
+ */
+
+import type { Command } from 'commander';
+import type { TaskExecutionOptions } from '../commands/execution/types.js';
+import type { ProviderType } from '../providers/index.js';
+import { error } from '../utils/ui.js';
+import { isIssueReference } from '../github/issue.js';
+
+/**
+ * Resolve --provider and --model options into TaskExecutionOptions.
+ * Returns undefined if neither is specified.
+ */
+export function resolveAgentOverrides(program: Command): TaskExecutionOptions | undefined {
+  const opts = program.opts();
+  const provider = opts.provider as ProviderType | undefined;
+  const model = opts.model as string | undefined;
+
+  if (!provider && !model) {
+    return undefined;
+  }
+
+  return { provider, model };
+}
+
+/**
+ * Parse --create-worktree option value (yes/no/true/false).
+ * Returns undefined if not specified, boolean otherwise.
+ * Exits with error on invalid value.
+ */
+export function parseCreateWorktreeOption(value?: string): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.toLowerCase();
+  if (normalized === 'yes' || normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'no' || normalized === 'false') {
+    return false;
+  }
+
+  error('Invalid value for --create-worktree. Use yes or no.');
+  process.exit(1);
+}
+
+/**
+ * Check if the input is a task description (should execute directly)
+ * vs a short input that should enter interactive mode as initial input.
+ *
+ * Task descriptions: contain spaces, or are issue references (#N).
+ * Short single words: routed to interactive mode as first message.
+ */
+export function isDirectTask(input: string): boolean {
+  if (input.includes(' ')) return true;
+  if (isIssueReference(input) || input.trim().split(/\s+/).every((t: string) => isIssueReference(t))) return true;
+  return false;
+}

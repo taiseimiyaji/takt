@@ -5,7 +5,7 @@
  * and renders execution metadata (working directory, rules) as markdown.
  */
 
-import type { AgentResponse, Language } from '../models/types.js';
+import type { AgentResponse, Language } from '../../models/types.js';
 
 /**
  * Context for building instruction from template.

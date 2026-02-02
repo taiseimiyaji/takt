@@ -7,6 +7,35 @@
 import { z } from 'zod/v4';
 import { DEFAULT_LANGUAGE } from '../constants.js';
 
+/** Agent model schema (opus, sonnet, haiku) */
+export const AgentModelSchema = z.enum(['opus', 'sonnet', 'haiku']).default('sonnet');
+
+/** Agent configuration schema */
+export const AgentConfigSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  model: AgentModelSchema,
+  systemPrompt: z.string().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  maxTurns: z.number().int().positive().optional(),
+});
+
+/** Claude CLI configuration schema */
+export const ClaudeConfigSchema = z.object({
+  command: z.string().default('claude'),
+  timeout: z.number().int().positive().default(300000),
+});
+
+/** TAKT global tool configuration schema */
+export const TaktConfigSchema = z.object({
+  defaultModel: AgentModelSchema,
+  defaultWorkflow: z.string().default('default'),
+  agentDirs: z.array(z.string()).default([]),
+  workflowDirs: z.array(z.string()).default([]),
+  sessionDir: z.string().optional(),
+  claude: ClaudeConfigSchema.default({ command: 'claude', timeout: 300000 }),
+});
+
 /** Agent type schema */
 export const AgentTypeSchema = z.enum(['coder', 'architect', 'supervisor', 'custom']);
 

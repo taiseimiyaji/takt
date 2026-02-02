@@ -8,7 +8,7 @@
 import { join } from 'node:path';
 import type { WorkflowStep, WorkflowState, Language } from '../../models/types.js';
 import type { RunAgentOptions } from '../../agents/runner.js';
-import type { PhaseRunnerContext } from '../phase-runner.js';
+import type { PhaseRunnerContext } from './phase-runner.js';
 import type { WorkflowEngineOptions } from '../types.js';
 
 export class OptionsBuilder {

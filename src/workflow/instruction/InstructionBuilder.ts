@@ -9,10 +9,10 @@
  */
 
 import type { WorkflowStep, Language, ReportConfig, ReportObjectConfig } from '../../models/types.js';
-import { hasTagBasedRules } from '../rule-utils.js';
-import type { InstructionContext } from '../instruction-context.js';
-import { buildExecutionMetadata, renderExecutionMetadata } from '../instruction-context.js';
-import { generateStatusRulesFromRules } from '../status-rules.js';
+import { hasTagBasedRules } from '../evaluation/rule-utils.js';
+import type { InstructionContext } from './instruction-context.js';
+import { buildExecutionMetadata, renderExecutionMetadata } from './instruction-context.js';
+import { generateStatusRulesFromRules } from './status-rules.js';
 import { escapeTemplateChars, replaceTemplatePlaceholders } from './escape.js';
 
 /**

@@ -2,7 +2,7 @@
  * Shared rule utility functions used by both engine.ts and instruction-builder.ts.
  */
 
-import type { WorkflowStep } from '../models/types.js';
+import type { WorkflowStep } from '../../models/types.js';
 
 /**
  * Check whether a step has tag-based rules (i.e., rules that require

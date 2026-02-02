@@ -6,7 +6,7 @@
 
 import type {
   WorkflowStep,
-} from '../models/types.js';
+} from '../../models/types.js';
 
 /**
  * Determine next step using rules-based detection.

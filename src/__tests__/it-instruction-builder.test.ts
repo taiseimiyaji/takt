@@ -18,7 +18,7 @@ vi.mock('../config/global/globalConfig.js', () => ({
 import { InstructionBuilder } from '../workflow/instruction/InstructionBuilder.js';
 import { ReportInstructionBuilder, type ReportInstructionContext } from '../workflow/instruction/ReportInstructionBuilder.js';
 import { StatusJudgmentBuilder, type StatusJudgmentContext } from '../workflow/instruction/StatusJudgmentBuilder.js';
-import type { InstructionContext } from '../workflow/instruction-context.js';
+import type { InstructionContext } from '../workflow/instruction/instruction-context.js';
 
 // Function wrappers for test readability
 function buildInstruction(step: WorkflowStep, ctx: InstructionContext): string {

@@ -17,14 +17,14 @@ import type {
 } from '../../models/types.js';
 import { COMPLETE_STEP, ABORT_STEP, ERROR_MESSAGES } from '../constants.js';
 import type { WorkflowEngineOptions } from '../types.js';
-import { determineNextStepByRules } from '../transitions.js';
-import { LoopDetector } from '../loop-detector.js';
-import { handleBlocked } from '../blocked-handler.js';
+import { determineNextStepByRules } from './transitions.js';
+import { LoopDetector } from './loop-detector.js';
+import { handleBlocked } from './blocked-handler.js';
 import {
   createInitialState,
   addUserInput as addUserInputToState,
   incrementStepIteration,
-} from '../state-manager.js';
+} from './state-manager.js';
 import { generateReportDir } from '../../utils/session.js';
 import { getErrorMessage } from '../../utils/error.js';
 import { createLogger } from '../../utils/debug.js';

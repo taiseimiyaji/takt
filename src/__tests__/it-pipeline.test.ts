@@ -113,7 +113,7 @@ vi.mock('../prompt/index.js', () => ({
   promptInput: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../workflow/engine/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),

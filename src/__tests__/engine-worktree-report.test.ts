@@ -21,7 +21,7 @@ vi.mock('../workflow/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../workflow/phase-runner.js', () => ({
+vi.mock('../workflow/engine/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -34,7 +34,7 @@ vi.mock('../utils/session.js', () => ({
 // --- Imports (after mocks) ---
 
 import { WorkflowEngine } from '../workflow/engine/WorkflowEngine.js';
-import { runReportPhase } from '../workflow/phase-runner.js';
+import { runReportPhase } from '../workflow/engine/phase-runner.js';
 import {
   makeResponse,
   makeStep,
