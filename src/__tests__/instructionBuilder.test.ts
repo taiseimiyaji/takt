@@ -4,17 +4,28 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildInstruction,
-  buildReportInstruction,
-  buildStatusJudgmentInstruction,
+  InstructionBuilder,
+  isReportObjectConfig,
+} from '../workflow/instruction/InstructionBuilder.js';
+import { ReportInstructionBuilder, type ReportInstructionContext } from '../workflow/instruction/ReportInstructionBuilder.js';
+import { StatusJudgmentBuilder, type StatusJudgmentContext } from '../workflow/instruction/StatusJudgmentBuilder.js';
+import {
   buildExecutionMetadata,
   renderExecutionMetadata,
-  generateStatusRulesFromRules,
-  isReportObjectConfig,
   type InstructionContext,
-  type ReportInstructionContext,
-  type StatusJudgmentContext,
-} from '../workflow/instruction-builder.js';
+} from '../workflow/instruction-context.js';
+import { generateStatusRulesFromRules } from '../workflow/status-rules.js';
+
+// Backward-compatible function wrappers for test readability
+function buildInstruction(step: WorkflowStep, ctx: InstructionContext): string {
+  return new InstructionBuilder(step, ctx).build();
+}
+function buildReportInstruction(step: WorkflowStep, ctx: ReportInstructionContext): string {
+  return new ReportInstructionBuilder(step, ctx).build();
+}
+function buildStatusJudgmentInstruction(step: WorkflowStep, ctx: StatusJudgmentContext): string {
+  return new StatusJudgmentBuilder(step, ctx).build();
+}
 import type { WorkflowStep, WorkflowRule } from '../models/types.js';
 
 

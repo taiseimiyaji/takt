@@ -3,9 +3,9 @@
  */
 
 import { callCodex, callCodexCustom, type CodexCallOptions } from '../codex/client.js';
-import { resolveOpenaiApiKey } from '../config/globalConfig.js';
+import { resolveOpenaiApiKey } from '../config/global/globalConfig.js';
 import type { AgentResponse } from '../models/types.js';
-import type { Provider, ProviderCallOptions } from './index.js';
+import type { Provider, ProviderCallOptions } from './types.js';
 
 /** Codex provider - wraps existing Codex client */
 export class CodexProvider implements Provider {

@@ -2,6 +2,12 @@
  * Task execution module
  */
 
+// Classes
+export { CloneManager } from './clone.js';
+export { AutoCommitter } from './autoCommit.js';
+export { TaskSummarizer } from './summarize.js';
+export { BranchManager } from './branchList.js';
+
 export {
   TaskRunner,
   type TaskInfo,
@@ -34,4 +40,5 @@ export {
   type BranchListItem,
 } from './branchList.js';
 export { autoCommitAndPush, type AutoCommitResult } from './autoCommit.js';
+export { summarizeTaskName, type SummarizeOptions } from './summarize.js';
 export { TaskWatcher, type TaskWatcherOptions } from './watcher.js';

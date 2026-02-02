@@ -1,0 +1,29 @@
+/**
+ * Type definitions for agent execution
+ */
+
+import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../claude/types.js';
+import type { PermissionMode } from '../models/types.js';
+
+export type { StreamCallback };
+
+/** Common options for running agents */
+export interface RunAgentOptions {
+  cwd: string;
+  sessionId?: string;
+  model?: string;
+  provider?: 'claude' | 'codex' | 'mock';
+  /** Resolved path to agent prompt file */
+  agentPath?: string;
+  /** Allowed tools for this agent run */
+  allowedTools?: string[];
+  /** Maximum number of agentic turns */
+  maxTurns?: number;
+  /** Permission mode for tool execution (from workflow step) */
+  permissionMode?: PermissionMode;
+  onStream?: StreamCallback;
+  onPermissionRequest?: PermissionHandler;
+  onAskUserQuestion?: AskUserQuestionHandler;
+  /** Bypass all permission checks (sacrifice-my-pc mode) */
+  bypassPermissions?: boolean;
+}

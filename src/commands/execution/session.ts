@@ -3,7 +3,7 @@
  */
 
 import { loadAgentSessions, updateAgentSession } from '../../config/paths.js';
-import { loadGlobalConfig } from '../../config/globalConfig.js';
+import { loadGlobalConfig } from '../../config/global/globalConfig.js';
 import type { AgentResponse } from '../../models/types.js';
 
 /**

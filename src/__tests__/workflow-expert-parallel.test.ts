@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { loadWorkflow } from '../config/loader.js';
+import { loadWorkflow } from '../config/loaders/loader.js';
 
 describe('expert workflow parallel structure', () => {
   const workflow = loadWorkflow('expert', process.cwd());

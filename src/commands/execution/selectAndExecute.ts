@@ -7,7 +7,7 @@
  */
 
 import { getCurrentWorkflow } from '../../config/paths.js';
-import { listWorkflows, isWorkflowPath } from '../../config/workflowLoader.js';
+import { listWorkflows, isWorkflowPath } from '../../config/loaders/workflowLoader.js';
 import { selectOptionWithDefault, confirm } from '../../prompt/index.js';
 import { createSharedClone } from '../../task/clone.js';
 import { autoCommitAndPush } from '../../task/autoCommit.js';
@@ -16,8 +16,8 @@ import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
 import { info, error, success } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
 import { createPullRequest, buildPrBody } from '../../github/pr.js';
-import { executeTask } from '../taskExecution.js';
-import type { TaskExecutionOptions } from '../taskExecution.js';
+import { executeTask } from './taskExecution.js';
+import type { TaskExecutionOptions } from './taskExecution.js';
 
 const log = createLogger('selectAndExecute');
 

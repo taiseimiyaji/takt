@@ -2,4 +2,5 @@
  * Codex integration exports
  */
 
-export * from './client.js';
+export { CodexClient, callCodex, callCodexCustom } from './client.js';
+export type { CodexCallOptions } from './types.js';

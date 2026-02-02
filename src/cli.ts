@@ -48,8 +48,8 @@ import { resolveIssueTask, isIssueReference } from './github/issue.js';
 import {
   selectAndExecuteTask,
   type SelectAndExecuteOptions,
-} from './commands/selectAndExecute.js';
-import type { TaskExecutionOptions } from './commands/taskExecution.js';
+} from './commands/execution/selectAndExecute.js';
+import type { TaskExecutionOptions } from './commands/execution/taskExecution.js';
 import type { ProviderType } from './providers/index.js';
 
 const require = createRequire(import.meta.url);

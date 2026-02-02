@@ -65,7 +65,7 @@ vi.mock('../constants.js', () => ({
 import { createSharedClone } from '../task/clone.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { info } from '../utils/ui.js';
-import { resolveTaskExecution } from '../commands/taskExecution.js';
+import { resolveTaskExecution } from '../commands/execution/taskExecution.js';
 import type { TaskInfo } from '../task/index.js';
 
 const mockCreateSharedClone = vi.mocked(createSharedClone);

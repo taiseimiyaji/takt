@@ -3,5 +3,5 @@
  */
 
 export * from './paths.js';
-export * from './loader.js';
-export * from './initialization.js';
+export * from './loaders/loader.js';
+export * from './global/initialization.js';

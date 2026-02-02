@@ -8,163 +8,205 @@ import { existsSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { DebugConfig } from '../models/types.js';
 
-/** Debug logger state */
-let debugEnabled = false;
-let debugLogFile: string | null = null;
-let initialized = false;
+/**
+ * Debug logger singleton.
+ * Manages file-based debug logging and verbose console output.
+ */
+export class DebugLogger {
+  private static instance: DebugLogger | null = null;
 
-/** Verbose console output state */
-let verboseConsoleEnabled = false;
+  private debugEnabled = false;
+  private debugLogFile: string | null = null;
+  private initialized = false;
+  private verboseConsoleEnabled = false;
 
-/** Get default debug log file path (requires projectDir) */
-function getDefaultLogFile(projectDir: string): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  return join(projectDir, '.takt', 'logs', `debug-${timestamp}.log`);
-}
+  private constructor() {}
 
-/** Initialize debug logger from config */
-export function initDebugLogger(config?: DebugConfig, projectDir?: string): void {
-  if (initialized) {
-    return;
+  static getInstance(): DebugLogger {
+    if (!DebugLogger.instance) {
+      DebugLogger.instance = new DebugLogger();
+    }
+    return DebugLogger.instance;
   }
 
-  debugEnabled = config?.enabled ?? false;
+  /** Reset singleton for testing */
+  static resetInstance(): void {
+    DebugLogger.instance = null;
+  }
 
-  if (debugEnabled) {
-    if (config?.logFile) {
-      debugLogFile = config.logFile;
-    } else if (projectDir) {
-      debugLogFile = getDefaultLogFile(projectDir);
+  /** Get default debug log file path */
+  private static getDefaultLogFile(projectDir: string): string {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    return join(projectDir, '.takt', 'logs', `debug-${timestamp}.log`);
+  }
+
+  /** Initialize debug logger from config */
+  init(config?: DebugConfig, projectDir?: string): void {
+    if (this.initialized) {
+      return;
     }
 
-    if (debugLogFile) {
-      // Ensure log directory exists
-      const logDir = dirname(debugLogFile);
-      if (!existsSync(logDir)) {
-        mkdirSync(logDir, { recursive: true });
+    this.debugEnabled = config?.enabled ?? false;
+
+    if (this.debugEnabled) {
+      if (config?.logFile) {
+        this.debugLogFile = config.logFile;
+      } else if (projectDir) {
+        this.debugLogFile = DebugLogger.getDefaultLogFile(projectDir);
       }
 
-      // Write initial log header
-      const header = [
-        '='.repeat(60),
-        `TAKT Debug Log`,
-        `Started: ${new Date().toISOString()}`,
-        `Project: ${projectDir || 'N/A'}`,
-        '='.repeat(60),
-        '',
-      ].join('\n');
+      if (this.debugLogFile) {
+        const logDir = dirname(this.debugLogFile);
+        if (!existsSync(logDir)) {
+          mkdirSync(logDir, { recursive: true });
+        }
 
-      writeFileSync(debugLogFile, header, 'utf-8');
+        const header = [
+          '='.repeat(60),
+          `TAKT Debug Log`,
+          `Started: ${new Date().toISOString()}`,
+          `Project: ${projectDir || 'N/A'}`,
+          '='.repeat(60),
+          '',
+        ].join('\n');
+
+        writeFileSync(this.debugLogFile, header, 'utf-8');
+      }
     }
+
+    this.initialized = true;
   }
 
-  initialized = true;
-}
+  /** Reset state (for testing) */
+  reset(): void {
+    this.debugEnabled = false;
+    this.debugLogFile = null;
+    this.initialized = false;
+    this.verboseConsoleEnabled = false;
+  }
 
-/** Reset debug logger (for testing) */
-export function resetDebugLogger(): void {
-  debugEnabled = false;
-  debugLogFile = null;
-  initialized = false;
-  verboseConsoleEnabled = false;
-}
+  /** Enable or disable verbose console output */
+  setVerboseConsole(enabled: boolean): void {
+    this.verboseConsoleEnabled = enabled;
+  }
 
-/** Enable or disable verbose console output */
-export function setVerboseConsole(enabled: boolean): void {
-  verboseConsoleEnabled = enabled;
-}
+  /** Check if verbose console is enabled */
+  isVerboseConsole(): boolean {
+    return this.verboseConsoleEnabled;
+  }
 
-/** Check if verbose console is enabled */
-export function isVerboseConsole(): boolean {
-  return verboseConsoleEnabled;
-}
+  /** Check if debug is enabled */
+  isEnabled(): boolean {
+    return this.debugEnabled;
+  }
 
-/** Check if debug is enabled */
-export function isDebugEnabled(): boolean {
-  return debugEnabled;
-}
+  /** Get current debug log file path */
+  getLogFile(): string | null {
+    return this.debugLogFile;
+  }
 
-/** Get current debug log file path */
-export function getDebugLogFile(): string | null {
-  return debugLogFile;
-}
+  /** Format log message with timestamp and level */
+  private static formatLogMessage(level: string, component: string, message: string, data?: unknown): string {
+    const timestamp = new Date().toISOString();
+    const prefix = `[${timestamp}] [${level.toUpperCase()}] [${component}]`;
 
-/** Format log message with timestamp and level */
-function formatLogMessage(level: string, component: string, message: string, data?: unknown): string {
-  const timestamp = new Date().toISOString();
-  const prefix = `[${timestamp}] [${level.toUpperCase()}] [${component}]`;
+    let logLine = `${prefix} ${message}`;
 
-  let logLine = `${prefix} ${message}`;
+    if (data !== undefined) {
+      try {
+        const dataStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        logLine += `\n${dataStr}`;
+      } catch {
+        logLine += `\n[Unable to serialize data]`;
+      }
+    }
 
-  if (data !== undefined) {
+    return logLine;
+  }
+
+  /** Format a compact console log line */
+  private static formatConsoleMessage(level: string, component: string, message: string): string {
+    const timestamp = new Date().toISOString().slice(11, 23);
+    return `[${timestamp}] [${level}] [${component}] ${message}`;
+  }
+
+  /** Write a log entry to verbose console (stderr) and/or file */
+  writeLog(level: string, component: string, message: string, data?: unknown): void {
+    if (this.verboseConsoleEnabled) {
+      process.stderr.write(DebugLogger.formatConsoleMessage(level, component, message) + '\n');
+    }
+
+    if (!this.debugEnabled || !this.debugLogFile) {
+      return;
+    }
+
+    const logLine = DebugLogger.formatLogMessage(level, component, message, data);
+
     try {
-      const dataStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-      logLine += `\n${dataStr}`;
+      appendFileSync(this.debugLogFile, logLine + '\n', 'utf-8');
     } catch {
-      logLine += `\n[Unable to serialize data]`;
+      // Silently fail - logging errors should not interrupt main flow
     }
   }
 
-  return logLine;
-}
-
-/** Format a compact console log line */
-function formatConsoleMessage(level: string, component: string, message: string): string {
-  const timestamp = new Date().toISOString().slice(11, 23); // HH:mm:ss.SSS
-  return `[${timestamp}] [${level}] [${component}] ${message}`;
-}
-
-/** Write a log entry to verbose console (stderr) and/or file */
-function writeLog(level: string, component: string, message: string, data?: unknown): void {
-  if (verboseConsoleEnabled) {
-    process.stderr.write(formatConsoleMessage(level, component, message) + '\n');
-  }
-
-  if (!debugEnabled || !debugLogFile) {
-    return;
-  }
-
-  const logLine = formatLogMessage(level, component, message, data);
-
-  try {
-    appendFileSync(debugLogFile, logLine + '\n', 'utf-8');
-  } catch {
-    // Silently fail - logging errors should not interrupt main flow
+  /** Create a scoped logger for a component */
+  createLogger(component: string) {
+    return {
+      debug: (message: string, data?: unknown) => this.writeLog('DEBUG', component, message, data),
+      info: (message: string, data?: unknown) => this.writeLog('INFO', component, message, data),
+      error: (message: string, data?: unknown) => this.writeLog('ERROR', component, message, data),
+      enter: (funcName: string, args?: Record<string, unknown>) => this.writeLog('DEBUG', component, `>> ${funcName}()`, args),
+      exit: (funcName: string, result?: unknown) => this.writeLog('DEBUG', component, `<< ${funcName}()`, result),
+    };
   }
 }
 
-/** Write a debug log entry */
+// ---- Backward-compatible module-level functions ----
+
+export function initDebugLogger(config?: DebugConfig, projectDir?: string): void {
+  DebugLogger.getInstance().init(config, projectDir);
+}
+
+export function resetDebugLogger(): void {
+  DebugLogger.getInstance().reset();
+}
+
+export function setVerboseConsole(enabled: boolean): void {
+  DebugLogger.getInstance().setVerboseConsole(enabled);
+}
+
+export function isVerboseConsole(): boolean {
+  return DebugLogger.getInstance().isVerboseConsole();
+}
+
+export function isDebugEnabled(): boolean {
+  return DebugLogger.getInstance().isEnabled();
+}
+
+export function getDebugLogFile(): string | null {
+  return DebugLogger.getInstance().getLogFile();
+}
+
 export function debugLog(component: string, message: string, data?: unknown): void {
-  writeLog('DEBUG', component, message, data);
+  DebugLogger.getInstance().writeLog('DEBUG', component, message, data);
 }
 
-/** Write an info log entry */
 export function infoLog(component: string, message: string, data?: unknown): void {
-  writeLog('INFO', component, message, data);
+  DebugLogger.getInstance().writeLog('INFO', component, message, data);
 }
 
-/** Write an error log entry */
 export function errorLog(component: string, message: string, data?: unknown): void {
-  writeLog('ERROR', component, message, data);
+  DebugLogger.getInstance().writeLog('ERROR', component, message, data);
 }
 
-/** Log function entry with arguments */
 export function traceEnter(component: string, funcName: string, args?: Record<string, unknown>): void {
   debugLog(component, `>> ${funcName}()`, args);
 }
 
-/** Log function exit with result */
 export function traceExit(component: string, funcName: string, result?: unknown): void {
   debugLog(component, `<< ${funcName}()`, result);
 }
 
-/** Create a scoped logger for a component */
 export function createLogger(component: string) {
-  return {
-    debug: (message: string, data?: unknown) => debugLog(component, message, data),
-    info: (message: string, data?: unknown) => infoLog(component, message, data),
-    error: (message: string, data?: unknown) => errorLog(component, message, data),
-    enter: (funcName: string, args?: Record<string, unknown>) => traceEnter(component, funcName, args),
-    exit: (funcName: string, result?: unknown) => traceExit(component, funcName, result),
-  };
+  return DebugLogger.getInstance().createLogger(component);
 }

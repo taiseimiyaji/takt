@@ -24,52 +24,60 @@ export interface AutoCommitResult {
 }
 
 /**
- * Auto-commit all changes and push to origin.
- *
- * Steps:
- * 1. Stage all changes (git add -A)
- * 2. Check if there are staged changes (git status --porcelain)
- * 3. If changes exist, create a commit with "takt: {taskName}"
- * 4. Push to origin (git push origin HEAD)
- *
- * @param cloneCwd - The clone directory
- * @param taskName - Task name used in commit message
- * @param projectDir - The main project directory (push target)
+ * Handles auto-commit and push operations for clone tasks.
  */
-export function autoCommitAndPush(cloneCwd: string, taskName: string, projectDir: string): AutoCommitResult {
-  log.info('Auto-commit starting', { cwd: cloneCwd, taskName });
+export class AutoCommitter {
+  /**
+   * Auto-commit all changes and push to the main project.
+   *
+   * Steps:
+   * 1. Stage all changes (git add -A)
+   * 2. Check if there are staged changes
+   * 3. If changes exist, create a commit with "takt: {taskName}"
+   * 4. Push to the main project directory
+   */
+  commitAndPush(cloneCwd: string, taskName: string, projectDir: string): AutoCommitResult {
+    log.info('Auto-commit starting', { cwd: cloneCwd, taskName });
 
-  try {
-    const commitMessage = `takt: ${taskName}`;
-    const commitHash = stageAndCommit(cloneCwd, commitMessage);
+    try {
+      const commitMessage = `takt: ${taskName}`;
+      const commitHash = stageAndCommit(cloneCwd, commitMessage);
 
-    if (!commitHash) {
-      log.info('No changes to commit');
-      return { success: true, message: 'No changes to commit' };
+      if (!commitHash) {
+        log.info('No changes to commit');
+        return { success: true, message: 'No changes to commit' };
+      }
+
+      log.info('Auto-commit created', { commitHash, message: commitMessage });
+
+      execFileSync('git', ['push', projectDir, 'HEAD'], {
+        cwd: cloneCwd,
+        stdio: 'pipe',
+      });
+
+      log.info('Pushed to main repo', { projectDir });
+
+      return {
+        success: true,
+        commitHash,
+        message: `Committed & pushed: ${commitHash} - ${commitMessage}`,
+      };
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
+      log.error('Auto-commit failed', { error: errorMessage });
+
+      return {
+        success: false,
+        message: `Auto-commit failed: ${errorMessage}`,
+      };
     }
-
-    log.info('Auto-commit created', { commitHash, message: commitMessage });
-
-    // Push directly to the main repo (origin was removed to isolate the clone)
-    execFileSync('git', ['push', projectDir, 'HEAD'], {
-      cwd: cloneCwd,
-      stdio: 'pipe',
-    });
-
-    log.info('Pushed to main repo', { projectDir });
-
-    return {
-      success: true,
-      commitHash,
-      message: `Committed & pushed: ${commitHash} - ${commitMessage}`,
-    };
-  } catch (err) {
-    const errorMessage = getErrorMessage(err);
-    log.error('Auto-commit failed', { error: errorMessage });
-
-    return {
-      success: false,
-      message: `Auto-commit failed: ${errorMessage}`,
-    };
   }
+}
+
+// ---- Backward-compatible module-level function ----
+
+const defaultCommitter = new AutoCommitter();
+
+export function autoCommitAndPush(cloneCwd: string, taskName: string, projectDir: string): AutoCommitResult {
+  return defaultCommitter.commitAndPush(cloneCwd, taskName, projectDir);
 }

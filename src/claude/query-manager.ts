@@ -3,83 +3,134 @@
  *
  * Handles tracking and lifecycle management of active Claude queries.
  * Supports concurrent query execution with interrupt capabilities.
+ *
+ * QueryRegistry is a singleton that encapsulates the global activeQueries Map.
  */
 
 import type { Query } from '@anthropic-ai/claude-agent-sdk';
 
 /**
- * Active query registry for interrupt support.
- * Uses a Map to support concurrent query execution.
+ * Registry for tracking active Claude queries.
+ * Singleton — use QueryRegistry.getInstance().
  */
-const activeQueries = new Map<string, Query>();
+export class QueryRegistry {
+  private static instance: QueryRegistry | null = null;
+  private readonly activeQueries = new Map<string, Query>();
+
+  private constructor() {}
+
+  static getInstance(): QueryRegistry {
+    if (!QueryRegistry.instance) {
+      QueryRegistry.instance = new QueryRegistry();
+    }
+    return QueryRegistry.instance;
+  }
+
+  /** Reset singleton for testing */
+  static resetInstance(): void {
+    QueryRegistry.instance = null;
+  }
+
+  /** Check if there is an active Claude process */
+  hasActiveProcess(): boolean {
+    return this.activeQueries.size > 0;
+  }
+
+  /** Check if a specific query is active */
+  isQueryActive(queryId: string): boolean {
+    return this.activeQueries.has(queryId);
+  }
+
+  /** Get count of active queries */
+  getActiveQueryCount(): number {
+    return this.activeQueries.size;
+  }
+
+  /** Register an active query */
+  registerQuery(queryId: string, queryInstance: Query): void {
+    this.activeQueries.set(queryId, queryInstance);
+  }
+
+  /** Unregister an active query */
+  unregisterQuery(queryId: string): void {
+    this.activeQueries.delete(queryId);
+  }
+
+  /**
+   * Interrupt a specific Claude query by ID.
+   * @returns true if the query was interrupted, false if not found
+   */
+  interruptQuery(queryId: string): boolean {
+    const queryInstance = this.activeQueries.get(queryId);
+    if (queryInstance) {
+      queryInstance.interrupt();
+      this.activeQueries.delete(queryId);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Interrupt all active Claude queries.
+   * @returns number of queries that were interrupted
+   */
+  interruptAllQueries(): number {
+    const count = this.activeQueries.size;
+    for (const [id, queryInstance] of this.activeQueries) {
+      queryInstance.interrupt();
+      this.activeQueries.delete(id);
+    }
+    return count;
+  }
+
+  /**
+   * Interrupt the most recently started Claude query (backward compatibility).
+   * @returns true if a query was interrupted, false if no query was running
+   */
+  interruptCurrentProcess(): boolean {
+    if (this.activeQueries.size === 0) {
+      return false;
+    }
+    this.interruptAllQueries();
+    return true;
+  }
+}
+
+// ---- Backward-compatible module-level functions ----
 
 /** Generate a unique query ID */
 export function generateQueryId(): string {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Check if there is an active Claude process */
 export function hasActiveProcess(): boolean {
-  return activeQueries.size > 0;
+  return QueryRegistry.getInstance().hasActiveProcess();
 }
 
-/** Check if a specific query is active */
 export function isQueryActive(queryId: string): boolean {
-  return activeQueries.has(queryId);
+  return QueryRegistry.getInstance().isQueryActive(queryId);
 }
 
-/** Get count of active queries */
 export function getActiveQueryCount(): number {
-  return activeQueries.size;
+  return QueryRegistry.getInstance().getActiveQueryCount();
 }
 
-/** Register an active query */
 export function registerQuery(queryId: string, queryInstance: Query): void {
-  activeQueries.set(queryId, queryInstance);
+  QueryRegistry.getInstance().registerQuery(queryId, queryInstance);
 }
 
-/** Unregister an active query */
 export function unregisterQuery(queryId: string): void {
-  activeQueries.delete(queryId);
+  QueryRegistry.getInstance().unregisterQuery(queryId);
 }
 
-/**
- * Interrupt a specific Claude query by ID.
- * @returns true if the query was interrupted, false if not found
- */
 export function interruptQuery(queryId: string): boolean {
-  const queryInstance = activeQueries.get(queryId);
-  if (queryInstance) {
-    queryInstance.interrupt();
-    activeQueries.delete(queryId);
-    return true;
-  }
-  return false;
+  return QueryRegistry.getInstance().interruptQuery(queryId);
 }
 
-/**
- * Interrupt all active Claude queries.
- * @returns number of queries that were interrupted
- */
 export function interruptAllQueries(): number {
-  const count = activeQueries.size;
-  for (const [id, queryInstance] of activeQueries) {
-    queryInstance.interrupt();
-    activeQueries.delete(id);
-  }
-  return count;
+  return QueryRegistry.getInstance().interruptAllQueries();
 }
 
-/**
- * Interrupt the most recently started Claude query (backward compatibility).
- * @returns true if a query was interrupted, false if no query was running
- */
 export function interruptCurrentProcess(): boolean {
-  if (activeQueries.size === 0) {
-    return false;
-  }
-  // Interrupt all queries for backward compatibility
-  // In the old design, there was only one query
-  interruptAllQueries();
-  return true;
+  return QueryRegistry.getInstance().interruptCurrentProcess();
 }

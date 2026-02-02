@@ -104,8 +104,8 @@ vi.mock('../config/paths.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../config/globalConfig.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../config/globalConfig.js')>();
+vi.mock('../config/global/globalConfig.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../config/global/globalConfig.js')>();
   return {
     ...original,
     loadGlobalConfig: vi.fn().mockReturnValue({}),
@@ -114,8 +114,8 @@ vi.mock('../config/globalConfig.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../config/projectConfig.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../config/projectConfig.js')>();
+vi.mock('../config/project/projectConfig.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../config/project/projectConfig.js')>();
   return {
     ...original,
     loadProjectConfig: vi.fn().mockReturnValue({}),
@@ -139,7 +139,7 @@ vi.mock('../workflow/phase-runner.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { executePipeline } from '../commands/pipelineExecution.js';
+import { executePipeline } from '../commands/execution/pipelineExecution.js';
 import {
   EXIT_ISSUE_FETCH_FAILED,
   EXIT_WORKFLOW_FAILED,

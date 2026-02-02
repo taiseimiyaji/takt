@@ -15,8 +15,8 @@ import type { WorkflowConfig, WorkflowStep, AgentResponse, WorkflowRule } from '
 // --- Mock imports (consumers must call vi.mock before importing this) ---
 
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../workflow/rule-evaluator.js';
-import type { RuleMatch } from '../workflow/rule-evaluator.js';
+import { detectMatchedRule } from '../workflow/evaluation/index.js';
+import type { RuleMatch } from '../workflow/evaluation/index.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../workflow/phase-runner.js';
 import { generateReportDir } from '../utils/session.js';
 

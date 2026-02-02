@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(() => ({ provider: 'mock', language: 'en' })),
 }));
 
@@ -46,7 +46,7 @@ vi.mock('node:readline', () => ({
 
 import { createInterface } from 'node:readline';
 import { getProvider } from '../providers/index.js';
-import { interactiveMode } from '../commands/interactive.js';
+import { interactiveMode } from '../commands/interactive/interactive.js';
 
 const mockGetProvider = vi.mocked(getProvider);
 const mockCreateInterface = vi.mocked(createInterface);

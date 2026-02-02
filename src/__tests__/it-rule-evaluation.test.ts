@@ -29,19 +29,19 @@ vi.mock('../claude/client.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
 }));
 
-vi.mock('../config/projectConfig.js', () => ({
+vi.mock('../config/project/projectConfig.js', () => ({
   loadProjectConfig: vi.fn().mockReturnValue({}),
 }));
 
 // --- Imports (after mocks) ---
 
-import { detectMatchedRule, evaluateAggregateConditions } from '../workflow/rule-evaluator.js';
-import type { RuleMatch, RuleEvaluatorContext } from '../workflow/rule-evaluator.js';
+import { detectMatchedRule, evaluateAggregateConditions } from '../workflow/evaluation/index.js';
+import type { RuleMatch, RuleEvaluatorContext } from '../workflow/evaluation/index.js';
 
 // --- Test helpers ---
 

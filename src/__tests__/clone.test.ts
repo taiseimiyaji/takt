@@ -29,7 +29,7 @@ vi.mock('../utils/debug.js', () => ({
   }),
 }));
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(() => ({})),
 }));
 

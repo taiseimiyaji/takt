@@ -11,13 +11,13 @@ import { stringify as stringifyYaml } from 'yaml';
 import { promptInput, confirm, selectOption } from '../../prompt/index.js';
 import { success, info } from '../../utils/ui.js';
 import { summarizeTaskName } from '../../task/summarize.js';
-import { loadGlobalConfig } from '../../config/globalConfig.js';
+import { loadGlobalConfig } from '../../config/global/globalConfig.js';
 import { getProvider, type ProviderType } from '../../providers/index.js';
 import { createLogger } from '../../utils/debug.js';
 import { getErrorMessage } from '../../utils/error.js';
-import { listWorkflows } from '../../config/workflowLoader.js';
+import { listWorkflows } from '../../config/loaders/workflowLoader.js';
 import { getCurrentWorkflow } from '../../config/paths.js';
-import { interactiveMode } from '../interactive.js';
+import { interactiveMode } from '../interactive/interactive.js';
 import { isIssueReference, resolveIssueTask, parseIssueNumbers } from '../../github/issue.js';
 import type { TaskFileData } from '../../task/schema.js';
 

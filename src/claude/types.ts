@@ -5,7 +5,8 @@
  * used throughout the Claude integration layer.
  */
 
-import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
+import type { PermissionResult, PermissionUpdate, AgentDefinition, PermissionMode as SdkPermissionMode } from '@anthropic-ai/claude-agent-sdk';
+import type { PermissionMode } from '../models/types.js';
 
 // Re-export PermissionResult for convenience
 export type { PermissionResult, PermissionUpdate };
@@ -112,4 +113,52 @@ export interface ClaudeResult {
 /** Extended result with query ID for concurrent execution */
 export interface ClaudeResultWithQueryId extends ClaudeResult {
   queryId: string;
+}
+
+/** Options for calling Claude (high-level, used by client/providers/agents) */
+export interface ClaudeCallOptions {
+  cwd: string;
+  sessionId?: string;
+  allowedTools?: string[];
+  model?: string;
+  maxTurns?: number;
+  systemPrompt?: string;
+  /** SDK agents to register for sub-agent execution */
+  agents?: Record<string, AgentDefinition>;
+  /** Permission mode for tool execution (from workflow step) */
+  permissionMode?: PermissionMode;
+  /** Enable streaming mode with callback for real-time output */
+  onStream?: StreamCallback;
+  /** Custom permission handler for interactive permission prompts */
+  onPermissionRequest?: PermissionHandler;
+  /** Custom handler for AskUserQuestion tool */
+  onAskUserQuestion?: AskUserQuestionHandler;
+  /** Bypass all permission checks (sacrifice-my-pc mode) */
+  bypassPermissions?: boolean;
+  /** Anthropic API key to inject via env (bypasses CLI auth) */
+  anthropicApiKey?: string;
+}
+
+/** Options for spawning a Claude SDK query (low-level, used by executor/process) */
+export interface ClaudeSpawnOptions {
+  cwd: string;
+  sessionId?: string;
+  allowedTools?: string[];
+  model?: string;
+  maxTurns?: number;
+  systemPrompt?: string;
+  /** Enable streaming mode with callback */
+  onStream?: StreamCallback;
+  /** Custom agents to register */
+  agents?: Record<string, AgentDefinition>;
+  /** Permission mode for tool execution (default: 'default' for interactive) */
+  permissionMode?: SdkPermissionMode;
+  /** Custom permission handler for interactive permission prompts */
+  onPermissionRequest?: PermissionHandler;
+  /** Custom handler for AskUserQuestion tool */
+  onAskUserQuestion?: AskUserQuestionHandler;
+  /** Bypass all permission checks (sacrifice-my-pc mode) */
+  bypassPermissions?: boolean;
+  /** Anthropic API key to inject via env (bypasses CLI auth) */
+  anthropicApiKey?: string;
 }

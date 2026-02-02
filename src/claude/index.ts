@@ -5,11 +5,18 @@
  * from the Claude integration module.
  */
 
-// Main process and execution
-export { ClaudeProcess, executeClaudeCli, type ClaudeSpawnOptions } from './process.js';
-export { executeClaudeQuery, type ExecuteOptions } from './executor.js';
+// Classes
+export { ClaudeClient } from './client.js';
+export { ClaudeProcess } from './process.js';
+export { QueryExecutor } from './executor.js';
+export { QueryRegistry } from './query-manager.js';
+export { SdkOptionsBuilder } from './options-builder.js';
 
-// Query management (only from query-manager, process.ts re-exports these)
+// Main process and execution
+export { executeClaudeCli } from './process.js';
+export { executeClaudeQuery } from './executor.js';
+
+// Query management
 export {
   generateQueryId,
   hasActiveProcess,
@@ -22,7 +29,7 @@ export {
   interruptCurrentProcess,
 } from './query-manager.js';
 
-// Types (only from types.ts, avoiding duplicates from process.ts)
+// Types
 export type {
   StreamEvent,
   StreamCallback,
@@ -32,6 +39,8 @@ export type {
   AskUserQuestionHandler,
   ClaudeResult,
   ClaudeResultWithQueryId,
+  ClaudeCallOptions,
+  ClaudeSpawnOptions,
   InitEventData,
   ToolUseEventData,
   ToolResultEventData,
@@ -45,19 +54,22 @@ export type {
 // Stream conversion
 export { sdkMessageToStreamEvent } from './stream-converter.js';
 
-// Options building
+// Options building (backward-compatible functions)
 export {
   createCanUseToolCallback,
   createAskUserQuestionHooks,
+  buildSdkOptions,
 } from './options-builder.js';
 
-// Client functions and types
+// Client functions (backward-compatible)
 export {
   callClaude,
   callClaudeCustom,
   callClaudeAgent,
   callClaudeSkill,
+  callAiJudge,
   detectRuleIndex,
+  detectJudgeIndex,
+  buildJudgePrompt,
   isRegexSafe,
-  type ClaudeCallOptions,
 } from './client.js';

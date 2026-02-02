@@ -2,20 +2,20 @@
  * Command exports
  */
 
-export { executeWorkflow, type WorkflowExecutionResult, type WorkflowExecutionOptions } from './workflowExecution.js';
-export { executeTask, runAllTasks } from './taskExecution.js';
-export { addTask } from './addTask.js';
-export { ejectBuiltin } from './eject.js';
-export { watchTasks } from './watchTasks.js';
-export { withAgentSession } from './session.js';
-export { switchWorkflow } from './workflow.js';
-export { switchConfig, getCurrentPermissionMode, setPermissionMode, type PermissionMode } from './config.js';
-export { listTasks } from './listTasks.js';
-export { interactiveMode } from './interactive.js';
-export { executePipeline, type PipelineExecutionOptions } from './pipelineExecution.js';
+export { executeWorkflow, type WorkflowExecutionResult, type WorkflowExecutionOptions } from './execution/workflowExecution.js';
+export { executeTask, runAllTasks, type TaskExecutionOptions } from './execution/taskExecution.js';
+export { addTask } from './management/addTask.js';
+export { ejectBuiltin } from './management/eject.js';
+export { watchTasks } from './management/watchTasks.js';
+export { withAgentSession } from './execution/session.js';
+export { switchWorkflow } from './management/workflow.js';
+export { switchConfig, getCurrentPermissionMode, setPermissionMode, type PermissionMode } from './management/config.js';
+export { listTasks } from './management/listTasks.js';
+export { interactiveMode } from './interactive/interactive.js';
+export { executePipeline, type PipelineExecutionOptions } from './execution/pipelineExecution.js';
 export {
   selectAndExecuteTask,
   confirmAndCreateWorktree,
   type SelectAndExecuteOptions,
   type WorktreeConfirmationResult,
-} from './selectAndExecute.js';
+} from './execution/selectAndExecute.js';

@@ -20,7 +20,7 @@ vi.mock('node:os', async () => {
 });
 
 // Import after mocks are set up
-const { loadGlobalConfig, saveGlobalConfig, invalidateGlobalConfigCache } = await import('../config/globalConfig.js');
+const { loadGlobalConfig, saveGlobalConfig, invalidateGlobalConfigCache } = await import('../config/global/globalConfig.js');
 const { getGlobalConfigPath } = await import('../config/paths.js');
 
 describe('loadGlobalConfig', () => {

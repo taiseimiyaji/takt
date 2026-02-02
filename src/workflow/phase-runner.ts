@@ -7,10 +7,8 @@
 
 import type { WorkflowStep, Language } from '../models/types.js';
 import { runAgent, type RunAgentOptions } from '../agents/runner.js';
-import {
-  buildReportInstruction as buildReportInstructionFromTemplate,
-  buildStatusJudgmentInstruction as buildStatusJudgmentInstructionFromTemplate,
-} from './instruction-builder.js';
+import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
+import { StatusJudgmentBuilder } from './instruction/StatusJudgmentBuilder.js';
 import { hasTagBasedRules } from './rule-utils.js';
 import { createLogger } from '../utils/debug.js';
 
@@ -56,12 +54,12 @@ export async function runReportPhase(
 
   log.debug('Running report phase', { step: step.name, sessionId });
 
-  const reportInstruction = buildReportInstructionFromTemplate(step, {
+  const reportInstruction = new ReportInstructionBuilder(step, {
     cwd: ctx.cwd,
     reportDir: ctx.reportDir,
     stepIteration,
     language: ctx.language,
-  });
+  }).build();
 
   const reportOptions = ctx.buildResumeOptions(step, sessionId, {
     allowedTools: ['Write'],
@@ -92,9 +90,9 @@ export async function runStatusJudgmentPhase(
 
   log.debug('Running status judgment phase', { step: step.name, sessionId });
 
-  const judgmentInstruction = buildStatusJudgmentInstructionFromTemplate(step, {
+  const judgmentInstruction = new StatusJudgmentBuilder(step, {
     language: ctx.language,
-  });
+  }).build();
 
   const judgmentOptions = ctx.buildResumeOptions(step, sessionId, {
     allowedTools: [],

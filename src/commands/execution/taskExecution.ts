@@ -17,7 +17,7 @@ import {
 } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
 import { getErrorMessage } from '../../utils/error.js';
-import { executeWorkflow } from '../workflowExecution.js';
+import { executeWorkflow } from './workflowExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
 import type { ProviderType } from '../../providers/index.js';
 

@@ -17,7 +17,7 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../workflow/rule-evaluator.js', () => ({
+vi.mock('../workflow/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
@@ -33,7 +33,7 @@ vi.mock('../utils/session.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../workflow/engine.js';
+import { WorkflowEngine } from '../workflow/engine/WorkflowEngine.js';
 import { runReportPhase } from '../workflow/phase-runner.js';
 import {
   makeResponse,

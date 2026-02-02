@@ -25,8 +25,8 @@ import { selectOption, confirm, promptInput } from '../../prompt/index.js';
 import { info, success, error as logError, warn, header, blankLine } from '../../utils/ui.js';
 import { createLogger } from '../../utils/debug.js';
 import { getErrorMessage } from '../../utils/error.js';
-import { executeTask, type TaskExecutionOptions } from '../taskExecution.js';
-import { listWorkflows } from '../../config/workflowLoader.js';
+import { executeTask, type TaskExecutionOptions } from '../execution/taskExecution.js';
+import { listWorkflows } from '../../config/loaders/workflowLoader.js';
 import { getCurrentWorkflow } from '../../config/paths.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
 

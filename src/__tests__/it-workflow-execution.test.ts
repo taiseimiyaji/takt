@@ -40,18 +40,18 @@ vi.mock('../utils/session.js', () => ({
   generateSessionId: vi.fn().mockReturnValue('test-session-id'),
 }));
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
 }));
 
-vi.mock('../config/projectConfig.js', () => ({
+vi.mock('../config/project/projectConfig.js', () => ({
   loadProjectConfig: vi.fn().mockReturnValue({}),
 }));
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../workflow/engine.js';
+import { WorkflowEngine } from '../workflow/engine/WorkflowEngine.js';
 
 // --- Test helpers ---
 

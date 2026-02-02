@@ -32,7 +32,7 @@ vi.mock('../config/paths.js', async (importOriginal) => {
 });
 
 // Import after mocking
-const { loadGlobalConfig, saveGlobalConfig, resolveAnthropicApiKey, resolveOpenaiApiKey, invalidateGlobalConfigCache } = await import('../config/globalConfig.js');
+const { loadGlobalConfig, saveGlobalConfig, resolveAnthropicApiKey, resolveOpenaiApiKey, invalidateGlobalConfigCache } = await import('../config/global/globalConfig.js');
 
 describe('GlobalConfigSchema API key fields', () => {
   it('should accept config without API keys', () => {

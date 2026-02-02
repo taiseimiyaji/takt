@@ -5,30 +5,11 @@
  */
 
 import * as wanakana from 'wanakana';
-import { loadGlobalConfig } from '../config/globalConfig.js';
+import { loadGlobalConfig } from '../config/global/globalConfig.js';
 import { getProvider, type ProviderType } from '../providers/index.js';
 import { createLogger } from '../utils/debug.js';
 
 const log = createLogger('summarize');
-
-/**
- * Sanitize a string for use as git branch name and directory name.
- *
- * Git branch restrictions: no spaces, ~, ^, :, ?, *, [, \, .., @{, leading -
- * Directory restrictions: no /, \, :, *, ?, ", <, >, |
- *
- * This function allows only: a-z, 0-9, hyphen
- */
-function sanitizeSlug(input: string, maxLength = 30): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')  // Replace invalid chars with hyphen
-    .replace(/-+/g, '-')          // Collapse multiple hyphens
-    .replace(/^-+/, '')           // Remove leading hyphens
-    .slice(0, maxLength)
-    .replace(/-+$/, '');          // Remove trailing hyphens (after slice)
-}
 
 const SUMMARIZE_SYSTEM_PROMPT = `You are a slug generator. Given a task description, output ONLY a slug.
 
@@ -54,52 +35,78 @@ export interface SummarizeOptions {
 }
 
 /**
+ * Sanitize a string for use as git branch name and directory name.
+ * Allows only: a-z, 0-9, hyphen.
+ */
+function sanitizeSlug(input: string, maxLength = 30): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, maxLength)
+    .replace(/-+$/, '');
+}
+
+/**
  * Convert Japanese text to romaji slug.
- * Handles hiragana, katakana, and passes through alphanumeric.
- * Kanji and other non-convertible characters become hyphens.
  */
 function toRomajiSlug(text: string): string {
-  // Convert to romaji (hiragana/katakana → romaji, kanji stays as-is)
   const romaji = wanakana.toRomaji(text, { customRomajiMapping: {} });
   return sanitizeSlug(romaji);
 }
 
 /**
- * Summarize a task name into a concise slug using AI or romanization.
- *
- * @param taskName - Original task name (can be in any language)
- * @param options - Summarization options
- * @returns Slug suitable for branch names (English if LLM, romaji if not)
+ * Summarizes task names into concise slugs using AI or romanization.
  */
-export async function summarizeTaskName(
-  taskName: string,
-  options: SummarizeOptions
-): Promise<string> {
-  const useLLM = options.useLLM ?? true;
-  log.info('Summarizing task name', { taskName, useLLM });
+export class TaskSummarizer {
+  /**
+   * Summarize a task name into a concise slug.
+   *
+   * @param taskName - Original task name (can be in any language)
+   * @param options - Summarization options
+   * @returns Slug suitable for branch names (English if LLM, romaji if not)
+   */
+  async summarize(
+    taskName: string,
+    options: SummarizeOptions,
+  ): Promise<string> {
+    const useLLM = options.useLLM ?? true;
+    log.info('Summarizing task name', { taskName, useLLM });
 
-  // Use romanization if LLM is disabled
-  if (!useLLM) {
-    const slug = toRomajiSlug(taskName);
-    log.info('Task name romanized', { original: taskName, slug });
+    if (!useLLM) {
+      const slug = toRomajiSlug(taskName);
+      log.info('Task name romanized', { original: taskName, slug });
+      return slug || 'task';
+    }
+
+    const globalConfig = loadGlobalConfig();
+    const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
+    const model = options.model ?? globalConfig.model ?? 'haiku';
+
+    const provider = getProvider(providerType);
+    const response = await provider.call('summarizer', taskName, {
+      cwd: options.cwd,
+      model,
+      systemPrompt: SUMMARIZE_SYSTEM_PROMPT,
+      allowedTools: [],
+    });
+
+    const slug = sanitizeSlug(response.content);
+    log.info('Task name summarized', { original: taskName, slug });
+
     return slug || 'task';
   }
+}
 
-  // Use LLM for summarization
-  const globalConfig = loadGlobalConfig();
-  const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
-  const model = options.model ?? globalConfig.model ?? 'haiku';
+// ---- Backward-compatible module-level function ----
 
-  const provider = getProvider(providerType);
-  const response = await provider.call('summarizer', taskName, {
-    cwd: options.cwd,
-    model,
-    systemPrompt: SUMMARIZE_SYSTEM_PROMPT,
-    allowedTools: [],
-  });
+const defaultSummarizer = new TaskSummarizer();
 
-  const slug = sanitizeSlug(response.content);
-  log.info('Task name summarized', { original: taskName, slug });
-
-  return slug || 'task';
+export async function summarizeTaskName(
+  taskName: string,
+  options: SummarizeOptions,
+): Promise<string> {
+  return defaultSummarizer.summarize(taskName, options);
 }

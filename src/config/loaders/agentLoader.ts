@@ -16,7 +16,7 @@ import {
   getBuiltinWorkflowsDir,
   isPathSafe,
 } from '../paths.js';
-import { getLanguage } from '../globalConfig.js';
+import { getLanguage } from '../global/globalConfig.js';
 
 /** Get all allowed base directories for agent prompt files */
 function getAllowedAgentBases(): string[] {

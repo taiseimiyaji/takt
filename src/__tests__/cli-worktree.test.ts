@@ -67,7 +67,7 @@ vi.mock('../commands/index.js', () => ({
   interactiveMode: vi.fn(() => Promise.resolve({ confirmed: false, task: '' })),
 }));
 
-vi.mock('../config/workflowLoader.js', () => ({
+vi.mock('../config/loaders/workflowLoader.js', () => ({
   listWorkflows: vi.fn(() => []),
 }));
 
@@ -92,7 +92,7 @@ import { confirm } from '../prompt/index.js';
 import { createSharedClone } from '../task/clone.js';
 import { summarizeTaskName } from '../task/summarize.js';
 import { info } from '../utils/ui.js';
-import { confirmAndCreateWorktree } from '../commands/selectAndExecute.js';
+import { confirmAndCreateWorktree } from '../commands/execution/selectAndExecute.js';
 
 const mockConfirm = vi.mocked(confirm);
 const mockCreateSharedClone = vi.mocked(createSharedClone);

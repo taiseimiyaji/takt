@@ -12,7 +12,7 @@ export {
   isWorkflowPath,
   loadAllWorkflows,
   listWorkflows,
-} from '../workflowLoader.js';
+} from './workflowLoader.js';
 
 // Agent loading
 export {
@@ -21,7 +21,7 @@ export {
   listCustomAgents,
   loadAgentPrompt,
   loadAgentPromptFromPath,
-} from '../agentLoader.js';
+} from './agentLoader.js';
 
 // Global configuration
 export {
@@ -32,4 +32,4 @@ export {
   isDirectoryTrusted,
   loadProjectDebugConfig,
   getEffectiveDebugConfig,
-} from '../globalConfig.js';
+} from '../global/globalConfig.js';

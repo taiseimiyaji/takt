@@ -94,7 +94,7 @@ export {
   setCurrentWorkflow,
   isVerboseMode,
   type ProjectLocalConfig,
-} from './projectConfig.js';
+} from './project/projectConfig.js';
 
 // Re-export session storage functions for backward compatibility
 export {
@@ -116,4 +116,4 @@ export {
   getWorktreeSessionPath,
   loadWorktreeSessions,
   updateWorktreeSession,
-} from './sessionStore.js';
+} from './project/sessionStore.js';

@@ -2,7 +2,8 @@
  * Session type definitions
  */
 
-import type { AgentResponse, Status } from './types.js';
+import type { AgentResponse } from './response.js';
+import type { Status } from './status.js';
 
 /**
  * Session state for workflow execution

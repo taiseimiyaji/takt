@@ -15,7 +15,7 @@ import { parse as parseYaml } from 'yaml';
 import { WorkflowConfigRawSchema } from '../../models/schemas.js';
 import type { WorkflowConfig, WorkflowStep, WorkflowRule, ReportConfig, ReportObjectConfig } from '../../models/types.js';
 import { getGlobalWorkflowsDir, getBuiltinWorkflowsDir, getProjectConfigDir } from '../paths.js';
-import { getLanguage, getDisabledBuiltins } from '../globalConfig.js';
+import { getLanguage, getDisabledBuiltins } from '../global/globalConfig.js';
 
 /** Get builtin workflow by name */
 export function getBuiltinWorkflow(name: string): WorkflowConfig | null {

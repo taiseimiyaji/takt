@@ -3,7 +3,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { WorkflowEngine } from '../../workflow/engine.js';
+import { WorkflowEngine } from '../../workflow/engine/WorkflowEngine.js';
 import type { WorkflowConfig, Language } from '../../models/types.js';
 import type { IterationLimitRequest } from '../../workflow/types.js';
 import type { ProviderType } from '../../providers/index.js';
@@ -13,7 +13,7 @@ import {
   loadWorktreeSessions,
   updateWorktreeSession,
 } from '../../config/paths.js';
-import { loadGlobalConfig } from '../../config/globalConfig.js';
+import { loadGlobalConfig } from '../../config/global/globalConfig.js';
 import { isQuietMode } from '../../context.js';
 import {
   header,

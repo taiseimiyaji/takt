@@ -18,7 +18,7 @@ import {
   ensureDir,
 } from '../paths.js';
 import { copyProjectResourcesToDir, getLanguageResourcesDir } from '../../resources/index.js';
-import { setLanguage, setProvider } from '../globalConfig.js';
+import { setLanguage, setProvider } from './globalConfig.js';
 
 /**
  * Check if initial setup is needed.

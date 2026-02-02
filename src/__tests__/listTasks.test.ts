@@ -9,7 +9,7 @@ import {
   buildListItems,
   type BranchInfo,
 } from '../task/branchList.js';
-import { isBranchMerged, showFullDiff, type ListAction } from '../commands/listTasks.js';
+import { isBranchMerged, showFullDiff, type ListAction } from '../commands/management/listTasks.js';
 
 describe('parseTaktBranches', () => {
   it('should parse takt/ branches from git branch output', () => {

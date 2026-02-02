@@ -15,9 +15,9 @@ import type {
   Language,
 } from '../../models/types.js';
 import { runAgent } from '../../agents/runner.js';
-import { buildInstruction as buildInstructionFromTemplate, isReportObjectConfig } from '../instruction-builder.js';
+import { InstructionBuilder, isReportObjectConfig } from '../instruction/InstructionBuilder.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
-import { detectMatchedRule } from '../rule-evaluator.js';
+import { detectMatchedRule } from '../evaluation/index.js';
 import { incrementStepIteration, getPreviousOutput } from '../state-manager.js';
 import { createLogger } from '../../utils/debug.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
@@ -45,7 +45,7 @@ export class StepExecutor {
     task: string,
     maxIterations: number,
   ): string {
-    return buildInstructionFromTemplate(step, {
+    return new InstructionBuilder(step, {
       task,
       iteration: state.iteration,
       maxIterations,
@@ -56,7 +56,7 @@ export class StepExecutor {
       previousOutput: getPreviousOutput(state),
       reportDir: join(this.deps.getCwd(), this.deps.getReportDir()),
       language: this.deps.getLanguage(),
-    });
+    }).build();
   }
 
   /**

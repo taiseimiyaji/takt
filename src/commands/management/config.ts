@@ -12,10 +12,10 @@ import {
   loadProjectConfig,
   updateProjectConfig,
   type PermissionMode,
-} from '../../config/projectConfig.js';
+} from '../../config/project/projectConfig.js';
 
 // Re-export for convenience
-export type { PermissionMode } from '../../config/projectConfig.js';
+export type { PermissionMode } from '../../config/project/projectConfig.js';
 
 /**
  * Get permission mode options for selection

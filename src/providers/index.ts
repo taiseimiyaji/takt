@@ -5,66 +5,56 @@
  * This enables adding new providers without modifying the runner logic.
  */
 
-import type { StreamCallback, PermissionHandler, AskUserQuestionHandler } from '../claude/process.js';
-import type { AgentResponse, PermissionMode } from '../models/types.js';
 import { ClaudeProvider } from './claude.js';
 import { CodexProvider } from './codex.js';
 import { MockProvider } from './mock.js';
+import type { Provider, ProviderType } from './types.js';
 
-/** Common options for all providers */
-export interface ProviderCallOptions {
-  cwd: string;
-  sessionId?: string;
-  model?: string;
-  systemPrompt?: string;
-  allowedTools?: string[];
-  /** Maximum number of agentic turns */
-  maxTurns?: number;
-  /** Permission mode for tool execution (from workflow step) */
-  permissionMode?: PermissionMode;
-  onStream?: StreamCallback;
-  onPermissionRequest?: PermissionHandler;
-  onAskUserQuestion?: AskUserQuestionHandler;
-  bypassPermissions?: boolean;
-  /** Anthropic API key for Claude provider */
-  anthropicApiKey?: string;
-  /** OpenAI API key for Codex provider */
-  openaiApiKey?: string;
-}
-
-/** Provider interface - all providers must implement this */
-export interface Provider {
-  /** Call the provider with a prompt (using systemPrompt from options if provided) */
-  call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse>;
-
-  /** Call the provider with explicit system prompt */
-  callCustom(agentName: string, prompt: string, systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse>;
-}
-
-/** Provider type */
-export type ProviderType = 'claude' | 'codex' | 'mock';
-
-/** Provider registry */
-const providers: Record<ProviderType, Provider> = {
-  claude: new ClaudeProvider(),
-  codex: new CodexProvider(),
-  mock: new MockProvider(),
-};
+// Re-export types for backward compatibility
+export type { ProviderCallOptions, Provider, ProviderType } from './types.js';
 
 /**
- * Get a provider instance by type
+ * Registry for agent providers.
+ * Singleton — use ProviderRegistry.getInstance().
  */
-export function getProvider(type: ProviderType): Provider {
-  const provider = providers[type];
-  if (!provider) {
-    throw new Error(`Unknown provider type: ${type}`);
+export class ProviderRegistry {
+  private static instance: ProviderRegistry | null = null;
+  private readonly providers: Record<string, Provider>;
+
+  private constructor() {
+    this.providers = {
+      claude: new ClaudeProvider(),
+      codex: new CodexProvider(),
+      mock: new MockProvider(),
+    };
   }
-  return provider;
+
+  static getInstance(): ProviderRegistry {
+    if (!ProviderRegistry.instance) {
+      ProviderRegistry.instance = new ProviderRegistry();
+    }
+    return ProviderRegistry.instance;
+  }
+
+  /** Reset singleton for testing */
+  static resetInstance(): void {
+    ProviderRegistry.instance = null;
+  }
+
+  /** Get a provider instance by type */
+  get(type: ProviderType): Provider {
+    const provider = this.providers[type];
+    if (!provider) {
+      throw new Error(`Unknown provider type: ${type}`);
+    }
+    return provider;
+  }
+
 }
 
-/**
- * Register a custom provider
- */
-export function registerProvider(type: string, provider: Provider): void {
-  (providers as Record<string, Provider>)[type] = provider;
+// ---- Backward-compatible module-level functions ----
+
+export function getProvider(type: ProviderType): Provider {
+  return ProviderRegistry.getInstance().get(type);
 }
+

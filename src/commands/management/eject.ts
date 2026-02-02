@@ -8,7 +8,7 @@
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { getGlobalWorkflowsDir, getGlobalAgentsDir, getBuiltinWorkflowsDir, getBuiltinAgentsDir } from '../../config/paths.js';
-import { getLanguage } from '../../config/globalConfig.js';
+import { getLanguage } from '../../config/global/globalConfig.js';
 import { header, success, info, warn, error, blankLine } from '../../utils/ui.js';
 
 /**

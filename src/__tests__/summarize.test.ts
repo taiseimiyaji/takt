@@ -8,7 +8,7 @@ vi.mock('../providers/index.js', () => ({
   getProvider: vi.fn(),
 }));
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(),
 }));
 
@@ -21,7 +21,7 @@ vi.mock('../utils/debug.js', () => ({
 }));
 
 import { getProvider } from '../providers/index.js';
-import { loadGlobalConfig } from '../config/globalConfig.js';
+import { loadGlobalConfig } from '../config/global/globalConfig.js';
 import { summarizeTaskName } from '../task/summarize.js';
 
 const mockGetProvider = vi.mocked(getProvider);

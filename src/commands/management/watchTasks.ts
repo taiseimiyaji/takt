@@ -15,9 +15,9 @@ import {
   status,
   blankLine,
 } from '../../utils/ui.js';
-import { executeAndCompleteTask } from '../taskExecution.js';
+import { executeAndCompleteTask } from '../execution/taskExecution.js';
 import { DEFAULT_WORKFLOW_NAME } from '../../constants.js';
-import type { TaskExecutionOptions } from '../taskExecution.js';
+import type { TaskExecutionOptions } from '../execution/taskExecution.js';
 
 /**
  * Watch for tasks and execute them as they appear.

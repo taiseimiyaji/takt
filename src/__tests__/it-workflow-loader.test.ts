@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 
 // --- Mocks ---
 
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
   getDisabledBuiltins: vi.fn().mockReturnValue([]),
@@ -23,7 +23,7 @@ vi.mock('../config/globalConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { loadWorkflow } from '../config/workflowLoader.js';
+import { loadWorkflow } from '../config/loaders/workflowLoader.js';
 
 // --- Test helpers ---
 

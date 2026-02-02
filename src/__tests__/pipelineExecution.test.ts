@@ -27,13 +27,13 @@ vi.mock('../github/pr.js', () => ({
 }));
 
 const mockExecuteTask = vi.fn();
-vi.mock('../commands/taskExecution.js', () => ({
+vi.mock('../commands/execution/taskExecution.js', () => ({
   executeTask: mockExecuteTask,
 }));
 
 // Mock loadGlobalConfig
 const mockLoadGlobalConfig = vi.fn();
-vi.mock('../config/globalConfig.js', () => ({
+vi.mock('../config/global/globalConfig.js', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()),
   loadGlobalConfig: mockLoadGlobalConfig,
 }));
 
@@ -50,8 +50,11 @@ vi.mock('../utils/ui.js', () => ({
   success: vi.fn(),
   status: vi.fn(),
   blankLine: vi.fn(),
+  header: vi.fn(),
+  section: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
 }));
-
 // Mock debug logger
 vi.mock('../utils/debug.js', () => ({
   createLogger: () => ({
@@ -61,7 +64,7 @@ vi.mock('../utils/debug.js', () => ({
   }),
 }));
 
-const { executePipeline } = await import('../commands/pipelineExecution.js');
+const { executePipeline } = await import('../commands/execution/pipelineExecution.js');
 
 describe('executePipeline', () => {
   beforeEach(() => {
