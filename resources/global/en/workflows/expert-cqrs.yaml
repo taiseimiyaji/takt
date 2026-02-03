@@ -59,7 +59,6 @@ steps:
       - Read
       - Glob
       - Grep
-      - Write
       - Bash
       - WebSearch
       - WebFetch
@@ -192,7 +191,6 @@ steps:
       - Read
       - Glob
       - Grep
-      - Write
       - WebSearch
       - WebFetch
     instruction_template: |
@@ -314,7 +312,7 @@ steps:
           - Read
           - Glob
           - Grep
-          - Write
+
           - WebSearch
           - WebFetch
         rules:
@@ -366,7 +364,7 @@ steps:
           - Read
           - Glob
           - Grep
-          - Write
+
           - WebSearch
           - WebFetch
         rules:
@@ -424,7 +422,7 @@ steps:
           - Read
           - Glob
           - Grep
-          - Write
+
           - WebSearch
           - WebFetch
         rules:
@@ -469,7 +467,7 @@ steps:
           - Read
           - Glob
           - Grep
-          - Write
+
           - WebSearch
           - WebFetch
         rules:
@@ -539,7 +537,6 @@ steps:
       - Read
       - Glob
       - Grep
-      - Write
       - WebSearch
       - WebFetch
     instruction_template: |

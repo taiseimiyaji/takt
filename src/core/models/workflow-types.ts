@@ -25,8 +25,11 @@ export interface WorkflowRule {
   isAggregateCondition?: boolean;
   /** Aggregate type: 'all' requires all sub-steps match, 'any' requires at least one (set by loader) */
   aggregateType?: 'all' | 'any';
-  /** The condition text inside all("...")/any("...") to match against sub-step results (set by loader) */
-  aggregateConditionText?: string;
+  /** The condition text(s) inside all("...")/any("...") to match against sub-step results (set by loader).
+   * - string: all sub-steps must match this single condition (e.g., all("approved"))
+   * - string[]: each sub-step must match the corresponding condition by index (e.g., all("A", "B"))
+   */
+  aggregateConditionText?: string | string[];
 }
 
 /** Report file configuration for a workflow step (label: path pair) */

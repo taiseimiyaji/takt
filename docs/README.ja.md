@@ -76,10 +76,9 @@ Select workflow:
 | ワークフロー | おすすめ用途 |
 |------------|------------|
 | `default` | 本格的な開発タスク。TAKT自身の開発で使用。アーキテクト＋セキュリティの並列レビュー付き多段階レビュー。 |
-| `simple` | README更新や小さな修正などの軽量タスク。レビューはあるが修正ループなし。 |
-| `expert` / `expert-cqrs` | Web開発プロジェクト。修正ループ付き逐次マルチエキスパートレビュー（`expert`: アーキテクチャ、フロントエンド、セキュリティ、QA。`expert-cqrs`: CQRS+ES、フロントエンド、セキュリティ、QA）。 |
+| `minimal` | 簡単な修正やシンプルなタスク。基本的なレビュー付きの最小限のワークフロー。 |
+| `review-fix-minimal` | レビュー＆修正ワークフロー。レビューフィードバックに基づく反復的な改善に特化。 |
 | `research` | 調査・リサーチ。質問せずに自律的にリサーチを実行。 |
-| `magi` | 審議システム。3つのAIペルソナが分析・投票（エヴァンゲリオン風）。 |
 
 ## コマンド一覧
 
@@ -154,12 +153,16 @@ takt --pipeline --task "バグを修正" --skip-git
 | `--pipeline` | **パイプライン（非対話）モードを有効化** — CI/自動化に必須 |
 | `-t, --task <text>` | タスク内容（GitHub Issueの代わり） |
 | `-i, --issue <N>` | GitHub Issue番号（対話モードでは `#N` と同じ） |
-| `-w, --workflow <name>` | ワークフロー指定 |
+| `-w, --workflow <name or path>` | ワークフロー名、またはワークフローYAMLファイルのパス |
 | `-b, --branch <name>` | ブランチ名指定（省略時は自動生成） |
 | `--auto-pr` | PR作成（対話: 確認スキップ、パイプライン: PR有効化） |
 | `--skip-git` | ブランチ作成・commit・pushをスキップ（パイプラインモード、ワークフロー実行のみ） |
 | `--repo <owner/repo>` | リポジトリ指定（PR作成時） |
 | `--create-worktree <yes\|no>` | worktree確認プロンプトをスキップ |
+| `-q, --quiet` | 最小限の出力モード: AIの出力を抑制（CI向け） |
+| `--provider <name>` | エージェントプロバイダーを上書き（claude\|codex\|mock） |
+| `--model <name>` | エージェントモデルを上書き |
+| `--config <path>` | グローバル設定ファイルのパス（デフォルト: `~/.takt/config.yaml`） |
 
 ## ワークフロー
 
@@ -186,7 +189,7 @@ steps:
   - name: implement
     agent: ../agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: 実装完了
         next: review
@@ -278,12 +281,14 @@ TAKTには複数のビルトインワークフローが同梱されています:
 
 | ワークフロー | 説明 |
 |------------|------|
+| `minimal` | クイックワークフロー: 計画 → 実装 → レビュー → スーパーバイザー。高速イテレーション向けの最小ステップ。 |
 | `default` | フル開発ワークフロー: 計画 → 実装 → AIレビュー → 並列レビュー（アーキテクト＋セキュリティ）→ スーパーバイザー承認。各レビュー段階に修正ループあり。 |
-| `simple` | defaultの簡略版: 計画 → 実装 → アーキテクトレビュー → AIレビュー → スーパーバイザー。中間の修正ステップなし。 |
+| `review-fix-minimal` | レビュー重視ワークフロー: レビュー → 修正 → スーパーバイザー。レビューフィードバックに基づく反復改善向け。 |
 | `research` | リサーチワークフロー: プランナー → ディガー → スーパーバイザー。質問せずに自律的にリサーチを実行。 |
 | `expert` | ドメインエキスパートによる逐次レビュー: アーキテクチャ、フロントエンド、セキュリティ、QAレビューと修正ループ。 |
 | `expert-cqrs` | ドメインエキスパートによる逐次レビュー: CQRS+ES、フロントエンド、セキュリティ、QAレビューと修正ループ。 |
 | `magi` | エヴァンゲリオンにインスパイアされた審議システム。3つのAIペルソナ（MELCHIOR、BALTHASAR、CASPER）が分析し投票。 |
+| `review-only` | 変更を加えない読み取り専用のコードレビューワークフロー。 |
 
 `takt switch` でワークフローを切り替えられます。
 
@@ -418,9 +423,12 @@ TAKTは`.takt/tasks/`内のタスクファイルによるバッチ処理をサ�
 ```bash
 # AI会話でタスクの要件を詰めてからタスクを追加
 takt add
+
+# GitHub IssueからタスクAdd（Issue番号がブランチ名に反映される）
+takt add #28
 ```
 
-`takt add` はAI会話を開始し、タスクの要件を詰めます。`/go` で確定すると、AIが会話を要約してYAMLタスクファイルを作成します。worktree/branch/workflowの設定も対話的に行えます。
+`takt add` はAI会話を開始し、タスクの要件を詰めます。`/go` で確定すると、AIが会話を要約してYAMLタスクファイルを作成します。worktree/branch/workflowの設定も対話的に行えます。`takt add #N` を使用すると、Issue番号が自動的にブランチ名に反映されます（例: `takt/issue-28-...`）。
 
 #### タスクファイルの形式
 
@@ -534,7 +542,7 @@ steps:
   - name: implement
     agent: ~/.takt/agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    permission_mode: edit
     pass_previous_response: true
     rules:
       - condition: 完了
@@ -607,7 +615,7 @@ rules:
 | `allowed_tools` | - | エージェントが使用できるツール一覧（Read, Glob, Grep, Edit, Write, Bash等） |
 | `provider` | - | このステップのプロバイダーを上書き（`claude`または`codex`） |
 | `model` | - | このステップのモデルを上書き |
-| `permission_mode` | `default` | パーミッションモード: `default`、`acceptEdits`、`bypassPermissions` |
+| `permission_mode` | - | パーミッションモード: `readonly`、`edit`、`full`（プロバイダー非依存） |
 | `report` | - | 自動生成レポートのファイル設定（name, format） |
 
 ## API使用例

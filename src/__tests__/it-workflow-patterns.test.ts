@@ -21,10 +21,10 @@ vi.mock('../infra/claude/client.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
-    callAiJudge: vi.fn().mockImplementation(async (rules: { condition: string }[], content: string) => {
-      // Simple text matching: return index of first rule whose condition appears in content
-      for (let i = 0; i < rules.length; i++) {
-        if (content.includes(rules[i]!.condition)) {
+    callAiJudge: vi.fn().mockImplementation(async (content: string, conditions: { index: number; text: string }[]) => {
+      // Simple text matching: return index of first condition whose text appears in content
+      for (let i = 0; i < conditions.length; i++) {
+        if (content.includes(conditions[i]!.text)) {
           return i;
         }
       }
@@ -106,7 +106,7 @@ describe('Workflow Patterns IT: minimal workflow', () => {
     const state = await engine.run();
 
     expect(state.status).toBe('completed');
-    expect(state.iteration).toBe(3);
+    expect(state.iteration).toBe(2);
   });
 
   it('should ABORT when implement cannot proceed', async () => {
@@ -143,14 +143,15 @@ describe('Workflow Patterns IT: default workflow (parallel reviewers)', () => {
     expect(config).not.toBeNull();
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo issues.' },
+      { agent: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
+      { agent: 'architect', status: 'done', content: 'Design complete' },
+      { agent: 'coder', status: 'done', content: 'Implementation complete' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Parallel reviewers: both approved
-      { agent: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
-      { agent: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
+      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { agent: 'security-reviewer', status: 'done', content: 'approved' },
       // Supervisor
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Test task');
@@ -163,19 +164,22 @@ describe('Workflow Patterns IT: default workflow (parallel reviewers)', () => {
     const config = loadWorkflow('default', testDir);
 
     setMockScenario([
-      { agent: 'planner', status: 'done', content: '[PLAN:1]\n\nClear.' },
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nDone.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:1]\n\nNo issues.' },
+      { agent: 'planner', status: 'done', content: 'Requirements are clear and implementable' },
+      { agent: 'architect', status: 'done', content: 'Design complete' },
+      { agent: 'coder', status: 'done', content: 'Implementation complete' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Parallel: arch approved, security needs_fix
-      { agent: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
-      { agent: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:2]\n\nneeds_fix' },
+      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { agent: 'security-reviewer', status: 'done', content: 'needs_fix' },
       // Fix step
-      { agent: 'coder', status: 'done', content: '[FIX:1]\n\nFix complete.' },
+      { agent: 'coder', status: 'done', content: 'Fix complete' },
+      // AI review after fix
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
       // Re-review: both approved
-      { agent: 'architecture-reviewer', status: 'done', content: '[ARCH-REVIEW:1]\n\napproved' },
-      { agent: 'security-reviewer', status: 'done', content: '[SECURITY-REVIEW:1]\n\napproved' },
+      { agent: 'architecture-reviewer', status: 'done', content: 'approved' },
+      { agent: 'security-reviewer', status: 'done', content: 'approved' },
       // Supervisor
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:1]\n\nAll checks passed.' },
+      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const engine = createEngine(config!, testDir, 'Task needing security fix');

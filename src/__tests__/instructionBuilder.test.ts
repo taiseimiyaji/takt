@@ -441,7 +441,7 @@ describe('instruction-builder', () => {
       expect(result).toContain('- Step: implement');
     });
 
-    it('should NOT include report info even when step has report (phase separation)', () => {
+    it('should include report info in Phase 1 when step has report', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
       step.report = '00-plan.md';
@@ -453,11 +453,12 @@ describe('instruction-builder', () => {
       const result = buildInstruction(step, context);
 
       expect(result).toContain('## Workflow Context');
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report File');
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
     });
 
-    it('should NOT include report info for ReportConfig[] (phase separation)', () => {
+    it('should include report info for ReportConfig[] in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = [
         { label: 'Scope', path: '01-scope.md' },
@@ -470,11 +471,12 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report Files');
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report Files');
+      expect(result).toContain('Phase 1');
     });
 
-    it('should NOT include report info for ReportObjectConfig (phase separation)', () => {
+    it('should include report info for ReportObjectConfig in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = { name: '00-plan.md' };
       const context = createMinimalContext({
@@ -484,8 +486,10 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('Report Directory');
-      expect(result).not.toContain('Report File');
+      // Phase 1 now includes Report Directory info and phase note
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
     });
 
     it('should render Japanese step iteration suffix', () => {
@@ -502,7 +506,7 @@ describe('instruction-builder', () => {
   });
 
   describe('buildInstruction report-free (phase separation)', () => {
-    it('should NOT include report output instruction in buildInstruction', () => {
+    it('should include Report Directory info but NOT report output instruction in Phase 1', () => {
       const step = createMinimalStep('Do work');
       step.report = '00-plan.md';
       const context = createMinimalContext({
@@ -512,9 +516,14 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
+      // Phase 1 includes Report Directory info and phase note
+      expect(result).toContain('Report Directory');
+      expect(result).toContain('Report File');
+      expect(result).toContain('Phase 1');
+      expect(result).toContain('Phase 2 will automatically generate the report');
+
+      // But NOT the report output instruction (that's for Phase 2)
       expect(result).not.toContain('**Report output:**');
-      expect(result).not.toContain('Report File');
-      expect(result).not.toContain('Report Directory');
     });
 
     it('should NOT include report format in buildInstruction', () => {

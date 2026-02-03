@@ -96,7 +96,28 @@ function normalizeReport(
 const AI_CONDITION_REGEX = /^ai\("(.+)"\)$/;
 
 /** Regex to detect all("...")/any("...") aggregate condition expressions */
-const AGGREGATE_CONDITION_REGEX = /^(all|any)\("(.+)"\)$/;
+const AGGREGATE_CONDITION_REGEX = /^(all|any)\((.+)\)$/;
+
+/**
+ * Parse aggregate condition arguments from all("A", "B") or any("A", "B").
+ * Returns an array of condition strings.
+ * Throws if the format is invalid.
+ */
+function parseAggregateConditions(argsText: string): string[] {
+  const conditions: string[] = [];
+  const regex = /"([^"]+)"/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(argsText)) !== null) {
+    conditions.push(match[1]!);
+  }
+
+  if (conditions.length === 0) {
+    throw new Error(`Invalid aggregate condition format: ${argsText}`);
+  }
+
+  return conditions;
+}
 
 /**
  * Parse a rule's condition for ai() and all()/any() expressions.
@@ -124,6 +145,8 @@ function normalizeRule(r: {
 
   const aggMatch = r.condition.match(AGGREGATE_CONDITION_REGEX);
   if (aggMatch?.[1] && aggMatch[2]) {
+    const conditions = parseAggregateConditions(aggMatch[2]);
+    const aggregateConditionText = conditions.length === 1 ? conditions[0]! : conditions;
     return {
       condition: r.condition,
       next,
@@ -132,7 +155,7 @@ function normalizeRule(r: {
       interactiveOnly: r.interactive_only,
       isAggregateCondition: true,
       aggregateType: aggMatch[1] as 'all' | 'any',
-      aggregateConditionText: aggMatch[2],
+      aggregateConditionText,
     };
   }
 

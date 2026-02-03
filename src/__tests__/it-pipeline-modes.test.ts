@@ -35,7 +35,15 @@ vi.mock('../infra/claude/client.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../infra/claude/client.js')>();
   return {
     ...original,
-    callAiJudge: vi.fn().mockResolvedValue(-1),
+    callAiJudge: vi.fn().mockImplementation(async (content: string, conditions: { index: number; text: string }[]) => {
+      // Simple text matching: return index of first condition whose text appears in content
+      for (let i = 0; i < conditions.length; i++) {
+        if (content.includes(conditions[i]!.text)) {
+          return i;
+        }
+      }
+      return -1;
+    }),
   };
 });
 
@@ -274,9 +282,9 @@ describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
 
   it('should load and execute builtin minimal workflow by name', async () => {
     setMockScenario([
-      { agent: 'coder', status: 'done', content: '[IMPLEMENT:1]\n\nImplementation complete.' },
-      { agent: 'ai-antipattern-reviewer', status: 'done', content: '[AI_REVIEW:0]\n\nNo AI-specific issues.' },
-      { agent: 'supervisor', status: 'done', content: '[SUPERVISE:0]\n\nAll checks passed.' },
+      { agent: 'coder', status: 'done', content: 'Implementation complete' },
+      { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
+      { agent: 'supervisor', status: 'done', content: 'All checks passed' },
     ]);
 
     const exitCode = await executePipeline({

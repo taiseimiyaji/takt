@@ -67,7 +67,7 @@ export const METADATA_STRINGS = {
     noCommit: '**Do NOT run git commit.** Commits are handled automatically by the system after workflow completion.',
     noCd: '**Do NOT use `cd` in Bash commands.** Your working directory is already set correctly. Run commands directly without changing directories.',
     editEnabled: '**Editing is ENABLED for this step.** You may create, modify, and delete files as needed to fulfill the user\'s request.',
-    editDisabled: '**Editing is DISABLED for this step.** Do NOT create, modify, or delete any project source files. You may only read/search code and write to report files in the Report Directory.',
+    editDisabled: '**Editing is DISABLED for this step.** Do NOT create, modify, or delete any project source files. You may only read and search code. Report output will be handled automatically in a later phase.',
     note: 'Note: This section is metadata. Follow the language used in the rest of the prompt.',
   },
   ja: {
@@ -77,7 +77,7 @@ export const METADATA_STRINGS = {
     noCommit: '**git commit を実行しないでください。** コミットはワークフロー完了後にシステムが自動で行います。',
     noCd: '**Bashコマンドで `cd` を使用しないでください。** 作業ディレクトリは既に正しく設定されています。ディレクトリを変更せずにコマンドを実行してください。',
     editEnabled: '**このステップでは編集が許可されています。** ユーザーの要求に応じて、ファイルの作成・変更・削除を行ってください。',
-    editDisabled: '**このステップでは編集が禁止されています。** プロジェクトのソースファイルを作成・変更・削除しないでください。コードの読み取り・検索と、Report Directoryへのレポート出力のみ行えます。',
+    editDisabled: '**このステップでは編集が禁止されています。** プロジェクトのソースファイルを作成・変更・削除しないでください。コードの読み取り・検索のみ行ってください。レポート出力は後のフェーズで自動的に行われます。',
     note: '',
   },
 } as const;

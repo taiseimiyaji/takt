@@ -41,6 +41,24 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 
 **GitHub issue references:** `takt #6` fetches issue #6 and executes it as a task.
 
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--pipeline` | Enable pipeline (non-interactive) mode — required for CI/automation |
+| `-t, --task <text>` | Task content (as alternative to GitHub issue) |
+| `-i, --issue <N>` | GitHub issue number (equivalent to `#N` in interactive mode) |
+| `-w, --workflow <name or path>` | Workflow name or path to workflow YAML file (v0.3.8+) |
+| `-b, --branch <name>` | Branch name (auto-generated if omitted) |
+| `--auto-pr` | Create PR after execution (interactive: skip confirmation, pipeline: enable PR) |
+| `--skip-git` | Skip branch creation, commit, and push (pipeline mode, workflow-only) |
+| `--repo <owner/repo>` | Repository for PR creation |
+| `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
+| `-q, --quiet` | **Minimal output mode: suppress AI output (for CI)** (v0.3.8+) |
+| `--provider <name>` | Override agent provider (claude\|codex\|mock) (v0.3.8+) |
+| `--model <name>` | Override agent model (v0.3.8+) |
+| `--config <path>` | Path to global config file (default: `~/.takt/config.yaml`) (v0.3.8+) |
+
 ## Architecture
 
 ### Core Flow
@@ -107,6 +125,7 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 - 5-stage fallback evaluation: aggregate → Phase 3 tag → Phase 1 tag → ai() judge → all-conditions AI judge
 - Returns `RuleMatch` with index and detection method (`aggregate`, `phase3_tag`, `phase1_tag`, `ai_judge`, `ai_fallback`)
 - Fail-fast: throws if rules exist but no rule matched
+- **v0.3.8+:** Tag detection now uses **last match** instead of first match when multiple `[STEP:N]` tags appear in output
 
 **Instruction Builder** (`src/core/workflow/instruction/InstructionBuilder.ts`)
 - Auto-injects standard sections into every instruction (no need for `{task}` or `{previous_response}` placeholders in templates):
@@ -122,12 +141,14 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 
 **Agent Runner** (`src/agents/runner.ts`)
 - Resolves agent specs (name or path) to agent configurations
+- **v0.3.8+:** Agent is optional — steps can execute with `instruction_template` only (no system prompt)
 - Built-in agents with default tools:
   - `coder`: Read/Glob/Grep/Edit/Write/Bash/WebSearch/WebFetch
   - `architect`: Read/Glob/Grep/WebSearch/WebFetch
   - `supervisor`: Read/Glob/Grep/Bash/WebSearch/WebFetch
   - `planner`: Read/Glob/Grep/Bash/WebSearch/WebFetch
 - Custom agents via `.takt/agents.yaml` or prompt files (.md)
+- Inline system prompts: If agent file doesn't exist, the agent string is used as inline system prompt
 
 **Provider Integration** (`src/infra/claude/`, `src/infra/codex/`)
 - **Claude** - Uses `@anthropic-ai/claude-agent-sdk`
@@ -141,11 +162,11 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 **Configuration** (`src/infra/config/`)
 - `loaders/loader.ts` - Custom agent loading from `.takt/agents.yaml`
 - `loaders/workflowParser.ts` - YAML parsing, step/rule normalization with Zod validation
-- `loaders/workflowResolver.ts` - 3-layer resolution (builtin → user → project-local)
+- `loaders/workflowResolver.ts` - **3-layer resolution with correct priority** (v0.3.8+: user → project → builtin)
 - `loaders/workflowCategories.ts` - Workflow categorization and filtering
 - `loaders/agentLoader.ts` - Agent prompt file loading
 - `paths.ts` - Directory structure (`.takt/`, `~/.takt/`), session management
-- `global/globalConfig.ts` - Global configuration (provider, model, trusted dirs)
+- `global/globalConfig.ts` - Global configuration (provider, model, trusted dirs, **quiet mode** v0.3.8+)
 - `project/projectConfig.ts` - Project-level configuration
 
 **Task Management** (`src/features/tasks/`)
@@ -162,10 +183,10 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 ### Data Flow
 
 1. User provides task (text or `#N` issue reference) or slash command → CLI
-2. CLI loads workflow: user `~/.takt/workflows/` → builtin `resources/global/{lang}/workflows/` fallback
+2. CLI loads workflow with **correct priority** (v0.3.8+): user `~/.takt/workflows/` → project `.takt/workflows/` → builtin `resources/global/{lang}/workflows/`
 3. WorkflowEngine starts at `initial_step`
 4. Each step: `buildInstruction()` → Phase 1 (main) → Phase 2 (report) → Phase 3 (status) → `detectMatchedRule()` → `determineNextStep()`
-5. Rule evaluation determines next step name
+5. Rule evaluation determines next step name (v0.3.8+: uses **last match** when multiple `[STEP:N]` tags appear)
 6. Special transitions: `COMPLETE` ends workflow successfully, `ABORT` ends with failure
 
 ## Directory Structure
@@ -452,6 +473,7 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 
 **Rule evaluation quirks:**
 - Tag-based rules match by array index (0-based), not by exact condition text
+- **v0.3.8+:** When multiple `[STEP:N]` tags appear in output, **last match wins** (not first)
 - `ai()` conditions are evaluated by Claude/Codex, not by string matching
 - Aggregate conditions (`all()`, `any()`) only work in parallel parent steps
 - Fail-fast: if rules exist but no rule matches, workflow aborts
@@ -464,9 +486,10 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 - Claude supports aliases: `opus`, `sonnet`, `haiku`
 - Codex defaults to `codex` if model not specified
 
-**Permission modes:**
-- `default`: Claude Code default behavior (prompts for file writes)
-- `acceptEdits`: Auto-accept file edits without prompts
-- `bypassPermissions`: Bypass all permission checks
+**Permission modes (v0.3.8+: provider-independent values):**
+- `readonly`: Read-only access, no file modifications (Claude: `default`, Codex: `read-only`)
+- `edit`: Allow file edits with confirmation (Claude: `acceptEdits`, Codex: `workspace-write`)
+- `full`: Bypass all permission checks (Claude: `bypassPermissions`, Codex: `danger-full-access`)
 - Specified at step level (`permission_mode` field) or global config
-- Implemented via `--sandbox-mode` and `--accept-edits` flags passed to Claude Code CLI
+- **v0.3.8+:** Permission mode values are unified across providers; TAKT translates to provider-specific flags
+- Legacy values (`default`, `acceptEdits`, `bypassPermissions`) are **no longer supported**

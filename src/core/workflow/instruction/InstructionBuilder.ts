@@ -34,6 +34,7 @@ const SECTION_STRINGS = {
     reportDirectory: 'Report Directory',
     reportFile: 'Report File',
     reportFiles: 'Report Files',
+    phaseNote: '**Note:** This is Phase 1 (main work). After you complete your work, Phase 2 will automatically generate the report based on your findings.',
     userRequest: '## User Request',
     previousResponse: '## Previous Response',
     additionalUserInputs: '## Additional User Inputs',
@@ -49,6 +50,7 @@ const SECTION_STRINGS = {
     reportDirectory: 'Report Directory',
     reportFile: 'Report File',
     reportFiles: 'Report Files',
+    phaseNote: '**注意:** これはPhase 1（本来の作業）です。作業完了後、Phase 2で自動的にレポートを生成します。',
     userRequest: '## User Request',
     previousResponse: '## Previous Response',
     additionalUserInputs: '## Additional User Inputs',
@@ -156,6 +158,15 @@ export class InstructionBuilder {
       `- ${s.stepIteration}: ${this.context.stepIteration}${s.stepIterationTimes}`,
       `- ${s.step}: ${this.step.name}`,
     ];
+
+    // If step has report config, include Report Directory path and phase note
+    if (this.step.report && this.context.reportDir) {
+      const reportContext = renderReportContext(this.step.report, this.context.reportDir, language);
+      lines.push(reportContext);
+      lines.push('');
+      lines.push(s.phaseNote);
+    }
+
     return lines.join('\n');
   }
 }

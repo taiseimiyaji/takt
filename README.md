@@ -78,10 +78,9 @@ If `--auto-pr` is specified, the PR is created automatically without asking.
 | Workflow | Best for |
 |----------|----------|
 | `default` | Full development tasks. Used for TAKT's own development. Multi-stage review with parallel architect + security review. |
-| `simple` | Lightweight tasks like README updates or small fixes. Reviews without fix loops. |
-| `expert` / `expert-cqrs` | Web development projects. Sequential multi-expert review with fix loops (`expert`: Architecture, Frontend, Security, QA; `expert-cqrs`: CQRS+ES, Frontend, Security, QA). |
+| `minimal` | Quick fixes and simple tasks. Minimal workflow with basic review. |
+| `review-fix-minimal` | Review and fix workflow. Focused on iterative improvements with review feedback. |
 | `research` | Research and investigation. Autonomous research without asking questions. |
-| `magi` | Fun deliberation. Three AI personas analyze and vote (Evangelion-inspired). |
 
 ## Commands
 
@@ -156,12 +155,16 @@ In pipeline mode, PRs are **not** created unless `--auto-pr` is explicitly speci
 | `--pipeline` | **Enable pipeline (non-interactive) mode** — required for CI/automation |
 | `-t, --task <text>` | Task content (as alternative to GitHub issue) |
 | `-i, --issue <N>` | GitHub issue number (equivalent to `#N` in interactive mode) |
-| `-w, --workflow <name>` | Workflow to use |
+| `-w, --workflow <name or path>` | Workflow name or path to workflow YAML file |
 | `-b, --branch <name>` | Branch name (auto-generated if omitted) |
 | `--auto-pr` | Create PR after execution (interactive: skip confirmation, pipeline: enable PR) |
 | `--skip-git` | Skip branch creation, commit, and push (pipeline mode, workflow-only) |
 | `--repo <owner/repo>` | Repository for PR creation |
 | `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
+| `-q, --quiet` | Minimal output mode: suppress AI output (for CI) |
+| `--provider <name>` | Override agent provider (claude\|codex\|mock) |
+| `--model <name>` | Override agent model |
+| `--config <path>` | Path to global config file (default: `~/.takt/config.yaml`) |
 
 ## Workflows
 
@@ -188,7 +191,7 @@ steps:
   - name: implement
     agent: ../agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    permission_mode: edit
     rules:
       - condition: Implementation complete
         next: review
@@ -280,12 +283,14 @@ TAKT ships with several built-in workflows:
 
 | Workflow | Description |
 |----------|-------------|
+| `minimal` | Quick workflow: plan → implement → review → supervisor. Minimal steps for fast iteration. |
 | `default` | Full development workflow: plan → implement → AI review → parallel reviewers (architect + security) → supervisor approval. Includes fix loops for each review stage. |
-| `simple` | Simplified version of default: plan → implement → architect review → AI review → supervisor. No intermediate fix steps. |
+| `review-fix-minimal` | Review-focused workflow: review → fix → supervisor. For iterative improvements based on review feedback. |
 | `research` | Research workflow: planner → digger → supervisor. Autonomously researches topics without asking questions. |
 | `expert` | Sequential review with domain experts: Architecture, Frontend, Security, QA reviews with fix loops. |
 | `expert-cqrs` | Sequential review with domain experts: CQRS+ES, Frontend, Security, QA reviews with fix loops. |
 | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
+| `review-only` | Read-only code review workflow without making any modifications. |
 
 Switch between workflows with `takt switch`.
 
@@ -441,7 +446,7 @@ steps:
   - name: implement
     agent: ~/.takt/agents/default/coder.md
     edit: true
-    permission_mode: acceptEdits
+    permission_mode: edit
     pass_previous_response: true
     rules:
       - condition: Done
@@ -476,9 +481,12 @@ TAKT supports batch task processing through task files in `.takt/tasks/`. Both `
 ```bash
 # Start AI conversation to define and add a task
 takt add
+
+# Add task from GitHub issue (issue number reflected in branch name)
+takt add #28
 ```
 
-The `takt add` command starts an AI conversation where you discuss and refine your task requirements. After confirming with `/go`, the AI summarizes the conversation and creates a YAML task file with optional worktree/branch/workflow settings.
+The `takt add` command starts an AI conversation where you discuss and refine your task requirements. After confirming with `/go`, the AI summarizes the conversation and creates a YAML task file with optional worktree/branch/workflow settings. When using `takt add #N`, the issue number is automatically reflected in the branch name (e.g., `takt/issue-28-...`).
 
 #### Task File Formats
 
@@ -610,7 +618,7 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure).
 | `allowed_tools` | - | List of tools the agent can use (Read, Glob, Grep, Edit, Write, Bash, etc.) |
 | `provider` | - | Override provider for this step (`claude` or `codex`) |
 | `model` | - | Override model for this step |
-| `permission_mode` | `default` | Permission mode: `default`, `acceptEdits`, or `bypassPermissions` |
+| `permission_mode` | - | Permission mode: `readonly`, `edit`, or `full` (provider-independent) |
 | `report` | - | Report file configuration (name, format) for auto-generated reports |
 
 ## API Usage

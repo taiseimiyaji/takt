@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.9] - 2026-02-03
+
+### Added
+
+- Workflow categorization support (#85)
+  - Default category configuration in `resources/global/{lang}/default-categories.yaml`
+  - User-defined categories via `workflow_categories` in `~/.takt/config.yaml`
+  - Nested category support with unlimited depth
+  - Category-based workflow filtering in workflow selection UI
+  - `show_others_category` and `others_category_name` configuration options
+  - Builtin workflow filtering via `builtin_workflows_enabled` and `disabled_builtins`
+- Agent-less step execution: `agent` field is now optional (#71)
+  - Steps can execute with `instruction_template` only (no system prompt)
+  - Inline system prompts supported (agent string used as prompt if file doesn't exist)
+- `takt add #N` automatically reflects issue number in branch name (#78)
+  - Issue number embedded in branch name (e.g., `takt/issue-28-...`)
+
+### Changed
+
+- **BREAKING:** Permission mode values unified to provider-independent format (#87)
+  - New values: `readonly`, `edit`, `full` (replaces `default`, `acceptEdits`, `bypassPermissions`)
+  - TAKT translates to provider-specific flags (Claude: default/acceptEdits/bypassPermissions, Codex: read-only/workspace-write/danger-full-access)
+  - All builtin workflows updated to use new values
+- Workflow naming changes:
+  - `simple` workflow replaced with `minimal` and `review-fix-minimal`
+  - Added `review-only` workflow for read-only code review
+- Agent prompts updated with legacy対応禁止ルール (no backward compatibility hacks)
+- Documentation updates:
+  - README.md and docs/README.ja.md updated with v0.3.8+ features
+  - CLAUDE.md significantly expanded with architectural details and implementation notes
+
+### Internal
+
+- Created `src/infra/config/loaders/workflowCategories.ts` for category management
+- Created `src/features/workflowSelection/index.ts` for workflow selection UI
+- Enhanced `src/shared/prompt/select.ts` with category display support
+- Added comprehensive tests for workflow categories (`workflow-categories.test.ts`, `workflow-category-config.test.ts`)
+
 ## [0.3.8] - 2026-02-02
 
 ### Added
