@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] - 2026-02-04
+
+### Fixed
+
+- Workflow execution bug where previous step's response was incorrectly bound to subsequent steps
+  - Fixed `MovementExecutor`, `ParallelRunner`, and `state-manager` to properly isolate step responses
+  - Updated interactive summary prompts to prevent response leakage
+
 ## [0.4.0] - 2026-02-04
 
 ### Added
