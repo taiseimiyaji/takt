@@ -1,7 +1,7 @@
 /**
  * /eject command implementation
  *
- * Copies a builtin workflow (and its agents) to ~/.takt/ for user customization.
+ * Copies a builtin piece (and its agents) to ~/.takt/ for user customization.
  * Once ejected, the user copy takes priority over the builtin version.
  */
 
@@ -17,48 +17,48 @@ import {
 import { header, success, info, warn, error, blankLine } from '../../shared/ui/index.js';
 
 /**
- * Eject a builtin workflow to user space for customization.
- * Copies the workflow YAML and related agent .md files to ~/.takt/.
- * Agent paths in the ejected workflow are rewritten from ../agents/ to ~/.takt/agents/.
+ * Eject a builtin piece to user space for customization.
+ * Copies the piece YAML and related agent .md files to ~/.takt/.
+ * Agent paths in the ejected piece are rewritten from ../agents/ to ~/.takt/agents/.
  */
 export async function ejectBuiltin(name?: string): Promise<void> {
   header('Eject Builtin');
 
   const lang = getLanguage();
-  const builtinWorkflowsDir = getBuiltinPiecesDir(lang);
+  const builtinPiecesDir = getBuiltinPiecesDir(lang);
 
   if (!name) {
     // List available builtins
-    listAvailableBuiltins(builtinWorkflowsDir);
+    listAvailableBuiltins(builtinPiecesDir);
     return;
   }
 
-  const builtinPath = join(builtinWorkflowsDir, `${name}.yaml`);
+  const builtinPath = join(builtinPiecesDir, `${name}.yaml`);
   if (!existsSync(builtinPath)) {
-    error(`Builtin workflow not found: ${name}`);
+    error(`Builtin piece not found: ${name}`);
     info('Run "takt eject" to see available builtins.');
     return;
   }
 
-  const userWorkflowsDir = getGlobalPiecesDir();
+  const userPiecesDir = getGlobalPiecesDir();
   const userAgentsDir = getGlobalAgentsDir();
   const builtinAgentsDir = getBuiltinAgentsDir(lang);
 
-  // Copy workflow YAML (rewrite agent paths)
-  const workflowDest = join(userWorkflowsDir, `${name}.yaml`);
-  if (existsSync(workflowDest)) {
-    warn(`User workflow already exists: ${workflowDest}`);
-    warn('Skipping workflow copy (user version takes priority).');
+  // Copy piece YAML (rewrite agent paths)
+  const pieceDest = join(userPiecesDir, `${name}.yaml`);
+  if (existsSync(pieceDest)) {
+    warn(`User piece already exists: ${pieceDest}`);
+    warn('Skipping piece copy (user version takes priority).');
   } else {
-    mkdirSync(dirname(workflowDest), { recursive: true });
+    mkdirSync(dirname(pieceDest), { recursive: true });
     const content = readFileSync(builtinPath, 'utf-8');
     // Rewrite relative agent paths to ~/.takt/agents/
     const rewritten = content.replace(
       /agent:\s*\.\.\/agents\//g,
       'agent: ~/.takt/agents/',
     );
-    writeFileSync(workflowDest, rewritten, 'utf-8');
-    success(`Ejected workflow: ${workflowDest}`);
+    writeFileSync(pieceDest, rewritten, 'utf-8');
+    success(`Ejected piece: ${pieceDest}`);
   }
 
   // Copy related agent files
@@ -87,19 +87,19 @@ export async function ejectBuiltin(name?: string): Promise<void> {
   }
 }
 
-/** List available builtin workflows for ejection */
-function listAvailableBuiltins(builtinWorkflowsDir: string): void {
-  if (!existsSync(builtinWorkflowsDir)) {
-    warn('No builtin workflows found.');
+/** List available builtin pieces for ejection */
+function listAvailableBuiltins(builtinPiecesDir: string): void {
+  if (!existsSync(builtinPiecesDir)) {
+    warn('No builtin pieces found.');
     return;
   }
 
-  info('Available builtin workflows:');
+  info('Available builtin pieces:');
   blankLine();
 
-  for (const entry of readdirSync(builtinWorkflowsDir).sort()) {
+  for (const entry of readdirSync(builtinPiecesDir).sort()) {
     if (!entry.endsWith('.yaml') && !entry.endsWith('.yml')) continue;
-    if (!statSync(join(builtinWorkflowsDir, entry)).isFile()) continue;
+    if (!statSync(join(builtinPiecesDir, entry)).isFile()) continue;
 
     const name = entry.replace(/\.ya?ml$/, '');
     info(`  ${name}`);
@@ -110,11 +110,11 @@ function listAvailableBuiltins(builtinWorkflowsDir: string): void {
 }
 
 /**
- * Extract agent relative paths from a builtin workflow YAML.
+ * Extract agent relative paths from a builtin piece YAML.
  * Matches `agent: ../agents/{path}` and returns the {path} portions.
  */
-function extractAgentRelativePaths(workflowPath: string): string[] {
-  const content = readFileSync(workflowPath, 'utf-8');
+function extractAgentRelativePaths(piecePath: string): string[] {
+  const content = readFileSync(piecePath, 'utf-8');
   const paths = new Set<string>();
   const regex = /agent:\s*\.\.\/agents\/(.+)/g;
 

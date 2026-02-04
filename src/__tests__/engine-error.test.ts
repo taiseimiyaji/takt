@@ -1,5 +1,5 @@
 /**
- * WorkflowEngine integration tests: error handling scenarios.
+ * PieceEngine integration tests: error handling scenarios.
  *
  * Covers:
  * - No rule matched (abort)
@@ -17,11 +17,11 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../core/workflow/evaluation/index.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -34,21 +34,21 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../core/workflow/index.js';
+import { PieceEngine } from '../core/piece/index.js';
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../core/workflow/index.js';
+import { detectMatchedRule } from '../core/piece/index.js';
 import {
   makeResponse,
   makeMovement,
   makeRule,
-  buildDefaultWorkflowConfig,
+  buildDefaultPieceConfig,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   createTestTmpDir,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
 
-describe('WorkflowEngine Integration: Error Handling', () => {
+describe('PieceEngine Integration: Error Handling', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -68,8 +68,8 @@ describe('WorkflowEngine Integration: Error Handling', () => {
   // =====================================================
   describe('No rule matched', () => {
     it('should abort when detectMatchedRule returns undefined', async () => {
-      const config = buildDefaultWorkflowConfig();
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+      const config = buildDefaultPieceConfig();
+      const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
         makeResponse({ agent: 'plan', content: 'Unclear output' }),
@@ -78,7 +78,7 @@ describe('WorkflowEngine Integration: Error Handling', () => {
       mockDetectMatchedRuleSequence([undefined]);
 
       const abortFn = vi.fn();
-      engine.on('workflow:abort', abortFn);
+      engine.on('piece:abort', abortFn);
 
       const state = await engine.run();
 
@@ -94,13 +94,13 @@ describe('WorkflowEngine Integration: Error Handling', () => {
   // =====================================================
   describe('runAgent throws', () => {
     it('should abort when runAgent throws an error', async () => {
-      const config = buildDefaultWorkflowConfig();
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+      const config = buildDefaultPieceConfig();
+      const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       vi.mocked(runAgent).mockRejectedValueOnce(new Error('API connection failed'));
 
       const abortFn = vi.fn();
-      engine.on('workflow:abort', abortFn);
+      engine.on('piece:abort', abortFn);
 
       const state = await engine.run();
 
@@ -116,7 +116,7 @@ describe('WorkflowEngine Integration: Error Handling', () => {
   // =====================================================
   describe('Loop detection', () => {
     it('should abort when loop detected with action: abort', async () => {
-      const config = buildDefaultWorkflowConfig({
+      const config = buildDefaultPieceConfig({
         maxIterations: 100,
         loopDetection: { maxConsecutiveSameStep: 3, action: 'abort' },
         initialMovement: 'loop-step',
@@ -127,7 +127,7 @@ describe('WorkflowEngine Integration: Error Handling', () => {
         ],
       });
 
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+      const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       for (let i = 0; i < 5; i++) {
         vi.mocked(runAgent).mockResolvedValueOnce(
@@ -139,7 +139,7 @@ describe('WorkflowEngine Integration: Error Handling', () => {
       }
 
       const abortFn = vi.fn();
-      engine.on('workflow:abort', abortFn);
+      engine.on('piece:abort', abortFn);
 
       const state = await engine.run();
 
@@ -156,8 +156,8 @@ describe('WorkflowEngine Integration: Error Handling', () => {
   // =====================================================
   describe('Iteration limit', () => {
     it('should abort when max iterations reached without onIterationLimit callback', async () => {
-      const config = buildDefaultWorkflowConfig({ maxIterations: 2 });
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+      const config = buildDefaultPieceConfig({ maxIterations: 2 });
+      const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
         makeResponse({ agent: 'plan', content: 'Plan done' }),
@@ -174,7 +174,7 @@ describe('WorkflowEngine Integration: Error Handling', () => {
       const limitFn = vi.fn();
       const abortFn = vi.fn();
       engine.on('iteration:limit', limitFn);
-      engine.on('workflow:abort', abortFn);
+      engine.on('piece:abort', abortFn);
 
       const state = await engine.run();
 
@@ -186,11 +186,11 @@ describe('WorkflowEngine Integration: Error Handling', () => {
     });
 
     it('should extend iterations when onIterationLimit provides additional iterations', async () => {
-      const config = buildDefaultWorkflowConfig({ maxIterations: 2 });
+      const config = buildDefaultPieceConfig({ maxIterations: 2 });
 
       const onIterationLimit = vi.fn().mockResolvedValueOnce(10);
 
-      const engine = new WorkflowEngine(config, tmpDir, 'test task', {
+      const engine = new PieceEngine(config, tmpDir, 'test task', {
         projectCwd: tmpDir,
         onIterationLimit,
       });

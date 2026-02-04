@@ -130,8 +130,8 @@ AI is confidently wrong—code that looks plausible but doesn't work, solutions 
 
 ```typescript
 // ❌ Bad example - All callers omit
-function loadWorkflow(name: string, cwd = process.cwd()) { ... }
-// All callers: loadWorkflow('default')  ← not passing cwd
+function loadPiece(name: string, cwd = process.cwd()) { ... }
+// All callers: loadPiece('default')  ← not passing cwd
 // Problem: Can't tell where cwd value comes from by reading call sites
 // Fix: Make cwd required, pass explicitly at call sites
 

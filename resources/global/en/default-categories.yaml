@@ -1,11 +1,11 @@
-workflow_categories:
+piece_categories:
   "🚀 Quick Start":
-    workflows:
+    pieces:
       - minimal
       - default
 
   "🔍 Review & Fix":
-    workflows:
+    pieces:
       - review-fix-minimal
 
   "🎨 Frontend":
@@ -16,12 +16,12 @@ workflow_categories:
 
   "🔧 Expert":
     "Full Stack":
-      workflows:
+      pieces:
         - expert
         - expert-cqrs
 
   "Others":
-    workflows:
+    pieces:
       - research
       - magi
       - review-only

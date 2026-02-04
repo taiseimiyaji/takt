@@ -7,9 +7,9 @@ export type TaktConfig = z.infer<typeof TaktConfigSchema>;
 
 export const DEFAULT_CONFIG: TaktConfig = {
   defaultModel: 'sonnet',
-  defaultWorkflow: 'default',
+  defaultPiece: 'default',
   agentDirs: [],
-  workflowDirs: [],
+  pieceDirs: [],
   claude: {
     command: 'claude',
     timeout: 300000,

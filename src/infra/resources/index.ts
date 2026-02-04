@@ -1,9 +1,9 @@
 /**
  * Embedded resources for takt
  *
- * Contains default workflow definitions and resource paths.
+ * Contains default piece definitions and resource paths.
  * Resources are organized into:
- * - resources/global/{lang}/workflows/ - Builtin workflows (loaded via fallback)
+ * - resources/global/{lang}/pieces/ - Builtin pieces (loaded via fallback)
  * - resources/global/{lang}/agents/   - Builtin agents (loaded via fallback)
  * - resources/global/{lang}/prompts/  - Builtin prompt templates
  * - resources/project/                - Project-level template files (.gitignore)

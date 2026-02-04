@@ -2,7 +2,7 @@
  * GitHub Issue utilities
  *
  * Fetches issue content via `gh` CLI and formats it as task text
- * for workflow execution or task creation.
+ * for piece execution or task creation.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -73,7 +73,7 @@ export function fetchIssue(issueNumber: number): GitHubIssue {
 }
 
 /**
- * Format a GitHub issue into task text for workflow execution.
+ * Format a GitHub issue into task text for piece execution.
  *
  * Output format:
  * ```

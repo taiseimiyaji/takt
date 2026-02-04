@@ -1,8 +1,8 @@
 /**
- * Config switching command (like workflow switching)
+ * Config switching command (like piece switching)
  *
  * Permission mode selection that works from CLI.
- * Uses selectOption for prompt selection, same pattern as switchWorkflow.
+ * Uses selectOption for prompt selection, same pattern as switchPiece.
  */
 
 import chalk from 'chalk';
@@ -89,7 +89,7 @@ export function setPermissionMode(cwd: string, mode: PermissionMode): void {
 }
 
 /**
- * Switch permission mode (like switchWorkflow)
+ * Switch permission mode (like switchPiece)
  * @returns true if switch was successful
  */
 export async function switchConfig(cwd: string, modeName?: string): Promise<boolean> {

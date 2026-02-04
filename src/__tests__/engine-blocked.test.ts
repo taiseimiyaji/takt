@@ -1,5 +1,5 @@
 /**
- * WorkflowEngine integration tests: blocked handling scenarios.
+ * PieceEngine integration tests: blocked handling scenarios.
  *
  * Covers:
  * - Blocked without onUserInput callback (abort)
@@ -16,11 +16,11 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../core/workflow/evaluation/index.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -33,17 +33,17 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../core/workflow/index.js';
+import { PieceEngine } from '../core/piece/index.js';
 import {
   makeResponse,
-  buildDefaultWorkflowConfig,
+  buildDefaultPieceConfig,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   createTestTmpDir,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
 
-describe('WorkflowEngine Integration: Blocked Handling', () => {
+describe('PieceEngine Integration: Blocked Handling', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -59,8 +59,8 @@ describe('WorkflowEngine Integration: Blocked Handling', () => {
   });
 
   it('should abort when blocked and no onUserInput callback', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', status: 'blocked', content: 'Need clarification' }),
@@ -73,7 +73,7 @@ describe('WorkflowEngine Integration: Blocked Handling', () => {
     const blockedFn = vi.fn();
     const abortFn = vi.fn();
     engine.on('movement:blocked', blockedFn);
-    engine.on('workflow:abort', abortFn);
+    engine.on('piece:abort', abortFn);
 
     const state = await engine.run();
 
@@ -83,9 +83,9 @@ describe('WorkflowEngine Integration: Blocked Handling', () => {
   });
 
   it('should abort when blocked and onUserInput returns null', async () => {
-    const config = buildDefaultWorkflowConfig();
+    const config = buildDefaultPieceConfig();
     const onUserInput = vi.fn().mockResolvedValue(null);
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir, onUserInput });
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir, onUserInput });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', status: 'blocked', content: 'Need info' }),
@@ -102,9 +102,9 @@ describe('WorkflowEngine Integration: Blocked Handling', () => {
   });
 
   it('should continue when blocked and onUserInput provides input', async () => {
-    const config = buildDefaultWorkflowConfig();
+    const config = buildDefaultPieceConfig();
     const onUserInput = vi.fn().mockResolvedValueOnce('User provided clarification');
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir, onUserInput });
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir, onUserInput });
 
     mockRunAgentSequence([
       // First: plan is blocked

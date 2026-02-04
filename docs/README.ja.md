@@ -2,22 +2,30 @@
 
 **T**ask **A**gent **K**oordination **T**ool - AIエージェントを「安全に」「責任を持って」運用するための協調制御システム
 
-TAKTは、Claude CodeやCodexなどのAIエージェントを、組織のルールとワークフローに従って協調させます。誰が責任を持つか・どこまで許可するか・失敗時にどう戻すか を明確にしながら、複雑な開発タスクを自動化します。
+TAKTは、Claude CodeやCodexなどのAIエージェントを、組織のルールとピースに従って協調させます。誰が責任を持つか・どこまで許可するか・失敗時にどう戻すか を明確にしながら、複雑な開発タスクを自動化します。
 
 TAKTはTAKT自身で開発されています（ドッグフーディング）。
 
+## メタファ
+
+TAKTはオーケストラをイメージした音楽メタファで用語を統一しています。
+
+- **Piece**: タスク実行定義（何をどう協調させるか）
+- **Movement**: ピース内の1ステップ（実行フローの1段階）
+- **Orchestration**: ムーブメント間でエージェントを協調させるエンジン
+
 ## TAKTが向いているチーム
 
-- **CI/CDにAIを組み込みたいが、暴走が怖い** — ワークフロー定義で制御範囲を明確化
+- **CI/CDにAIを組み込みたいが、暴走が怖い** — ピース定義で制御範囲を明確化
 - **PRの自動生成をしたいが、監査ログが必要** — 全ての実行履歴を記録・追跡可能
-- **複数のAIモデルを使い分けたいが、統一的に管理したい** — Claude/Codex/モックを同じワークフローで制御
+- **複数のAIモデルを使い分けたいが、統一的に管理したい** — Claude/Codex/モックを同じピースで制御
 - **エージェントの失敗を再現・デバッグしたい** — セッションログとレポートで完全な履歴を保持
 
 ## TAKTとは何でないか
 
 - **自律型AIエンジニアの代替ではありません** — TAKT自身が実装を完結するのではなく、複数のエージェントを統治・協調させます
-- **Claude Code Swarmの競合ではありません** — Swarmの実行力を活かしつつ、TAKTはワークフロー/権限/監査ログなど「運用のガードレール」を提供します
-- **単なるワークフローエンジンではありません** — 非決定性、責任所在、監査要件、再現性といったAI特有の課題に対応した設計です
+- **Claude Code Swarmの競合ではありません** — Swarmの実行力を活かしつつ、TAKTはピース/権限/監査ログなど「運用のガードレール」を提供します
+- **単なるピースエンジンではありません** — 非決定性、責任所在、監査要件、再現性といったAI特有の課題に対応した設計です
 
 ## 必要条件
 
@@ -69,17 +77,17 @@ takt hello
 **注意:** スペースを含む文字列や Issue 参照（`#6`）、`--task` / `--issue` オプションを指定すると、対話モードをスキップして直接タスク実行されます。
 
 **フロー:**
-1. ワークフロー選択
+1. ピース選択
 2. AI との会話でタスク内容を整理
 3. `/go` でタスク指示を確定（`/go 追加の指示` のように指示を追加することも可能）
-4. 実行（worktree 作成、ワークフロー実行、PR 作成）
+4. 実行（worktree 作成、ピース実行、PR 作成）
 
 #### 実行例
 
 ```
 $ takt
 
-Select workflow:
+Select piece:
   ❯ 🎼 default (current)
     📁 Development/
     📁 Research/
@@ -108,7 +116,7 @@ Select workflow:
 
 ? Create worktree? (Y/n) y
 
-[ワークフロー実行開始...]
+[ピース実行開始...]
 ```
 
 ### 直接タスク実行
@@ -122,8 +130,8 @@ takt "ログイン機能を追加する"
 # --task オプションでタスク内容を指定
 takt --task "バグを修正"
 
-# ワークフロー指定
-takt "認証機能を追加" --workflow expert
+# ピース指定
+takt "認証機能を追加" --piece expert
 
 # PR 自動作成
 takt "バグを修正" --auto-pr
@@ -138,8 +146,8 @@ GitHub Issue を直接タスクとして実行できます。Issue のタイト�
 takt #6
 takt --issue 6
 
-# Issue + ワークフロー指定
-takt #6 --workflow expert
+# Issue + ピース指定
+takt #6 --piece expert
 
 # Issue + PR自動作成
 takt #6 --auto-pr
@@ -184,7 +192,7 @@ takt list
 
 ### パイプラインモード（CI/自動化向け）
 
-`--pipeline` を指定すると非対話のパイプラインモードに入ります。ブランチ作成 → ワークフロー実行 → commit & push を自動で行います。CI/CD での自動化に適しています。
+`--pipeline` を指定すると非対話のパイプラインモードに入ります。ブランチ作成 → ピース実行 → commit & push を自動で行います。CI/CD での自動化に適しています。
 
 ```bash
 # タスクをパイプライン実行
@@ -196,13 +204,13 @@ takt --pipeline --task "バグを修正" --auto-pr
 # Issue情報を紐付け
 takt --pipeline --issue 99 --auto-pr
 
-# ワークフロー・ブランチ指定
+# ピース・ブランチ指定
 takt --pipeline --task "バグを修正" -w magi -b feat/fix-bug
 
 # リポジトリ指定（PR作成時）
 takt --pipeline --task "バグを修正" --auto-pr --repo owner/repo
 
-# ワークフロー実行のみ（ブランチ作成・commit・pushをスキップ）
+# ピース実行のみ（ブランチ作成・commit・pushをスキップ）
 takt --pipeline --task "バグを修正" --skip-git
 
 # 最小限の出力モード（CI向け）
@@ -216,10 +224,10 @@ takt --pipeline --task "バグを修正" --quiet
 ### その他のコマンド
 
 ```bash
-# ワークフローを対話的に切り替え
+# ピースを対話的に切り替え
 takt switch
 
-# ビルトインのワークフロー/エージェントを~/.takt/にコピーしてカスタマイズ
+# ビルトインのピース/エージェントを~/.takt/にコピーしてカスタマイズ
 takt eject
 
 # エージェントの会話セッションをクリア
@@ -229,13 +237,13 @@ takt clear
 takt config
 ```
 
-### おすすめワークフロー
+### おすすめピース
 
-| ワークフロー | おすすめ用途 |
+| ピース | おすすめ用途 |
 |------------|------------|
 | `default` | 本格的な開発タスク。TAKT自身の開発で使用。アーキテクト＋セキュリティの並列レビュー付き多段階レビュー。 |
-| `minimal` | 簡単な修正やシンプルなタスク。基本的なレビュー付きの最小限のワークフロー。 |
-| `review-fix-minimal` | レビュー＆修正ワークフロー。レビューフィードバックに基づく反復的な改善に特化。 |
+| `minimal` | 簡単な修正やシンプルなタスク。基本的なレビュー付きの最小限のピース。 |
+| `review-fix-minimal` | レビュー＆修正ピース。レビューフィードバックに基づく反復的な改善に特化。 |
 | `research` | 調査・リサーチ。質問せずに自律的にリサーチを実行。 |
 
 ### 主要なオプション
@@ -245,23 +253,23 @@ takt config
 | `--pipeline` | **パイプライン（非対話）モードを有効化** — CI/自動化に必須 |
 | `-t, --task <text>` | タスク内容（GitHub Issueの代わり） |
 | `-i, --issue <N>` | GitHub Issue番号（対話モードでは `#N` と同じ） |
-| `-w, --workflow <name or path>` | ワークフロー名、またはワークフローYAMLファイルのパス |
+| `-w, --piece <name or path>` | ピース名、またはピースYAMLファイルのパス |
 | `-b, --branch <name>` | ブランチ名指定（省略時は自動生成） |
 | `--auto-pr` | PR作成（対話: 確認スキップ、パイプライン: PR有効化） |
-| `--skip-git` | ブランチ作成・commit・pushをスキップ（パイプラインモード、ワークフロー実行のみ） |
+| `--skip-git` | ブランチ作成・commit・pushをスキップ（パイプラインモード、ピース実行のみ） |
 | `--repo <owner/repo>` | リポジトリ指定（PR作成時） |
 | `--create-worktree <yes\|no>` | worktree確認プロンプトをスキップ |
 | `-q, --quiet` | 最小限の出力モード: AIの出力を抑制（CI向け） |
 | `--provider <name>` | エージェントプロバイダーを上書き（claude\|codex\|mock） |
 | `--model <name>` | エージェントモデルを上書き |
 
-## ワークフロー
+## ピース
 
-TAKTはYAMLベースのワークフロー定義とルールベースルーティングを使用します。ビルトインワークフローはパッケージに埋め込まれており、`~/.takt/workflows/` のユーザーワークフローが優先されます。`takt eject` でビルトインを`~/.takt/`にコピーしてカスタマイズできます。
+TAKTはYAMLベースのピース定義とルールベースルーティングを使用します。ビルトインピースはパッケージに埋め込まれており、`~/.takt/pieces/` のユーザーピースが優先されます。`takt eject` でビルトインを`~/.takt/`にコピーしてカスタマイズできます。
 
-> **注記 (v0.4.0)**: ワークフローコンポーネントの内部用語が "step" から "movement" に変更されました。ユーザー向けのワークフローファイルは引き続き互換性がありますが、ワークフローをカスタマイズする場合、YAMLファイルで `movements:` の代わりに `movements:` が使用されることがあります。機能は同じです。
+> **注記 (v0.4.0)**: ピースコンポーネントの内部用語が "step" から "movement" に変更されました。ユーザー向けのピースファイルは引き続き互換性がありますが、ピースをカスタマイズする場合、YAMLファイルで `movements:` の代わりに `movements:` が使用されることがあります。機能は同じです。
 
-### ワークフローの例
+### ピースの例
 
 ```yaml
 name: default
@@ -368,22 +376,22 @@ movements:
 | AI判定 | `ai("条件テキスト")` | AIが条件をエージェント出力に対して評価 |
 | 集約 | `all("X")` / `any("X")` | パラレルサブムーブメントの結果を集約 |
 
-## ビルトインワークフロー
+## ビルトインピース
 
-TAKTには複数のビルトインワークフローが同梱されています:
+TAKTには複数のビルトインピースが同梱されています:
 
-| ワークフロー | 説明 |
+| ピース | 説明 |
 |------------|------|
-| `default` | フル開発ワークフロー: 計画 → アーキテクチャ設計 → 実装 → AI レビュー → 並列レビュー（アーキテクト＋セキュリティ）→ スーパーバイザー承認。各レビュー段階に修正ループあり。 |
-| `minimal` | クイックワークフロー: 計画 → 実装 → レビュー → スーパーバイザー。高速イテレーション向けの最小構成。 |
-| `review-fix-minimal` | レビュー重視ワークフロー: レビュー → 修正 → スーパーバイザー。レビューフィードバックに基づく反復改善向け。 |
-| `research` | リサーチワークフロー: プランナー → ディガー → スーパーバイザー。質問せずに自律的にリサーチを実行。 |
-| `expert` | フルスタック開発ワークフロー: アーキテクチャ、フロントエンド、セキュリティ、QA レビューと修正ループ。 |
-| `expert-cqrs` | フルスタック開発ワークフロー（CQRS+ES特化）: CQRS+ES、フロントエンド、セキュリティ、QA レビューと修正ループ。 |
+| `default` | フル開発ピース: 計画 → アーキテクチャ設計 → 実装 → AI レビュー → 並列レビュー（アーキテクト＋セキュリティ）→ スーパーバイザー承認。各レビュー段階に修正ループあり。 |
+| `minimal` | クイックピース: 計画 → 実装 → レビュー → スーパーバイザー。高速イテレーション向けの最小構成。 |
+| `review-fix-minimal` | レビュー重視ピース: レビュー → 修正 → スーパーバイザー。レビューフィードバックに基づく反復改善向け。 |
+| `research` | リサーチピース: プランナー → ディガー → スーパーバイザー。質問せずに自律的にリサーチを実行。 |
+| `expert` | フルスタック開発ピース: アーキテクチャ、フロントエンド、セキュリティ、QA レビューと修正ループ。 |
+| `expert-cqrs` | フルスタック開発ピース（CQRS+ES特化）: CQRS+ES、フロントエンド、セキュリティ、QA レビューと修正ループ。 |
 | `magi` | エヴァンゲリオンにインスパイアされた審議システム。3つの AI ペルソナ（MELCHIOR、BALTHASAR、CASPER）が分析し投票。 |
-| `review-only` | 変更を加えない読み取り専用のコードレビューワークフロー。 |
+| `review-only` | 変更を加えない読み取り専用のコードレビューピース。 |
 
-`takt switch` でワークフローを切り替えられます。
+`takt switch` でピースを切り替えられます。
 
 ## ビルトインエージェント
 
@@ -413,7 +421,7 @@ Markdown ファイルでエージェントプロンプトを作成:
 
 ## モデル選択
 
-`model` フィールド（ワークフローのムーブメント、エージェント設定、グローバル設定）はプロバイダー（Claude Code CLI / Codex SDK）にそのまま渡されます。TAKTはモデルエイリアスの解決を行いません。
+`model` フィールド（ピースのムーブメント、エージェント設定、グローバル設定）はプロバイダー（Claude Code CLI / Codex SDK）にそのまま渡されます。TAKTはモデルエイリアスの解決を行いません。
 
 ### Claude Code
 
@@ -427,14 +435,14 @@ Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`def
 
 ```
 ~/.takt/                    # グローバル設定ディレクトリ
-├── config.yaml             # グローバル設定（プロバイダー、モデル、ワークフロー等）
-├── workflows/              # ユーザーワークフロー定義（ビルトインを上書き）
+├── config.yaml             # グローバル設定（プロバイダー、モデル、ピース等）
+├── pieces/              # ユーザーピース定義（ビルトインを上書き）
 │   └── custom.yaml
 └── agents/                 # ユーザーエージェントプロンプトファイル（.md）
     └── my-agent.md
 
 .takt/                      # プロジェクトレベルの設定
-├── config.yaml             # プロジェクト設定（現在のワークフロー等）
+├── config.yaml             # プロジェクト設定（現在のピース等）
 ├── tasks/                  # 保留中のタスクファイル（.yaml, .md）
 ├── completed/              # 完了したタスクとレポート
 ├── reports/                # 実行レポート（自動生成）
@@ -442,7 +450,7 @@ Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`def
 └── logs/                   # NDJSON 形式のセッションログ
     ├── latest.json         # 現在/最新セッションへのポインタ
     ├── previous.json       # 前回セッションへのポインタ
-    └── {sessionId}.jsonl   # ワークフロー実行ごとの NDJSON セッションログ
+    └── {sessionId}.jsonl   # ピース実行ごとの NDJSON セッションログ
 ```
 
 ビルトインリソースはnpmパッケージ（`dist/resources/`）に埋め込まれています。`~/.takt/` のユーザーファイルが優先されます。
@@ -454,7 +462,7 @@ Claude Code はエイリアス（`opus`、`sonnet`、`haiku`、`opusplan`、`def
 ```yaml
 # ~/.takt/config.yaml
 language: ja
-default_workflow: default
+default_piece: default
 log_level: info
 provider: claude         # デフォルトプロバイダー: claude または codex
 model: sonnet            # デフォルトモデル（オプション）
@@ -503,10 +511,10 @@ trusted_directories:
 | `{title}` | コミットメッセージ | Issueタイトル |
 | `{issue}` | コミットメッセージ、PR本文 | Issue番号 |
 | `{issue_body}` | PR本文 | Issue本文 |
-| `{report}` | PR本文 | ワークフロー実行レポート |
+| `{report}` | PR本文 | ピース実行レポート |
 
 **モデル解決の優先順位:**
-1. ワークフローのムーブメントの `model`（最優先）
+1. ピースのムーブメントの `model`（最優先）
 2. カスタムエージェントの `model`
 3. グローバル設定の `model`
 4. プロバイダーデフォルト（Claude: sonnet、Codex: codex）
@@ -517,14 +525,14 @@ trusted_directories:
 
 TAKT は `.takt/tasks/` 内のタスクファイルによるバッチ処理をサポートしています。`.yaml`/`.yml` と `.md` の両方のファイル形式に対応しています。
 
-**YAML形式**（推奨、worktree/branch/workflowオプション対応）:
+**YAML形式**（推奨、worktree/branch/pieceオプション対応）:
 
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "認証機能を追加する"
 worktree: true                  # 隔離された共有クローンで実行
 branch: "feat/add-auth"         # ブランチ名（省略時は自動生成）
-workflow: "default"             # ワークフロー指定（省略時は現在のもの）
+piece: "default"             # ピース指定（省略時は現在のもの）
 ```
 
 **Markdown形式**（シンプル、後方互換）:
@@ -559,25 +567,25 @@ TAKTはセッションログをNDJSON（`.jsonl`）形式で`.takt/logs/`に書�
 
 - `.takt/logs/latest.json` - 現在（または最新の）セッションへのポインタ
 - `.takt/logs/previous.json` - 前回セッションへのポインタ
-- `.takt/logs/{sessionId}.jsonl` - ワークフロー実行ごとのNDJSONセッションログ
+- `.takt/logs/{sessionId}.jsonl` - ピース実行ごとのNDJSONセッションログ
 
-レコード種別: `workflow_start`, `step_start`, `step_complete`, `workflow_complete`, `workflow_abort`
+レコード種別: `piece_start`, `step_start`, `step_complete`, `piece_complete`, `piece_abort`
 
 エージェントは`previous.json`を読み取って前回の実行コンテキストを引き継ぐことができます。セッション継続は自動的に行われます — `takt "タスク"`を実行するだけで前回のセッションから続行されます。
 
-### カスタムワークフローの追加
+### カスタムピースの追加
 
-`~/.takt/workflows/` に YAML ファイルを追加するか、`takt eject` でビルトインをカスタマイズします:
+`~/.takt/pieces/` に YAML ファイルを追加するか、`takt eject` でビルトインをカスタマイズします:
 
 ```bash
-# defaultワークフローを~/.takt/workflows/にコピーして編集
+# defaultピースを~/.takt/pieces/にコピーして編集
 takt eject default
 ```
 
 ```yaml
-# ~/.takt/workflows/my-workflow.yaml
-name: my-workflow
-description: カスタムワークフロー
+# ~/.takt/pieces/my-piece.yaml
+name: my-piece
+description: カスタムピース
 max_iterations: 5
 initial_movement: analyze
 
@@ -607,10 +615,10 @@ movements:
 
 ### エージェントをパスで指定する
 
-ワークフロー定義ではファイルパスを使ってエージェントを指定します:
+ピース定義ではファイルパスを使ってエージェントを指定します:
 
 ```yaml
-# ワークフローファイルからの相対パス
+# ピースファイルからの相対パス
 agent: ../agents/default/coder.md
 
 # ホームディレクトリ
@@ -620,24 +628,24 @@ agent: ~/.takt/agents/default/coder.md
 agent: /path/to/custom/agent.md
 ```
 
-### ワークフロー変数
+### ピース変数
 
 `instruction_template`で使用可能な変数:
 
 | 変数 | 説明 |
 |------|------|
 | `{task}` | 元のユーザーリクエスト（テンプレートになければ自動注入） |
-| `{iteration}` | ワークフロー全体のターン数（実行された全ムーブメント数） |
+| `{iteration}` | ピース全体のターン数（実行された全ムーブメント数） |
 | `{max_iterations}` | 最大イテレーション数 |
 | `{movement_iteration}` | ムーブメントごとのイテレーション数（このムーブメントが実行された回数） |
 | `{previous_response}` | 前のムーブメントの出力（テンプレートになければ自動注入） |
-| `{user_inputs}` | ワークフロー中の追加ユーザー入力（テンプレートになければ自動注入） |
+| `{user_inputs}` | ピース中の追加ユーザー入力（テンプレートになければ自動注入） |
 | `{report_dir}` | レポートディレクトリパス（例: `.takt/reports/20250126-143052-task-summary`） |
 | `{report:filename}` | `{report_dir}/filename` に展開（例: `{report:00-plan.md}`） |
 
-### ワークフローの設計
+### ピースの設計
 
-各ワークフローのムーブメントに必要な要素:
+各ピースのムーブメントに必要な要素:
 
 **1. エージェント** - システムプロンプトを含むMarkdownファイル:
 
@@ -673,13 +681,13 @@ rules:
 ## API使用例
 
 ```typescript
-import { WorkflowEngine, loadWorkflow } from 'takt';  // npm install takt
+import { PieceEngine, loadPiece } from 'takt';  // npm install takt
 
-const config = loadWorkflow('default');
+const config = loadPiece('default');
 if (!config) {
-  throw new Error('Workflow not found');
+  throw new Error('Piece not found');
 }
-const engine = new WorkflowEngine(config, process.cwd(), 'My task');
+const engine = new PieceEngine(config, process.cwd(), 'My task');
 
 engine.on('step:complete', (step, response) => {
   console.log(`${step.name}: ${response.status}`);
@@ -698,7 +706,7 @@ await engine.run();
 
 TAKTはPRレビューやタスク実行を自動化するGitHub Actionを提供しています。詳細は [takt-action](https://github.com/nrslib/takt-action) を参照してください。
 
-**ワークフロー例** (このリポジトリの [.github/workflows/takt-action.yml](../.github/workflows/takt-action.yml) を参照):
+**ピース例** (このリポジトリの [.github/workflows/takt-action.yml](../.github/workflows/takt-action.yml) を参照):
 
 ```yaml
 name: TAKT
@@ -716,7 +724,7 @@ jobs:
       issues: write
       pull-requests: write
 
-    movements:
+    steps:
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -753,7 +761,7 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 ## ドキュメント
 
-- [Workflow Guide](./workflows.md) - ワークフローの作成とカスタマイズ
+- [Piece Guide](./pieces.md) - ピースの作成とカスタマイズ
 - [Agent Guide](./agents.md) - カスタムエージェントの設定
 - [Changelog](../CHANGELOG.md) - バージョン履歴
 - [Security Policy](../SECURITY.md) - 脆弱性報告

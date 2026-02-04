@@ -17,8 +17,8 @@ import {
   type SessionLog,
   type NdjsonRecord,
   type NdjsonStepComplete,
-  type NdjsonWorkflowComplete,
-  type NdjsonWorkflowAbort,
+  type NdjsonPieceComplete,
+  type NdjsonPieceAbort,
   type NdjsonPhaseStart,
   type NdjsonPhaseComplete,
   type NdjsonInteractiveStart,
@@ -56,7 +56,7 @@ describe('updateLatestPointer', () => {
     expect(pointer.sessionId).toBe('abc-123');
     expect(pointer.logFile).toBe('abc-123.jsonl');
     expect(pointer.task).toBe('my task');
-    expect(pointer.workflowName).toBe('default');
+    expect(pointer.pieceName).toBe('default');
     expect(pointer.status).toBe('running');
     expect(pointer.iterations).toBe(0);
     expect(pointer.startTime).toBeDefined();
@@ -84,7 +84,7 @@ describe('updateLatestPointer', () => {
     const log1 = createSessionLog('first task', projectDir, 'wf1');
     updateLatestPointer(log1, 'sid-first', projectDir);
 
-    // Simulate a second workflow starting
+    // Simulate a second piece starting
     const log2 = createSessionLog('second task', projectDir, 'wf2');
     updateLatestPointer(log2, 'sid-second', projectDir, { copyToPrevious: true });
 
@@ -102,11 +102,11 @@ describe('updateLatestPointer', () => {
   });
 
   it('should not update previous.json on step-complete calls (no copyToPrevious)', () => {
-    // Workflow 1 creates latest
+    // Piece 1 creates latest
     const log1 = createSessionLog('first', projectDir, 'wf');
     updateLatestPointer(log1, 'sid-1', projectDir);
 
-    // Workflow 2 starts → copies latest to previous
+    // Piece 2 starts → copies latest to previous
     const log2 = createSessionLog('second', projectDir, 'wf');
     updateLatestPointer(log2, 'sid-2', projectDir, { copyToPrevious: true });
 
@@ -129,7 +129,7 @@ describe('updateLatestPointer', () => {
     log.iterations = 2;
     updateLatestPointer(log, 'sid-1', projectDir);
 
-    // Simulate workflow completion
+    // Simulate piece completion
     log.status = 'completed';
     log.iterations = 3;
     updateLatestPointer(log, 'sid-1', projectDir);
@@ -153,7 +153,7 @@ describe('NDJSON log', () => {
   });
 
   describe('initNdjsonLog', () => {
-    it('should create a .jsonl file with workflow_start record', () => {
+    it('should create a .jsonl file with piece_start record', () => {
       const filepath = initNdjsonLog('sess-001', 'my task', 'default', projectDir);
 
       expect(filepath).toContain('sess-001.jsonl');
@@ -164,10 +164,10 @@ describe('NDJSON log', () => {
       expect(lines).toHaveLength(1);
 
       const record = JSON.parse(lines[0]!) as NdjsonRecord;
-      expect(record.type).toBe('workflow_start');
-      if (record.type === 'workflow_start') {
+      expect(record.type).toBe('piece_start');
+      if (record.type === 'piece_start') {
         expect(record.task).toBe('my task');
-        expect(record.workflowName).toBe('default');
+        expect(record.pieceName).toBe('default');
         expect(record.startTime).toBeDefined();
       }
     });
@@ -199,10 +199,10 @@ describe('NDJSON log', () => {
 
       const content = readFileSync(filepath, 'utf-8');
       const lines = content.trim().split('\n');
-      expect(lines).toHaveLength(3); // workflow_start + step_start + step_complete
+      expect(lines).toHaveLength(3); // piece_start + step_start + step_complete
 
       const parsed0 = JSON.parse(lines[0]!) as NdjsonRecord;
-      expect(parsed0.type).toBe('workflow_start');
+      expect(parsed0.type).toBe('piece_start');
 
       const parsed1 = JSON.parse(lines[1]!) as NdjsonRecord;
       expect(parsed1.type).toBe('step_start');
@@ -247,8 +247,8 @@ describe('NDJSON log', () => {
       };
       appendNdjsonLine(filepath, stepComplete);
 
-      const complete: NdjsonWorkflowComplete = {
-        type: 'workflow_complete',
+      const complete: NdjsonPieceComplete = {
+        type: 'piece_complete',
         iterations: 1,
         endTime: '2025-01-01T00:00:03.000Z',
       };
@@ -257,7 +257,7 @@ describe('NDJSON log', () => {
       const log = loadNdjsonLog(filepath);
       expect(log).not.toBeNull();
       expect(log!.task).toBe('build app');
-      expect(log!.workflowName).toBe('default');
+      expect(log!.pieceName).toBe('default');
       expect(log!.status).toBe('completed');
       expect(log!.iterations).toBe(1);
       expect(log!.endTime).toBe('2025-01-01T00:00:03.000Z');
@@ -268,7 +268,7 @@ describe('NDJSON log', () => {
       expect(log!.history[0]!.matchedRuleMethod).toBe('phase3_tag');
     });
 
-    it('should handle aborted workflow', () => {
+    it('should handle aborted piece', () => {
       const filepath = initNdjsonLog('sess-004', 'failing task', 'wf', projectDir);
 
       appendNdjsonLine(filepath, {
@@ -290,8 +290,8 @@ describe('NDJSON log', () => {
         timestamp: '2025-01-01T00:00:02.000Z',
       } satisfies NdjsonStepComplete);
 
-      const abort: NdjsonWorkflowAbort = {
-        type: 'workflow_abort',
+      const abort: NdjsonPieceAbort = {
+        type: 'piece_abort',
         iterations: 1,
         reason: 'Max iterations reached',
         endTime: '2025-01-01T00:00:03.000Z',
@@ -342,7 +342,7 @@ describe('NDJSON log', () => {
       } satisfies NdjsonStepComplete);
 
       appendNdjsonLine(filepath, {
-        type: 'workflow_complete',
+        type: 'piece_complete',
         iterations: 1,
         endTime: '2025-01-01T00:00:03.000Z',
       });
@@ -370,7 +370,7 @@ describe('NDJSON log', () => {
       } satisfies NdjsonStepComplete);
 
       appendNdjsonLine(filepath, {
-        type: 'workflow_complete',
+        type: 'piece_complete',
         iterations: 1,
         endTime: '2025-01-01T00:00:03.000Z',
       });
@@ -389,7 +389,7 @@ describe('NDJSON log', () => {
       const legacyLog: SessionLog = {
         task: 'legacy task',
         projectDir,
-        workflowName: 'wf',
+        pieceName: 'wf',
         iterations: 0,
         startTime: new Date().toISOString(),
         status: 'running',
@@ -422,8 +422,8 @@ describe('NDJSON log', () => {
 
       const after2 = readFileSync(filepath, 'utf-8').trim().split('\n');
       expect(after2).toHaveLength(2);
-      // First line should still be workflow_start
-      expect(JSON.parse(after2[0]!).type).toBe('workflow_start');
+      // First line should still be piece_start
+      expect(JSON.parse(after2[0]!).type).toBe('piece_start');
     });
 
     it('should produce valid JSON on each line', () => {
@@ -466,7 +466,7 @@ describe('NDJSON log', () => {
 
       const content = readFileSync(filepath, 'utf-8');
       const lines = content.trim().split('\n');
-      expect(lines).toHaveLength(2); // workflow_start + phase_start
+      expect(lines).toHaveLength(2); // piece_start + phase_start
 
       const parsed = JSON.parse(lines[1]!) as NdjsonRecord;
       expect(parsed.type).toBe('phase_start');

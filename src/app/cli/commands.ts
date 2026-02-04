@@ -4,10 +4,10 @@
  * Registers all named subcommands (run, watch, add, list, switch, clear, eject, config, prompt).
  */
 
-import { clearAgentSessions, getCurrentWorkflow } from '../../infra/config/index.js';
+import { clearAgentSessions, getCurrentPiece } from '../../infra/config/index.js';
 import { success } from '../../shared/ui/index.js';
 import { runAllTasks, addTask, watchTasks, listTasks } from '../../features/tasks/index.js';
-import { switchWorkflow, switchConfig, ejectBuiltin } from '../../features/config/index.js';
+import { switchPiece, switchConfig, ejectBuiltin } from '../../features/config/index.js';
 import { previewPrompts } from '../../features/prompt/index.js';
 import { program, resolvedCwd } from './program.js';
 import { resolveAgentOverrides } from './helpers.js';
@@ -16,8 +16,8 @@ program
   .command('run')
   .description('Run all pending tasks from .takt/tasks/')
   .action(async () => {
-    const workflow = getCurrentWorkflow(resolvedCwd);
-    await runAllTasks(resolvedCwd, workflow, resolveAgentOverrides(program));
+    const piece = getCurrentPiece(resolvedCwd);
+    await runAllTasks(resolvedCwd, piece, resolveAgentOverrides(program));
   });
 
 program
@@ -44,10 +44,10 @@ program
 
 program
   .command('switch')
-  .description('Switch workflow interactively')
-  .argument('[workflow]', 'Workflow name')
-  .action(async (workflow?: string) => {
-    await switchWorkflow(resolvedCwd, workflow);
+  .description('Switch piece interactively')
+  .argument('[piece]', 'Piece name')
+  .action(async (piece?: string) => {
+    await switchPiece(resolvedCwd, piece);
   });
 
 program
@@ -60,7 +60,7 @@ program
 
 program
   .command('eject')
-  .description('Copy builtin workflow/agents to ~/.takt/ for customization')
+  .description('Copy builtin piece/agents to ~/.takt/ for customization')
   .argument('[name]', 'Specific builtin to eject')
   .action(async (name?: string) => {
     await ejectBuiltin(name);
@@ -77,7 +77,7 @@ program
 program
   .command('prompt')
   .description('Preview assembled prompts for each movement and phase')
-  .argument('[workflow]', 'Workflow name or path (defaults to current)')
-  .action(async (workflow?: string) => {
-    await previewPrompts(resolvedCwd, workflow);
+  .argument('[piece]', 'Piece name or path (defaults to current)')
+  .action(async (piece?: string) => {
+    await previewPrompts(resolvedCwd, piece);
   });

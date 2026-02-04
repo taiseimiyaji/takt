@@ -39,7 +39,7 @@ describe('variable substitution', () => {
   it('replaces {{variableName}} placeholders with provided values', () => {
     const result = loadTemplate('perform_builtin_agent_system_prompt', 'en', { agentName: 'test-agent' });
     expect(result).toContain('You are the test-agent agent');
-    expect(result).toContain('Follow the standard test-agent workflow');
+    expect(result).toContain('Follow the standard test-agent piece');
   });
 
   it('replaces undefined variables with empty string', () => {
@@ -57,13 +57,13 @@ describe('variable substitution', () => {
     expect(result).toContain('| 1 | Success |');
   });
 
-  it('replaces workflow info variables in interactive prompt', () => {
+  it('replaces piece info variables in interactive prompt', () => {
     const result = loadTemplate('score_interactive_system_prompt', 'en', {
-      workflowInfo: true,
-      workflowName: 'my-workflow',
-      workflowDescription: 'Test description',
+      pieceInfo: true,
+      pieceName: 'my-piece',
+      pieceDescription: 'Test description',
     });
-    expect(result).toContain('"my-workflow"');
+    expect(result).toContain('"my-piece"');
     expect(result).toContain('Test description');
   });
 });
@@ -189,11 +189,11 @@ describe('template content integrity', () => {
     expect(en).toContain('## Execution Rules');
     expect(en).toContain('Do NOT run git commit');
     expect(en).toContain('Do NOT use `cd`');
-    expect(en).toContain('## Workflow Context');
+    expect(en).toContain('## Piece Context');
     expect(en).toContain('## Instructions');
   });
 
-  it('perform_phase1_message contains workflow context variables', () => {
+  it('perform_phase1_message contains piece context variables', () => {
     const en = loadTemplate('perform_phase1_message', 'en');
     expect(en).toContain('{{iteration}}');
     expect(en).toContain('{{movement}}');

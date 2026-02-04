@@ -4,7 +4,7 @@
  * Orchestrates the full pipeline:
  *   1. Fetch issue content
  *   2. Create branch
- *   3. Run workflow
+ *   3. Run piece
  *   4. Commit & push
  *   5. Create PR
  */
@@ -27,7 +27,7 @@ import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import type { PipelineConfig } from '../../core/models/index.js';
 import {
   EXIT_ISSUE_FETCH_FAILED,
-  EXIT_WORKFLOW_FAILED,
+  EXIT_PIECE_FAILED,
   EXIT_GIT_OPERATION_FAILED,
   EXIT_PR_CREATION_FAILED,
 } from '../../shared/exitCodes.js';
@@ -105,7 +105,7 @@ function buildPipelinePrBody(
  * Returns a process exit code (0 on success, 2-5 on specific failures).
  */
 export async function executePipeline(options: PipelineExecutionOptions): Promise<number> {
-  const { cwd, workflow, autoPr, skipGit } = options;
+  const { cwd, piece, autoPr, skipGit } = options;
   const globalConfig = loadGlobalConfig();
   const pipelineConfig = globalConfig.pipeline;
   let issue: GitHubIssue | undefined;
@@ -148,9 +148,9 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
     }
   }
 
-  // --- Step 3: Run workflow ---
-  info(`Running workflow: ${workflow}`);
-  log.info('Pipeline workflow execution starting', { workflow, branch, skipGit, issueNumber: options.issueNumber });
+  // --- Step 3: Run piece ---
+  info(`Running piece: ${piece}`);
+  log.info('Pipeline piece execution starting', { piece, branch, skipGit, issueNumber: options.issueNumber });
 
   const agentOverrides: TaskExecutionOptions | undefined = (options.provider || options.model)
     ? { provider: options.provider, model: options.model }
@@ -159,16 +159,16 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
   const taskSuccess = await executeTask({
     task,
     cwd,
-    workflowIdentifier: workflow,
+    pieceIdentifier: piece,
     projectCwd: cwd,
     agentOverrides,
   });
 
   if (!taskSuccess) {
-    error(`Workflow '${workflow}' failed`);
-    return EXIT_WORKFLOW_FAILED;
+    error(`Piece '${piece}' failed`);
+    return EXIT_PIECE_FAILED;
   }
-  success(`Workflow '${workflow}' completed`);
+  success(`Piece '${piece}' completed`);
 
   // --- Step 4: Commit & push (skip if --skip-git) ---
   if (!skipGit && branch) {
@@ -199,7 +199,7 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
     } else if (branch) {
       info('Creating pull request...');
       const prTitle = issue ? issue.title : (options.task ?? 'Pipeline task');
-      const report = `Workflow \`${workflow}\` completed successfully.`;
+      const report = `Piece \`${piece}\` completed successfully.`;
       const prBody = buildPipelinePrBody(pipelineConfig, issue, report);
 
       const prResult = createPullRequest(cwd, {
@@ -222,7 +222,7 @@ export async function executePipeline(options: PipelineExecutionOptions): Promis
   blankLine();
   status('Issue', issue ? `#${issue.number} "${issue.title}"` : 'N/A');
   status('Branch', branch ?? '(current)');
-  status('Workflow', workflow);
+  status('Piece', piece);
   status('Result', 'Success', 'green');
 
   return 0;

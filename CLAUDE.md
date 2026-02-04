@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Claude Code. It enables YAML-based workflow definitions that coordinate multiple AI agents through state machine transitions with rule-based routing.
+TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Claude Code. It enables YAML-based piece definitions that coordinate multiple AI agents through state machine transitions with rule-based routing.
 
 ## Development Commands
 
@@ -23,21 +23,21 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 
 | Command | Description |
 |---------|-------------|
-| `takt {task}` | Execute task with current workflow |
+| `takt {task}` | Execute task with current piece |
 | `takt` | Interactive task input mode (chat with AI to refine requirements) |
 | `takt run` | Execute all pending tasks from `.takt/tasks/` once |
 | `takt watch` | Watch `.takt/tasks/` and auto-execute tasks (resident process) |
 | `takt add` | Add a new task via AI conversation |
 | `takt list` | List task branches (try merge, merge & cleanup, or delete) |
-| `takt switch` | Switch workflow interactively |
+| `takt switch` | Switch piece interactively |
 | `takt clear` | Clear agent conversation sessions (reset state) |
-| `takt eject` | Copy builtin workflow/agents to `~/.takt/` for customization |
+| `takt eject` | Copy builtin piece/agents to `~/.takt/` for customization |
 | `takt config` | Configure settings (permission mode) |
 | `takt --help` | Show help message |
 
-**Interactive mode:** Running `takt` (without arguments) or `takt {initial message}` starts an interactive planning session. The AI helps refine task requirements through conversation. Type `/go` to execute the task with the selected workflow, or `/cancel` to abort. Implemented in `src/features/interactive/`.
+**Interactive mode:** Running `takt` (without arguments) or `takt {initial message}` starts an interactive planning session. The AI helps refine task requirements through conversation. Type `/go` to execute the task with the selected piece, or `/cancel` to abort. Implemented in `src/features/interactive/`.
 
-**Pipeline mode:** Specifying `--pipeline` enables non-interactive mode suitable for CI/CD. Automatically creates a branch, runs the workflow, commits, and pushes. Use `--auto-pr` to also create a pull request. Use `--skip-git` to run workflow only (no git operations). Implemented in `src/features/pipeline/`.
+**Pipeline mode:** Specifying `--pipeline` enables non-interactive mode suitable for CI/CD. Automatically creates a branch, runs the piece, commits, and pushes. Use `--auto-pr` to also create a pull request. Use `--skip-git` to run piece only (no git operations). Implemented in `src/features/pipeline/`.
 
 **GitHub issue references:** `takt #6` fetches issue #6 and executes it as a task.
 
@@ -48,10 +48,10 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 | `--pipeline` | Enable pipeline (non-interactive) mode — required for CI/automation |
 | `-t, --task <text>` | Task content (as alternative to GitHub issue) |
 | `-i, --issue <N>` | GitHub issue number (equivalent to `#N` in interactive mode) |
-| `-w, --workflow <name or path>` | Workflow name or path to workflow YAML file (v0.3.8+) |
+| `-w, --piece <name or path>` | Piece name or path to piece YAML file (v0.3.8+) |
 | `-b, --branch <name>` | Branch name (auto-generated if omitted) |
 | `--auto-pr` | Create PR after execution (interactive: skip confirmation, pipeline: enable PR) |
-| `--skip-git` | Skip branch creation, commit, and push (pipeline mode, workflow-only) |
+| `--skip-git` | Skip branch creation, commit, and push (pipeline mode, piece-only) |
 | `--repo <owner/repo>` | Repository for PR creation |
 | `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
 | `-q, --quiet` | **Minimal output mode: suppress AI output (for CI)** (v0.3.8+) |
@@ -66,7 +66,7 @@ TAKT (Task Agent Koordination Tool) is a multi-agent orchestration system for Cl
 ```
 CLI (cli.ts)
   → Slash commands or executeTask()
-    → WorkflowEngine (workflow/engine.ts)
+    → PieceEngine (piece/engine.ts)
       → Per step: 3-phase execution
         Phase 1: runAgent() → main work
         Phase 2: runReportPhase() → report output (if step.report defined)
@@ -85,7 +85,7 @@ Each step executes in up to 3 phases (session is resumed across phases):
 | Phase 2 | Report output | Write only | When `step.report` is defined |
 | Phase 3 | Status judgment | None (judgment only) | When step has tag-based rules |
 
-Phase 2/3 are implemented in `src/core/workflow/engine/phase-runner.ts`. The session is resumed so the agent retains context from Phase 1.
+Phase 2/3 are implemented in `src/core/piece/engine/phase-runner.ts`. The session is resumed so the agent retains context from Phase 1.
 
 ### Rule Evaluation (5-Stage Fallback)
 
@@ -97,40 +97,40 @@ After step execution, rules are evaluated to determine the next step. Evaluation
 4. **AI judge (ai() only)** - AI evaluates `ai("condition text")` rules
 5. **AI judge fallback** - AI evaluates ALL conditions as final resort
 
-Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched method is tracked as `RuleMatchMethod` type.
+Implemented in `src/core/piece/evaluation/RuleEvaluator.ts`. The matched method is tracked as `RuleMatchMethod` type.
 
 ### Key Components
 
-**WorkflowEngine** (`src/core/workflow/engine/WorkflowEngine.ts`)
+**PieceEngine** (`src/core/piece/engine/PieceEngine.ts`)
 - State machine that orchestrates agent execution via EventEmitter
 - Manages step transitions based on rule evaluation results
-- Emits events: `step:start`, `step:complete`, `step:blocked`, `step:loop_detected`, `workflow:complete`, `workflow:abort`, `iteration:limit`
+- Emits events: `step:start`, `step:complete`, `step:blocked`, `step:loop_detected`, `piece:complete`, `piece:abort`, `iteration:limit`
 - Supports loop detection (`LoopDetector`) and iteration limits
 - Maintains agent sessions per step for conversation continuity
 - Delegates to `StepExecutor` (normal steps) and `ParallelRunner` (parallel steps)
 
-**StepExecutor** (`src/core/workflow/engine/StepExecutor.ts`)
-- Executes a single workflow step through the 3-phase model
+**StepExecutor** (`src/core/piece/engine/StepExecutor.ts`)
+- Executes a single piece step through the 3-phase model
 - Phase 1: Main agent execution (with tools)
 - Phase 2: Report output (Write-only, optional)
 - Phase 3: Status judgment (no tools, optional)
 - Builds instructions via `InstructionBuilder`, detects matched rules via `RuleEvaluator`
 
-**ParallelRunner** (`src/core/workflow/engine/ParallelRunner.ts`)
+**ParallelRunner** (`src/core/piece/engine/ParallelRunner.ts`)
 - Executes parallel sub-steps concurrently via `Promise.all()`
 - Aggregates sub-step results for parent rule evaluation
 - Supports `all()` / `any()` aggregate conditions
 
-**RuleEvaluator** (`src/core/workflow/evaluation/RuleEvaluator.ts`)
+**RuleEvaluator** (`src/core/piece/evaluation/RuleEvaluator.ts`)
 - 5-stage fallback evaluation: aggregate → Phase 3 tag → Phase 1 tag → ai() judge → all-conditions AI judge
 - Returns `RuleMatch` with index and detection method (`aggregate`, `phase3_tag`, `phase1_tag`, `ai_judge`, `ai_fallback`)
 - Fail-fast: throws if rules exist but no rule matched
 - **v0.3.8+:** Tag detection now uses **last match** instead of first match when multiple `[STEP:N]` tags appear in output
 
-**Instruction Builder** (`src/core/workflow/instruction/InstructionBuilder.ts`)
+**Instruction Builder** (`src/core/piece/instruction/InstructionBuilder.ts`)
 - Auto-injects standard sections into every instruction (no need for `{task}` or `{previous_response}` placeholders in templates):
   1. Execution context (working dir, edit permission rules)
-  2. Workflow context (iteration counts, report dir)
+  2. Piece context (iteration counts, report dir)
   3. User request (`{task}` — auto-injected unless placeholder present)
   4. Previous response (auto-injected if `pass_previous_response: true`)
   5. User inputs (auto-injected unless `{user_inputs}` placeholder present)
@@ -161,9 +161,9 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 
 **Configuration** (`src/infra/config/`)
 - `loaders/loader.ts` - Custom agent loading from `.takt/agents.yaml`
-- `loaders/workflowParser.ts` - YAML parsing, step/rule normalization with Zod validation
-- `loaders/workflowResolver.ts` - **3-layer resolution with correct priority** (v0.3.8+: user → project → builtin)
-- `loaders/workflowCategories.ts` - Workflow categorization and filtering
+- `loaders/pieceParser.ts` - YAML parsing, step/rule normalization with Zod validation
+- `loaders/pieceResolver.ts` - **3-layer resolution with correct priority** (v0.3.8+: user → project → builtin)
+- `loaders/pieceCategories.ts` - Piece categorization and filtering
 - `loaders/agentLoader.ts` - Agent prompt file loading
 - `paths.ts` - Directory structure (`.takt/`, `~/.takt/`), session management
 - `global/globalConfig.ts` - Global configuration (provider, model, trusted dirs, **quiet mode** v0.3.8+)
@@ -171,7 +171,7 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 
 **Task Management** (`src/features/tasks/`)
 - `execute/taskExecution.ts` - Main task execution orchestration
-- `execute/workflowExecution.ts` - Workflow execution wrapper
+- `execute/pieceExecution.ts` - Piece execution wrapper
 - `add/index.ts` - Interactive task addition via AI conversation
 - `list/index.ts` - List task branches with merge/delete actions
 - `watch/index.ts` - Watch for task files and auto-execute
@@ -183,18 +183,18 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 ### Data Flow
 
 1. User provides task (text or `#N` issue reference) or slash command → CLI
-2. CLI loads workflow with **correct priority** (v0.3.8+): user `~/.takt/workflows/` → project `.takt/workflows/` → builtin `resources/global/{lang}/workflows/`
-3. WorkflowEngine starts at `initial_step`
+2. CLI loads piece with **correct priority** (v0.3.8+): user `~/.takt/pieces/` → project `.takt/pieces/` → builtin `resources/global/{lang}/pieces/`
+3. PieceEngine starts at `initial_step`
 4. Each step: `buildInstruction()` → Phase 1 (main) → Phase 2 (report) → Phase 3 (status) → `detectMatchedRule()` → `determineNextStep()`
 5. Rule evaluation determines next step name (v0.3.8+: uses **last match** when multiple `[STEP:N]` tags appear)
-6. Special transitions: `COMPLETE` ends workflow successfully, `ABORT` ends with failure
+6. Special transitions: `COMPLETE` ends piece successfully, `ABORT` ends with failure
 
 ## Directory Structure
 
 ```
 ~/.takt/                  # Global user config (created on first run)
-  config.yaml             # Trusted dirs, default workflow, log level, language
-  workflows/              # User workflow YAML files (override builtins)
+  config.yaml             # Trusted dirs, default piece, log level, language
+  pieces/              # User piece YAML files (override builtins)
   agents/                 # User agent prompt files (.md)
 
 .takt/                    # Project-level config
@@ -205,16 +205,16 @@ Implemented in `src/core/workflow/evaluation/RuleEvaluator.ts`. The matched meth
 
 resources/                # Bundled defaults (builtin, read from dist/ at runtime)
   global/
-    en/                   # English agents and workflows
-    ja/                   # Japanese agents and workflows
+    en/                   # English agents and pieces
+    ja/                   # Japanese agents and pieces
 ```
 
 Builtin resources are embedded in the npm package (`dist/resources/`). User files in `~/.takt/` take priority. Use `/eject` to copy builtins to `~/.takt/` for customization.
 
-## Workflow YAML Schema
+## Piece YAML Schema
 
 ```yaml
-name: workflow-name
+name: piece-name
 description: Optional description
 max_iterations: 10
 initial_step: plan        # First step to execute
@@ -288,48 +288,48 @@ Key points about parallel steps:
 | Variable | Description |
 |----------|-------------|
 | `{task}` | Original user request (auto-injected if not in template) |
-| `{iteration}` | Workflow-wide iteration count |
+| `{iteration}` | Piece-wide iteration count |
 | `{max_iterations}` | Maximum iterations allowed |
 | `{step_iteration}` | Per-step iteration count |
 | `{previous_response}` | Previous step output (auto-injected if not in template) |
 | `{user_inputs}` | Accumulated user inputs (auto-injected if not in template) |
 | `{report_dir}` | Report directory name |
 
-### Workflow Categories
+### Piece Categories
 
-Workflows can be organized into categories for better UI presentation. Categories are configured in:
+Pieces can be organized into categories for better UI presentation. Categories are configured in:
 - `resources/global/{lang}/default-categories.yaml` - Default builtin categories
-- `~/.takt/config.yaml` - User-defined categories (via `workflow_categories` field)
+- `~/.takt/config.yaml` - User-defined categories (via `piece_categories` field)
 
 Category configuration supports:
 - Nested categories (unlimited depth)
-- Per-category workflow lists
-- "Others" category for uncategorized workflows (can be disabled via `show_others_category: false`)
-- Builtin workflow filtering (disable via `builtin_workflows_enabled: false`, or selectively via `disabled_builtins: [name1, name2]`)
+- Per-category piece lists
+- "Others" category for uncategorized pieces (can be disabled via `show_others_category: false`)
+- Builtin piece filtering (disable via `builtin_pieces_enabled: false`, or selectively via `disabled_builtins: [name1, name2]`)
 
 Example category config:
 ```yaml
-workflow_categories:
+piece_categories:
   Development:
-    workflows: [default, simple]
+    pieces: [default, simple]
     children:
       Backend:
-        workflows: [expert-cqrs]
+        pieces: [expert-cqrs]
       Frontend:
-        workflows: [expert]
+        pieces: [expert]
   Research:
-    workflows: [research, magi]
+    pieces: [research, magi]
 show_others_category: true
-others_category_name: "Other Workflows"
+others_category_name: "Other Pieces"
 ```
 
-Implemented in `src/infra/config/loaders/workflowCategories.ts`.
+Implemented in `src/infra/config/loaders/pieceCategories.ts`.
 
 ### Model Resolution
 
 Model is resolved in the following priority order:
 
-1. **Workflow step `model`** - Highest priority (specified in step YAML)
+1. **Piece step `model`** - Highest priority (specified in step YAML)
 2. **Custom agent `model`** - Agent-level model in `.takt/agents.yaml`
 3. **Global config `model`** - Default model in `~/.takt/config.yaml`
 4. **Provider default** - Falls back to provider's default (Claude: sonnet, Codex: gpt-5.2-codex)
@@ -346,11 +346,11 @@ Session logs use NDJSON (`.jsonl`) format for real-time append-only writes. Reco
 
 | Record | Description |
 |--------|-------------|
-| `workflow_start` | Workflow initialization with task, workflow name |
+| `piece_start` | Piece initialization with task, piece name |
 | `step_start` | Step execution start |
 | `step_complete` | Step result with status, content, matched rule info |
-| `workflow_complete` | Successful completion |
-| `workflow_abort` | Abort with reason |
+| `piece_complete` | Successful completion |
+| `piece_abort` | Abort with reason |
 
 Files: `.takt/logs/{sessionId}.jsonl`, with `latest.json` pointer. Legacy `.json` format is still readable via `loadSessionLog()`.
 
@@ -365,26 +365,26 @@ Files: `.takt/logs/{sessionId}.jsonl`, with `latest.json` pointer. Legacy `.json
 
 **Keep commands minimal.** One command per concept. Use arguments/modes instead of multiple similar commands. Before adding a new command, consider if existing commands can be extended.
 
-**Do NOT expand schemas carelessly.** Rule conditions are free-form text (not enum-restricted). However, the engine's behavior depends on specific patterns (`ai()`, `all()`, `any()`). Do not add new special syntax without updating the loader's regex parsing in `workflowParser.ts`.
+**Do NOT expand schemas carelessly.** Rule conditions are free-form text (not enum-restricted). However, the engine's behavior depends on specific patterns (`ai()`, `all()`, `any()`). Do not add new special syntax without updating the loader's regex parsing in `pieceParser.ts`.
 
 **Instruction auto-injection over explicit placeholders.** The instruction builder auto-injects `{task}`, `{previous_response}`, `{user_inputs}`, and status rules. Templates should contain only step-specific instructions, not boilerplate.
 
-**Agent prompts contain only domain knowledge.** Agent prompt files (`resources/global/{lang}/agents/**/*.md`) must contain only domain expertise and behavioral principles — never workflow-specific procedures. Workflow-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the workflow YAML's `instruction_template`. This keeps agents reusable across different workflows.
+**Agent prompts contain only domain knowledge.** Agent prompt files (`resources/global/{lang}/agents/**/*.md`) must contain only domain expertise and behavioral principles — never piece-specific procedures. Piece-specific details (which reports to read, step routing, specific templates with hardcoded step names) belong in the piece YAML's `instruction_template`. This keeps agents reusable across different pieces.
 
 What belongs in agent prompts:
 - Role definition ("You are a ... specialist")
 - Domain expertise, review criteria, judgment standards
 - Do / Don't behavioral rules
-- Tool usage knowledge (general, not workflow-specific)
+- Tool usage knowledge (general, not piece-specific)
 
-What belongs in workflow `instruction_template`:
+What belongs in piece `instruction_template`:
 - Step-specific procedures ("Read these specific reports")
 - References to other steps or their outputs
 - Specific report file names or formats
 - Comment/output templates with hardcoded review type names
 
-**Separation of concerns in workflow engine:**
-- `WorkflowEngine` - Orchestration, state management, event emission
+**Separation of concerns in piece engine:**
+- `PieceEngine` - Orchestration, state management, event emission
 - `StepExecutor` - Single step execution (3-phase model)
 - `ParallelRunner` - Parallel step execution
 - `RuleEvaluator` - Rule matching and evaluation
@@ -413,10 +413,10 @@ Key constraints:
 
 **Error handling flow:**
 1. Provider error (Claude SDK / Codex) → `AgentResponse.error`
-2. `StepExecutor` captures error → `WorkflowEngine` emits `step:complete` with error
+2. `StepExecutor` captures error → `PieceEngine` emits `step:complete` with error
 3. Error logged to session log (`.takt/logs/{sessionId}.jsonl`)
 4. Console output shows error details
-5. Workflow transitions to `ABORT` step if error is unrecoverable
+5. Piece transitions to `ABORT` step if error is unrecoverable
 
 ## Debugging
 
@@ -429,25 +429,25 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 
 **Verbose mode:** Create `.takt/verbose` file (empty file) to enable verbose console output. This automatically enables debug logging and sets log level to `debug`.
 
-**Session logs:** All workflow executions are logged to `.takt/logs/{sessionId}.jsonl`. Use `tail -f .takt/logs/{sessionId}.jsonl` to monitor in real-time.
+**Session logs:** All piece executions are logged to `.takt/logs/{sessionId}.jsonl`. Use `tail -f .takt/logs/{sessionId}.jsonl` to monitor in real-time.
 
-**Testing with mocks:** Use `--provider mock` to test workflows without calling real AI APIs. Mock responses are deterministic and configurable via test fixtures.
+**Testing with mocks:** Use `--provider mock` to test pieces without calling real AI APIs. Mock responses are deterministic and configurable via test fixtures.
 
 ## Testing Notes
 
 - Vitest for testing framework
 - Tests use file system fixtures in `__tests__/` subdirectories
-- Mock workflows and agent configs for integration tests
+- Mock pieces and agent configs for integration tests
 - Test single files: `npx vitest run src/__tests__/filename.test.ts`
 - Pattern matching: `npx vitest run -t "test pattern"`
-- Integration tests: Tests with `it-` prefix are integration tests that simulate full workflow execution
-- Engine tests: Tests with `engine-` prefix test specific WorkflowEngine scenarios (happy path, error handling, parallel execution, etc.)
+- Integration tests: Tests with `it-` prefix are integration tests that simulate full piece execution
+- Engine tests: Tests with `engine-` prefix test specific PieceEngine scenarios (happy path, error handling, parallel execution, etc.)
 
 ## Important Implementation Notes
 
 **Agent prompt resolution:**
-- Agent paths in workflow YAML are resolved relative to the workflow file's directory
-- `../agents/default/coder.md` resolves from workflow file location
+- Agent paths in piece YAML are resolved relative to the piece file's directory
+- `../agents/default/coder.md` resolves from piece file location
 - Built-in agents are loaded from `dist/resources/global/{lang}/agents/`
 - User agents are loaded from `~/.takt/agents/` or `.takt/agents.yaml`
 - If agent file doesn't exist, the agent string is used as inline system prompt
@@ -476,7 +476,7 @@ Debug logs are written to `.takt/logs/debug.log` (ndjson format). Log levels: `d
 - **v0.3.8+:** When multiple `[STEP:N]` tags appear in output, **last match wins** (not first)
 - `ai()` conditions are evaluated by Claude/Codex, not by string matching
 - Aggregate conditions (`all()`, `any()`) only work in parallel parent steps
-- Fail-fast: if rules exist but no rule matches, workflow aborts
+- Fail-fast: if rules exist but no rule matches, piece aborts
 - Interactive-only rules are skipped in pipeline mode (`rule.interactiveOnly === true`)
 
 **Provider-specific behavior:**

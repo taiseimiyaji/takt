@@ -1,7 +1,7 @@
 <!--
   template: perform_phase1_message
   phase: 1 (main execution)
-  vars: workingDirectory, editRule, workflowStructure, iteration, movementIteration,
+  vars: workingDirectory, editRule, pieceStructure, iteration, movementIteration,
         movement, hasReport, reportInfo, phaseNote, hasTaskSection, userRequest,
         hasPreviousResponse, previousResponse, hasUserInputs, userInputs, instructions
   builder: InstructionBuilder
@@ -10,15 +10,15 @@
 - 作業ディレクトリ: {{workingDirectory}}
 
 ## 実行ルール
-- **git commit を実行しないでください。** コミットはワークフロー完了後にシステムが自動で行います。
+- **git commit を実行しないでください。** コミットはピース完了後にシステムが自動で行います。
 - **Bashコマンドで `cd` を使用しないでください。** 作業ディレクトリは既に正しく設定されています。ディレクトリを変更せずにコマンドを実行してください。
 {{#if editRule}}- {{editRule}}
 {{/if}}
 
-## Workflow Context
-{{#if workflowStructure}}{{workflowStructure}}
+## Piece Context
+{{#if pieceStructure}}{{pieceStructure}}
 
-{{/if}}- Iteration: {{iteration}}（ワークフロー全体）
+{{/if}}- Iteration: {{iteration}}（ピース全体）
 - Movement Iteration: {{movementIteration}}（このムーブメントの実行回数）
 - Movement: {{movement}}
 {{#if hasReport}}{{reportInfo}}

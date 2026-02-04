@@ -35,7 +35,7 @@ describe('getLabel', () => {
 
   describe('template variable substitution', () => {
     it('replaces {variableName} placeholders with provided values', () => {
-      const result = getLabel('workflow.iterationLimit.maxReached', undefined, {
+      const result = getLabel('piece.iterationLimit.maxReached', undefined, {
         currentIteration: '5',
         maxIterations: '10',
       });
@@ -43,14 +43,14 @@ describe('getLabel', () => {
     });
 
     it('replaces single variable', () => {
-      const result = getLabel('workflow.notifyComplete', undefined, {
+      const result = getLabel('piece.notifyComplete', undefined, {
         iteration: '3',
       });
       expect(result).toContain('3 iterations');
     });
 
     it('leaves unmatched placeholders as-is', () => {
-      const result = getLabel('workflow.notifyAbort', undefined, {});
+      const result = getLabel('piece.notifyAbort', undefined, {});
       expect(result).toContain('{reason}');
     });
   });
@@ -100,29 +100,29 @@ describe('label integrity', () => {
     expect(ui).toHaveProperty('cancelled');
   });
 
-  it('contains all expected workflow keys in en', () => {
-    expect(() => getLabel('workflow.iterationLimit.maxReached')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.currentMovement')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.continueQuestion')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.continueLabel')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.continueDescription')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.stopLabel')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.inputPrompt')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.invalidInput')).not.toThrow();
-    expect(() => getLabel('workflow.iterationLimit.userInputPrompt')).not.toThrow();
-    expect(() => getLabel('workflow.notifyComplete')).not.toThrow();
-    expect(() => getLabel('workflow.notifyAbort')).not.toThrow();
-    expect(() => getLabel('workflow.sigintGraceful')).not.toThrow();
-    expect(() => getLabel('workflow.sigintForce')).not.toThrow();
+  it('contains all expected piece keys in en', () => {
+    expect(() => getLabel('piece.iterationLimit.maxReached')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.currentMovement')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.continueQuestion')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.continueLabel')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.continueDescription')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.stopLabel')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.inputPrompt')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.invalidInput')).not.toThrow();
+    expect(() => getLabel('piece.iterationLimit.userInputPrompt')).not.toThrow();
+    expect(() => getLabel('piece.notifyComplete')).not.toThrow();
+    expect(() => getLabel('piece.notifyAbort')).not.toThrow();
+    expect(() => getLabel('piece.sigintGraceful')).not.toThrow();
+    expect(() => getLabel('piece.sigintForce')).not.toThrow();
   });
 
   it('en and ja have the same key structure', () => {
     const stringKeys = [
       'interactive.ui.intro',
       'interactive.ui.cancelled',
-      'workflow.iterationLimit.maxReached',
-      'workflow.notifyComplete',
-      'workflow.sigintGraceful',
+      'piece.iterationLimit.maxReached',
+      'piece.notifyComplete',
+      'piece.sigintGraceful',
     ];
     for (const key of stringKeys) {
       expect(() => getLabel(key, 'en')).not.toThrow();

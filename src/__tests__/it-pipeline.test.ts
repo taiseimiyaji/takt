@@ -5,7 +5,7 @@
  * of the pipeline execution flow. Git operations are skipped via --skip-git.
  *
  * Mocked: git operations (child_process), GitHub API, UI output, notifications, session
- * Not mocked: executeTask, executeWorkflow, WorkflowEngine, runAgent, rule evaluation
+ * Not mocked: executeTask, executePiece, PieceEngine, runAgent, rule evaluation
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -92,7 +92,7 @@ vi.mock('../infra/config/paths.js', async (importOriginal) => {
     updateAgentSession: vi.fn(),
     loadWorktreeSessions: vi.fn().mockReturnValue({}),
     updateWorktreeSession: vi.fn(),
-    getCurrentWorkflow: vi.fn().mockReturnValue('default'),
+    getCurrentPiece: vi.fn().mockReturnValue('default'),
     getProjectConfigDir: vi.fn().mockImplementation((cwd: string) => join(cwd, '.takt')),
   };
 });
@@ -123,7 +123,7 @@ vi.mock('../shared/prompt/index.js', () => ({
   promptInput: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -135,8 +135,8 @@ import { executePipeline } from '../features/pipeline/index.js';
 
 // --- Test helpers ---
 
-/** Create a minimal test workflow YAML + agent files in a temp directory */
-function createTestWorkflowDir(): { dir: string; workflowPath: string } {
+/** Create a minimal test piece YAML + agent files in a temp directory */
+function createTestPieceDir(): { dir: string; piecePath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-pipeline-'));
 
   // Create .takt/reports structure
@@ -149,10 +149,10 @@ function createTestWorkflowDir(): { dir: string; workflowPath: string } {
   writeFileSync(join(agentsDir, 'coder.md'), 'You are a coder. Implement the task.');
   writeFileSync(join(agentsDir, 'reviewer.md'), 'You are a reviewer. Review the code.');
 
-  // Create a simple workflow YAML
-  const workflowYaml = `
+  // Create a simple piece YAML
+  const pieceYaml = `
 name: it-simple
-description: Integration test workflow
+description: Integration test piece
 max_iterations: 10
 initial_movement: plan
 
@@ -185,21 +185,21 @@ movements:
     instruction: "{task}"
 `;
 
-  const workflowPath = join(dir, 'workflow.yaml');
-  writeFileSync(workflowPath, workflowYaml);
+  const piecePath = join(dir, 'piece.yaml');
+  writeFileSync(piecePath, pieceYaml);
 
-  return { dir, workflowPath };
+  return { dir, piecePath };
 }
 
 describe('Pipeline Integration Tests', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -207,7 +207,7 @@ describe('Pipeline Integration Tests', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should complete pipeline with workflow path + skip-git + mock scenario', async () => {
+  it('should complete pipeline with piece path + skip-git + mock scenario', async () => {
     // Scenario: plan -> implement -> review -> COMPLETE
     // agent field must match extractAgentName(movement.agent), i.e., the .md filename without extension
     setMockScenario([
@@ -218,7 +218,7 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a hello world function',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -228,8 +228,8 @@ describe('Pipeline Integration Tests', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should complete pipeline with workflow name + skip-git + mock scenario', async () => {
-    // Use builtin 'minimal' workflow
+  it('should complete pipeline with piece name + skip-git + mock scenario', async () => {
+    // Use builtin 'minimal' piece
     // agent field: extractAgentName result (from .md filename)
     // tag in content: [MOVEMENT_NAME:N] where MOVEMENT_NAME is the movement name uppercased
     setMockScenario([
@@ -240,7 +240,7 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a hello world function',
-      workflow: 'minimal',
+      piece: 'minimal',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -250,21 +250,21 @@ describe('Pipeline Integration Tests', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should return EXIT_WORKFLOW_FAILED for non-existent workflow', async () => {
+  it('should return EXIT_PIECE_FAILED for non-existent piece', async () => {
     const exitCode = await executePipeline({
       task: 'Test task',
-      workflow: 'non-existent-workflow-xyz',
+      piece: 'non-existent-piece-xyz',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    // executeTask returns false when workflow not found → executePipeline returns EXIT_WORKFLOW_FAILED (3)
+    // executeTask returns false when piece not found → executePipeline returns EXIT_PIECE_FAILED (3)
     expect(exitCode).toBe(3);
   });
 
-  it('should handle ABORT transition from workflow', async () => {
+  it('should handle ABORT transition from piece', async () => {
     // Scenario: plan returns second rule -> ABORT
     setMockScenario([
       { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear, insufficient info.' },
@@ -272,14 +272,14 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Vague task with no details',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    // ABORT means workflow failed -> EXIT_WORKFLOW_FAILED (3)
+    // ABORT means piece failed -> EXIT_PIECE_FAILED (3)
     expect(exitCode).toBe(3);
   });
 
@@ -296,7 +296,7 @@ describe('Pipeline Integration Tests', () => {
 
     const exitCode = await executePipeline({
       task: 'Task needing a fix',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,

@@ -29,9 +29,9 @@ export const ClaudeConfigSchema = z.object({
 /** TAKT global tool configuration schema */
 export const TaktConfigSchema = z.object({
   defaultModel: AgentModelSchema,
-  defaultWorkflow: z.string().default('default'),
+  defaultPiece: z.string().default('default'),
   agentDirs: z.array(z.string()).default([]),
-  workflowDirs: z.array(z.string()).default([]),
+  pieceDirs: z.array(z.string()).default([]),
   sessionDir: z.string().optional(),
   claude: ClaudeConfigSchema.default({ command: 'claude', timeout: 300000 }),
 });
@@ -100,7 +100,7 @@ export const ReportFieldSchema = z.union([
 ]);
 
 /** Rule-based transition schema (new unified format) */
-export const WorkflowRuleSchema = z.object({
+export const PieceRuleSchema = z.object({
   /** Human-readable condition text */
   condition: z.string().min(1),
   /** Next movement name (e.g., implement, COMPLETE, ABORT). Optional for parallel sub-movements (parent handles routing). */
@@ -125,13 +125,13 @@ export const ParallelSubMovementRawSchema = z.object({
   edit: z.boolean().optional(),
   instruction: z.string().optional(),
   instruction_template: z.string().optional(),
-  rules: z.array(WorkflowRuleSchema).optional(),
+  rules: z.array(PieceRuleSchema).optional(),
   report: ReportFieldSchema.optional(),
   pass_previous_response: z.boolean().optional().default(true),
 });
 
-/** Workflow movement schema - raw YAML format */
-export const WorkflowMovementRawSchema = z.object({
+/** Piece movement schema - raw YAML format */
+export const PieceMovementRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   /** Agent is required for normal movements, optional for parallel container movements */
@@ -150,7 +150,7 @@ export const WorkflowMovementRawSchema = z.object({
   instruction: z.string().optional(),
   instruction_template: z.string().optional(),
   /** Rules for movement routing */
-  rules: z.array(WorkflowRuleSchema).optional(),
+  rules: z.array(PieceRuleSchema).optional(),
   /** Report file(s) for this movement */
   report: ReportFieldSchema.optional(),
   pass_previous_response: z.boolean().optional().default(true),
@@ -158,11 +158,11 @@ export const WorkflowMovementRawSchema = z.object({
   parallel: z.array(ParallelSubMovementRawSchema).optional(),
 });
 
-/** Workflow configuration schema - raw YAML format */
-export const WorkflowConfigRawSchema = z.object({
+/** Piece configuration schema - raw YAML format */
+export const PieceConfigRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  movements: z.array(WorkflowMovementRawSchema).min(1),
+  movements: z.array(PieceMovementRawSchema).min(1),
   initial_movement: z.string().optional(),
   max_iterations: z.number().int().positive().optional().default(10),
   answer_agent: z.string().optional(),
@@ -199,35 +199,35 @@ export const PipelineConfigSchema = z.object({
   pr_body_template: z.string().optional(),
 });
 
-/** Workflow category config schema (recursive) */
-export type WorkflowCategoryConfigNode = {
-  workflows?: string[];
-  [key: string]: WorkflowCategoryConfigNode | string[] | undefined;
+/** Piece category config schema (recursive) */
+export type PieceCategoryConfigNode = {
+  pieces?: string[];
+  [key: string]: PieceCategoryConfigNode | string[] | undefined;
 };
 
-export const WorkflowCategoryConfigNodeSchema: z.ZodType<WorkflowCategoryConfigNode> = z.lazy(() =>
+export const PieceCategoryConfigNodeSchema: z.ZodType<PieceCategoryConfigNode> = z.lazy(() =>
   z.object({
-    workflows: z.array(z.string()).optional(),
-  }).catchall(WorkflowCategoryConfigNodeSchema)
+    pieces: z.array(z.string()).optional(),
+  }).catchall(PieceCategoryConfigNodeSchema)
 );
 
-export const WorkflowCategoryConfigSchema = z.record(z.string(), WorkflowCategoryConfigNodeSchema);
+export const PieceCategoryConfigSchema = z.record(z.string(), PieceCategoryConfigNodeSchema);
 
 /** Global config schema */
 export const GlobalConfigSchema = z.object({
   language: LanguageSchema.optional().default(DEFAULT_LANGUAGE),
   trusted_directories: z.array(z.string()).optional().default([]),
-  default_workflow: z.string().optional().default('default'),
+  default_piece: z.string().optional().default('default'),
   log_level: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
   provider: z.enum(['claude', 'codex', 'mock']).optional().default('claude'),
   model: z.string().optional(),
   debug: DebugConfigSchema.optional(),
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktree_dir: z.string().optional(),
-  /** List of builtin workflow/agent names to exclude from fallback loading */
+  /** List of builtin piece/agent names to exclude from fallback loading */
   disabled_builtins: z.array(z.string()).optional().default([]),
-  /** Enable builtin workflows from resources/global/{lang}/workflows */
-  enable_builtin_workflows: z.boolean().optional(),
+  /** Enable builtin pieces from resources/global/{lang}/pieces */
+  enable_builtin_pieces: z.boolean().optional(),
   /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
   anthropic_api_key: z.string().optional(),
   /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
@@ -238,13 +238,13 @@ export const GlobalConfigSchema = z.object({
   minimal_output: z.boolean().optional().default(false),
   /** Path to bookmarks file (default: ~/.takt/preferences/bookmarks.yaml) */
   bookmarks_file: z.string().optional(),
-  /** Path to workflow categories file (default: ~/.takt/preferences/workflow-categories.yaml) */
-  workflow_categories_file: z.string().optional(),
+  /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
+  piece_categories_file: z.string().optional(),
 });
 
 /** Project config schema */
 export const ProjectConfigSchema = z.object({
-  workflow: z.string().optional(),
+  piece: z.string().optional(),
   agents: z.array(CustomAgentConfigSchema).optional(),
   provider: z.enum(['claude', 'codex', 'mock']).optional(),
 });

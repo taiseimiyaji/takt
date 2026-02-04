@@ -1,31 +1,31 @@
 /**
  * Prompt preview feature
  *
- * Loads a workflow and displays the assembled prompt for each movement and phase.
+ * Loads a piece and displays the assembled prompt for each movement and phase.
  * Useful for debugging and understanding what prompts agents will receive.
  */
 
-import { loadWorkflowByIdentifier, getCurrentWorkflow, loadGlobalConfig } from '../../infra/config/index.js';
-import { InstructionBuilder } from '../../core/workflow/instruction/InstructionBuilder.js';
-import { ReportInstructionBuilder } from '../../core/workflow/instruction/ReportInstructionBuilder.js';
-import { StatusJudgmentBuilder } from '../../core/workflow/instruction/StatusJudgmentBuilder.js';
-import { needsStatusJudgmentPhase } from '../../core/workflow/index.js';
-import type { InstructionContext } from '../../core/workflow/instruction/instruction-context.js';
+import { loadPieceByIdentifier, getCurrentPiece, loadGlobalConfig } from '../../infra/config/index.js';
+import { InstructionBuilder } from '../../core/piece/instruction/InstructionBuilder.js';
+import { ReportInstructionBuilder } from '../../core/piece/instruction/ReportInstructionBuilder.js';
+import { StatusJudgmentBuilder } from '../../core/piece/instruction/StatusJudgmentBuilder.js';
+import { needsStatusJudgmentPhase } from '../../core/piece/index.js';
+import type { InstructionContext } from '../../core/piece/instruction/instruction-context.js';
 import type { Language } from '../../core/models/types.js';
 import { header, info, error, blankLine } from '../../shared/ui/index.js';
 
 /**
- * Preview all prompts for a workflow.
+ * Preview all prompts for a piece.
  *
- * Loads the workflow definition, then for each movement builds and displays
+ * Loads the piece definition, then for each movement builds and displays
  * the Phase 1, Phase 2, and Phase 3 prompts with sample variable values.
  */
-export async function previewPrompts(cwd: string, workflowIdentifier?: string): Promise<void> {
-  const identifier = workflowIdentifier ?? getCurrentWorkflow(cwd);
-  const config = loadWorkflowByIdentifier(identifier, cwd);
+export async function previewPrompts(cwd: string, pieceIdentifier?: string): Promise<void> {
+  const identifier = pieceIdentifier ?? getCurrentPiece(cwd);
+  const config = loadPieceByIdentifier(identifier, cwd);
 
   if (!config) {
-    error(`Workflow "${identifier}" not found.`);
+    error(`Piece "${identifier}" not found.`);
     return;
   }
 
@@ -53,7 +53,7 @@ export async function previewPrompts(cwd: string, workflowIdentifier?: string): 
       cwd,
       projectCwd: cwd,
       userInputs: [],
-      workflowMovements: config.movements,
+      pieceMovements: config.movements,
       currentMovementIndex: i,
       reportDir: movement.report ? '.takt/reports/preview' : undefined,
       language,

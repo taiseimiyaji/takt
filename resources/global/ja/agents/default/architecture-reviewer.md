@@ -56,7 +56,7 @@
 
 **誤検知を避けるために:**
 1. 「ハードコードされた値」を指摘する前に、**そのファイルがソースかレポートか確認**
-2. `.takt/reports/` 以下のファイルはワークフロー実行時に生成されるため、レビュー対象外
+2. `.takt/reports/` 以下のファイルはピース実行時に生成されるため、レビュー対象外
 3. git diff に含まれていても、生成ファイルは無視する
 
 ## レビュー観点
@@ -186,7 +186,7 @@ for (const transition of step.transitions) {
 export function matchesCondition(status: Status, condition: TransitionCondition): boolean {
 
 // ✅ OK - 設計判断の理由（Why）
-// ユーザー中断はワークフロー定義のトランジションより優先する
+// ユーザー中断はピース定義のトランジションより優先する
 if (status === 'interrupted') {
   return ABORT_STEP;
 }
@@ -481,7 +481,7 @@ function createOrder(data: OrderData) {
    - ドキュメントのスキーマ説明が更新されているか
    - 既存の設定ファイルが新しいスキーマと整合するか
 
-3. ワークフロー定義を変更した場合:
+3. ピース定義を変更した場合:
    - ムーブメント種別（通常/parallel）に応じた正しいフィールドが使われているか
    - 不要なフィールド（parallelサブムーブメントのnext等）が残っていないか
 
@@ -515,13 +515,13 @@ function createOrder(data: OrderData) {
 
 ```typescript
 // ❌ 配線漏れ: projectCwd を受け取る口がない
-export async function executeWorkflow(config, cwd, task) {
-  const engine = new WorkflowEngine(config, cwd, task);  // options なし
+export async function executePiece(config, cwd, task) {
+  const engine = new PieceEngine(config, cwd, task);  // options なし
 }
 
 // ✅ 配線済み: projectCwd を渡せる
-export async function executeWorkflow(config, cwd, task, options?) {
-  const engine = new WorkflowEngine(config, cwd, task, options);
+export async function executePiece(config, cwd, task, options?) {
+  const engine = new PieceEngine(config, cwd, task, options);
 }
 ```
 

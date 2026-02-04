@@ -1,17 +1,17 @@
-# Default TAKT Workflow
+# Default TAKT Piece
 # Plan -> Architect -> Implement -> AI Review -> Reviewers (parallel: Architect + Security) -> Supervisor Approval
 #
 # Template Variables (auto-injected by buildInstruction):
-#   {iteration}      - Workflow-wide turn count (total movements executed across all agents)
-#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {iteration}      - Piece-wide turn count (total movements executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the piece
 #   {movement_iteration} - Per-movement iteration count (how many times THIS movement has been executed)
 #   {task}           - Original user request
 #   {previous_response} - Output from the previous movement
-#   {user_inputs}    - Accumulated user inputs during workflow
+#   {user_inputs}    - Accumulated user inputs during piece
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: default
-description: Standard development workflow with planning and specialized reviews
+description: Standard development piece with planning and specialized reviews
 
 max_iterations: 30
 
@@ -174,7 +174,7 @@ movements:
       - 計画: {report:00-plan.md}
       - 設計: {report:01-architecture.md}（存在する場合）
 
-      Workflow Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
+      Piece Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
 
       **重要:** 設計判断はせず、architectムーブメントで決定された設計に従ってください。
       不明点や設計の変更が必要な場合は報告してください。
@@ -512,7 +512,7 @@ movements:
     instruction_template: |
       テスト実行、ビルド確認、最終承認を行ってください。
 
-      **ワークフロー全体の確認:**
+      **ピース全体の確認:**
       1. 計画（{report:00-plan.md}）と設計（{report:01-architecture.md}、存在する場合）に従った実装か
       2. 各レビュームーブメントの指摘が対応されているか
       3. 元のタスク目的が達成されているか

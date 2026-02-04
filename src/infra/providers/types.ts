@@ -14,7 +14,7 @@ export interface ProviderCallOptions {
   allowedTools?: string[];
   /** Maximum number of agentic turns */
   maxTurns?: number;
-  /** Permission mode for tool execution (from workflow step) */
+  /** Permission mode for tool execution (from piece step) */
   permissionMode?: PermissionMode;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;

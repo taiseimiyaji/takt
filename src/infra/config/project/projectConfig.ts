@@ -14,7 +14,7 @@ export type { PermissionMode, ProjectLocalConfig };
 
 /** Default project configuration */
 const DEFAULT_PROJECT_CONFIG: ProjectLocalConfig = {
-  workflow: 'default',
+  piece: 'default',
   permissionMode: 'default',
 };
 
@@ -86,18 +86,18 @@ export function updateProjectConfig<K extends keyof ProjectLocalConfig>(
 }
 
 /**
- * Get current workflow from project config
+ * Get current piece from project config
  */
-export function getCurrentWorkflow(projectDir: string): string {
+export function getCurrentPiece(projectDir: string): string {
   const config = loadProjectConfig(projectDir);
-  return config.workflow || 'default';
+  return config.piece || 'default';
 }
 
 /**
- * Set current workflow in project config
+ * Set current piece in project config
  */
-export function setCurrentWorkflow(projectDir: string, workflow: string): void {
-  updateProjectConfig(projectDir, 'workflow', workflow);
+export function setCurrentPiece(projectDir: string, piece: string): void {
+  updateProjectConfig(projectDir, 'piece', piece);
 }
 
 /**

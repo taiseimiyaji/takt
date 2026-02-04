@@ -56,7 +56,7 @@ Code is read far more often than it is written. Poorly structured code destroys 
 
 **To avoid false positives:**
 1. Before flagging "hardcoded values", **verify if the file is source or report**
-2. Files under `.takt/reports/` are generated during workflow execution - not review targets
+2. Files under `.takt/reports/` are generated during piece execution - not review targets
 3. Ignore generated files even if they appear in git diff
 
 ## Review Perspectives
@@ -186,7 +186,7 @@ for (const transition of step.transitions) {
 export function matchesCondition(status: Status, condition: TransitionCondition): boolean {
 
 // ✅ OK - Design decision (Why)
-// User interruption takes priority over workflow-defined transitions
+// User interruption takes priority over piece-defined transitions
 if (status === 'interrupted') {
   return ABORT_STEP;
 }
@@ -361,7 +361,7 @@ function createUser(data: UserData) {
    - Documentation schema descriptions are updated
    - Existing config files are compatible with new schema
 
-3. When workflow definitions are modified:
+3. When piece definitions are modified:
    - Correct fields used for step type (normal vs. parallel)
    - No unnecessary fields remaining (e.g., `next` on parallel sub-steps)
 

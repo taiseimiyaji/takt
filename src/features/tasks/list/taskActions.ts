@@ -25,8 +25,8 @@ import { info, success, error as logError, warn, header, blankLine } from '../..
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { executeTask } from '../execute/taskExecution.js';
 import type { TaskExecutionOptions } from '../execute/types.js';
-import { listWorkflows, getCurrentWorkflow } from '../../../infra/config/index.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
+import { listPieces, getCurrentPiece } from '../../../infra/config/index.js';
+import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import { encodeWorktreePath } from '../../../infra/config/project/sessionStore.js';
 
 const log = createLogger('list-tasks');
@@ -229,26 +229,26 @@ export function deleteBranch(projectDir: string, item: BranchListItem): boolean 
 }
 
 /**
- * Get the workflow to use for instruction.
+ * Get the piece to use for instruction.
  */
-async function selectWorkflowForInstruction(projectDir: string): Promise<string | null> {
-  const availableWorkflows = listWorkflows(projectDir);
-  const currentWorkflow = getCurrentWorkflow(projectDir);
+async function selectPieceForInstruction(projectDir: string): Promise<string | null> {
+  const availablePieces = listPieces(projectDir);
+  const currentPiece = getCurrentPiece(projectDir);
 
-  if (availableWorkflows.length === 0) {
-    return DEFAULT_WORKFLOW_NAME;
+  if (availablePieces.length === 0) {
+    return DEFAULT_PIECE_NAME;
   }
 
-  if (availableWorkflows.length === 1 && availableWorkflows[0]) {
-    return availableWorkflows[0];
+  if (availablePieces.length === 1 && availablePieces[0]) {
+    return availablePieces[0];
   }
 
-  const options = availableWorkflows.map((name) => ({
-    label: name === currentWorkflow ? `${name} (current)` : name,
+  const options = availablePieces.map((name) => ({
+    label: name === currentPiece ? `${name} (current)` : name,
     value: name,
   }));
 
-  return await selectOption('Select workflow:', options);
+  return await selectOption('Select piece:', options);
 }
 
 /**
@@ -309,13 +309,13 @@ export async function instructBranch(
     return false;
   }
 
-  const selectedWorkflow = await selectWorkflowForInstruction(projectDir);
-  if (!selectedWorkflow) {
+  const selectedPiece = await selectPieceForInstruction(projectDir);
+  if (!selectedPiece) {
     info('Cancelled');
     return false;
   }
 
-  log.info('Instructing branch via temp clone', { branch, workflow: selectedWorkflow });
+  log.info('Instructing branch via temp clone', { branch, piece: selectedPiece });
   info(`Running instruction on ${branch}...`);
 
   const clone = createTempCloneForBranch(projectDir, branch);
@@ -329,7 +329,7 @@ export async function instructBranch(
     const taskSuccess = await executeTask({
       task: fullInstruction,
       cwd: clone.path,
-      workflowIdentifier: selectedWorkflow,
+      pieceIdentifier: selectedPiece,
       projectCwd: projectDir,
       agentOverrides: options,
     });

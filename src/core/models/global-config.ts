@@ -37,17 +37,17 @@ export interface PipelineConfig {
 export interface GlobalConfig {
   language: Language;
   trustedDirectories: string[];
-  defaultWorkflow: string;
+  defaultPiece: string;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   provider?: 'claude' | 'codex' | 'mock';
   model?: string;
   debug?: DebugConfig;
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktreeDir?: string;
-  /** List of builtin workflow/agent names to exclude from fallback loading */
+  /** List of builtin piece/agent names to exclude from fallback loading */
   disabledBuiltins?: string[];
-  /** Enable builtin workflows from resources/global/{lang}/workflows */
-  enableBuiltinWorkflows?: boolean;
+  /** Enable builtin pieces from resources/global/{lang}/pieces */
+  enableBuiltinPieces?: boolean;
   /** Anthropic API key for Claude Code SDK (overridden by TAKT_ANTHROPIC_API_KEY env var) */
   anthropicApiKey?: string;
   /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
@@ -58,13 +58,13 @@ export interface GlobalConfig {
   minimalOutput?: boolean;
   /** Path to bookmarks file (default: ~/.takt/preferences/bookmarks.yaml) */
   bookmarksFile?: string;
-  /** Path to workflow categories file (default: ~/.takt/preferences/workflow-categories.yaml) */
-  workflowCategoriesFile?: string;
+  /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
+  pieceCategoriesFile?: string;
 }
 
 /** Project-level configuration */
 export interface ProjectConfig {
-  workflow?: string;
+  piece?: string;
   agents?: CustomAgentConfig[];
   provider?: 'claude' | 'codex' | 'mock';
 }

@@ -69,7 +69,7 @@ export function listCustomAgents(): string[] {
  * Load agent prompt content.
  * Agents can be loaded from:
  * - ~/.takt/agents/*.md (global agents)
- * - ~/.takt/pieces/{workflow}/*.md (workflow-specific agents)
+ * - ~/.takt/pieces/{piece}/*.md (piece-specific agents)
  */
 export function loadAgentPrompt(agent: CustomAgentConfig): string {
   if (agent.prompt) {
@@ -95,7 +95,7 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
 
 /**
  * Load agent prompt from a resolved path.
- * Used by workflow engine when agentPath is already resolved.
+ * Used by piece engine when agentPath is already resolved.
  */
 export function loadAgentPromptFromPath(agentPath: string): string {
   const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, agentPath));

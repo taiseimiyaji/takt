@@ -2,7 +2,7 @@
  * Task feature exports
  */
 
-export { executeWorkflow, type WorkflowExecutionResult, type WorkflowExecutionOptions } from './execute/workflowExecution.js';
+export { executePiece, type PieceExecutionResult, type PieceExecutionOptions } from './execute/pieceExecution.js';
 export { executeTask, runAllTasks, type TaskExecutionOptions } from './execute/taskExecution.js';
 export { executeAndCompleteTask, resolveTaskExecution } from './execute/taskExecution.js';
 export { withAgentSession } from './execute/session.js';
@@ -10,7 +10,7 @@ export type { PipelineExecutionOptions } from './execute/types.js';
 export {
   selectAndExecuteTask,
   confirmAndCreateWorktree,
-  determineWorkflow,
+  determinePiece,
   type SelectAndExecuteOptions,
   type WorktreeConfirmationResult,
 } from './execute/selectAndExecute.js';

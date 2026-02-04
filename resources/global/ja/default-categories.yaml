@@ -1,11 +1,11 @@
-workflow_categories:
+piece_categories:
   "🚀 クイックスタート":
-    workflows:
+    pieces:
       - default
       - minimal
 
   "🔍 レビュー＆修正":
-    workflows:
+    pieces:
       - review-fix-minimal
 
   "🎨 フロントエンド":
@@ -15,12 +15,12 @@ workflow_categories:
     {}
 
   "🔧 フルスタック":
-    workflows:
+    pieces:
       - expert
       - expert-cqrs
 
   "その他":
-    workflows:
+    pieces:
       - research
       - magi
       - review-only

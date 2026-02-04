@@ -40,7 +40,7 @@ describe('loadGlobalConfig', () => {
 
     expect(config.language).toBe('en');
     expect(config.trustedDirectories).toEqual([]);
-    expect(config.defaultWorkflow).toBe('default');
+    expect(config.defaultPiece).toBe('default');
     expect(config.logLevel).toBe('info');
     expect(config.provider).toBe('claude');
     expect(config.model).toBeUndefined();

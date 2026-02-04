@@ -76,7 +76,7 @@ describe('executePipeline', () => {
     mockLoadGlobalConfig.mockReturnValue({
       language: 'en',
       trustedDirectories: [],
-      defaultWorkflow: 'default',
+      defaultPiece: 'default',
       logLevel: 'info',
       provider: 'claude',
     });
@@ -84,7 +84,7 @@ describe('executePipeline', () => {
 
   it('should return exit code 2 when neither --issue nor --task is specified', async () => {
     const exitCode = await executePipeline({
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -97,7 +97,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 99,
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -112,7 +112,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 999,
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -120,7 +120,7 @@ describe('executePipeline', () => {
     expect(exitCode).toBe(2);
   });
 
-  it('should return exit code 3 when workflow fails', async () => {
+  it('should return exit code 3 when piece fails', async () => {
     mockFetchIssue.mockReturnValueOnce({
       number: 99,
       title: 'Test issue',
@@ -132,7 +132,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 99,
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -145,7 +145,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       task: 'Fix the bug',
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -154,7 +154,7 @@ describe('executePipeline', () => {
     expect(mockExecuteTask).toHaveBeenCalledWith({
       task: 'Fix the bug',
       cwd: '/tmp/test',
-      workflowIdentifier: 'default',
+      pieceIdentifier: 'default',
       projectCwd: '/tmp/test',
       agentOverrides: undefined,
     });
@@ -165,7 +165,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       task: 'Fix the bug',
-      workflow: 'default',
+      piece: 'default',
       autoPr: false,
       cwd: '/tmp/test',
       provider: 'codex',
@@ -176,7 +176,7 @@ describe('executePipeline', () => {
     expect(mockExecuteTask).toHaveBeenCalledWith({
       task: 'Fix the bug',
       cwd: '/tmp/test',
-      workflowIdentifier: 'default',
+      pieceIdentifier: 'default',
       projectCwd: '/tmp/test',
       agentOverrides: { provider: 'codex', model: 'codex-model' },
     });
@@ -188,7 +188,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       task: 'Fix the bug',
-      workflow: 'default',
+      piece: 'default',
       autoPr: true,
       cwd: '/tmp/test',
     });
@@ -202,7 +202,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       task: 'Fix the bug',
-      workflow: 'default',
+      piece: 'default',
       branch: 'fix/my-branch',
       autoPr: true,
       repo: 'owner/repo',
@@ -224,7 +224,7 @@ describe('executePipeline', () => {
 
     const exitCode = await executePipeline({
       task: 'From --task flag',
-      workflow: 'magi',
+      piece: 'magi',
       autoPr: false,
       cwd: '/tmp/test',
     });
@@ -233,7 +233,7 @@ describe('executePipeline', () => {
     expect(mockExecuteTask).toHaveBeenCalledWith({
       task: 'From --task flag',
       cwd: '/tmp/test',
-      workflowIdentifier: 'magi',
+      pieceIdentifier: 'magi',
       projectCwd: '/tmp/test',
       agentOverrides: undefined,
     });
@@ -244,7 +244,7 @@ describe('executePipeline', () => {
       mockLoadGlobalConfig.mockReturnValue({
         language: 'en',
         trustedDirectories: [],
-        defaultWorkflow: 'default',
+        defaultPiece: 'default',
         logLevel: 'info',
         provider: 'claude',
         pipeline: {
@@ -263,7 +263,7 @@ describe('executePipeline', () => {
 
       await executePipeline({
         issueNumber: 42,
-        workflow: 'default',
+        piece: 'default',
         branch: 'test-branch',
         autoPr: false,
         cwd: '/tmp/test',
@@ -281,7 +281,7 @@ describe('executePipeline', () => {
       mockLoadGlobalConfig.mockReturnValue({
         language: 'en',
         trustedDirectories: [],
-        defaultWorkflow: 'default',
+        defaultPiece: 'default',
         logLevel: 'info',
         provider: 'claude',
         pipeline: {
@@ -300,7 +300,7 @@ describe('executePipeline', () => {
 
       await executePipeline({
         issueNumber: 10,
-        workflow: 'default',
+        piece: 'default',
         autoPr: false,
         cwd: '/tmp/test',
       });
@@ -318,7 +318,7 @@ describe('executePipeline', () => {
       mockLoadGlobalConfig.mockReturnValue({
         language: 'en',
         trustedDirectories: [],
-        defaultWorkflow: 'default',
+        defaultPiece: 'default',
         logLevel: 'info',
         provider: 'claude',
         pipeline: {
@@ -338,7 +338,7 @@ describe('executePipeline', () => {
 
       await executePipeline({
         issueNumber: 50,
-        workflow: 'default',
+        piece: 'default',
         branch: 'fix-auth',
         autoPr: true,
         cwd: '/tmp/test',
@@ -360,7 +360,7 @@ describe('executePipeline', () => {
 
       await executePipeline({
         task: 'Fix bug',
-        workflow: 'default',
+        piece: 'default',
         branch: 'fix-branch',
         autoPr: true,
         cwd: '/tmp/test',
@@ -383,7 +383,7 @@ describe('executePipeline', () => {
 
       const exitCode = await executePipeline({
         task: 'Fix the bug',
-        workflow: 'default',
+        piece: 'default',
         autoPr: false,
         skipGit: true,
         cwd: '/tmp/test',
@@ -393,7 +393,7 @@ describe('executePipeline', () => {
       expect(mockExecuteTask).toHaveBeenCalledWith({
         task: 'Fix the bug',
         cwd: '/tmp/test',
-        workflowIdentifier: 'default',
+        pieceIdentifier: 'default',
         projectCwd: '/tmp/test',
         agentOverrides: undefined,
       });
@@ -411,7 +411,7 @@ describe('executePipeline', () => {
 
       const exitCode = await executePipeline({
         task: 'Fix the bug',
-        workflow: 'default',
+        piece: 'default',
         autoPr: true,
         skipGit: true,
         cwd: '/tmp/test',
@@ -421,12 +421,12 @@ describe('executePipeline', () => {
       expect(mockCreatePullRequest).not.toHaveBeenCalled();
     });
 
-    it('should still return workflow failure exit code when skipGit is true', async () => {
+    it('should still return piece failure exit code when skipGit is true', async () => {
       mockExecuteTask.mockResolvedValueOnce(false);
 
       const exitCode = await executePipeline({
         task: 'Fix the bug',
-        workflow: 'default',
+        piece: 'default',
         autoPr: false,
         skipGit: true,
         cwd: '/tmp/test',

@@ -4,4 +4,4 @@
   vars: agentName
   caller: infra/claude/client.ts
 -->
-You are the {{agentName}} agent. Follow the standard {{agentName}} workflow.
+You are the {{agentName}} agent. Follow the standard {{agentName}} piece.

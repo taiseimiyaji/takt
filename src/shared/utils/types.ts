@@ -9,7 +9,7 @@
 export interface SessionLog {
   task: string;
   projectDir: string;
-  workflowName: string;
+  pieceName: string;
   iterations: number;
   startTime: string;
   endTime?: string;
@@ -31,10 +31,10 @@ export interface SessionLog {
 
 // --- NDJSON log types ---
 
-export interface NdjsonWorkflowStart {
-  type: 'workflow_start';
+export interface NdjsonPieceStart {
+  type: 'piece_start';
   task: string;
-  workflowName: string;
+  pieceName: string;
   startTime: string;
 }
 
@@ -60,14 +60,14 @@ export interface NdjsonStepComplete {
   timestamp: string;
 }
 
-export interface NdjsonWorkflowComplete {
-  type: 'workflow_complete';
+export interface NdjsonPieceComplete {
+  type: 'piece_complete';
   iterations: number;
   endTime: string;
 }
 
-export interface NdjsonWorkflowAbort {
-  type: 'workflow_abort';
+export interface NdjsonPieceAbort {
+  type: 'piece_abort';
   iterations: number;
   reason: string;
   endTime: string;
@@ -106,11 +106,11 @@ export interface NdjsonInteractiveEnd {
 }
 
 export type NdjsonRecord =
-  | NdjsonWorkflowStart
+  | NdjsonPieceStart
   | NdjsonStepStart
   | NdjsonStepComplete
-  | NdjsonWorkflowComplete
-  | NdjsonWorkflowAbort
+  | NdjsonPieceComplete
+  | NdjsonPieceAbort
   | NdjsonPhaseStart
   | NdjsonPhaseComplete
   | NdjsonInteractiveStart
@@ -123,7 +123,7 @@ export interface LatestLogPointer {
   sessionId: string;
   logFile: string;
   task: string;
-  workflowName: string;
+  pieceName: string;
   status: SessionLog['status'];
   startTime: string;
   updatedAt: string;

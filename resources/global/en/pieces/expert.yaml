@@ -1,5 +1,5 @@
-# Expert Review Workflow
-# Review workflow with Architecture, Frontend, Security, and QA experts
+# Expert Review Piece
+# Review piece with Architecture, Frontend, Security, and QA experts
 #
 # Flow:
 # plan -> implement -> ai_review -> reviewers (parallel) -> supervise -> COMPLETE
@@ -12,19 +12,19 @@
 # AI review runs immediately after implementation to catch AI-specific issues early,
 # before expert reviews begin.
 #
-# Boilerplate sections (Workflow Context, User Request, Previous Response,
+# Boilerplate sections (Piece Context, User Request, Previous Response,
 # Additional User Inputs, Instructions heading) are auto-injected by buildInstruction().
 # Only movement-specific content belongs in instruction_template.
 #
 # Template Variables (available in instruction_template):
-#   {iteration}         - Workflow-wide turn count (total movements executed across all agents)
-#   {max_iterations}    - Maximum iterations allowed for the workflow
+#   {iteration}         - Piece-wide turn count (total movements executed across all agents)
+#   {max_iterations}    - Maximum iterations allowed for the piece
 #   {movement_iteration}    - Per-movement iteration count (how many times THIS movement has been executed)
 #   {previous_response} - Output from the previous movement (only when pass_previous_response: true)
 #   {report_dir}        - Report directory name (e.g., "20250126-143052-task-summary")
 #
 # Movement-level Fields:
-#   report:  - Report file(s) for the movement (auto-injected as Report File/Files in Workflow Context)
+#   report:  - Report file(s) for the movement (auto-injected as Report File/Files in Piece Context)
 #              Single: report: 00-plan.md
 #              Multiple: report:
 #                          - Scope: 01-coder-scope.md
@@ -113,7 +113,7 @@ movements:
     instruction_template: |
       Follow the plan from the plan movement and implement.
       Refer to the plan report ({report:00-plan.md}) and proceed with implementation.
-      Use only the Report Directory files shown in Workflow Context. Do not search or open reports outside that directory.
+      Use only the Report Directory files shown in Piece Context. Do not search or open reports outside that directory.
 
       **Scope report format (create at implementation start):**
       ```markdown
@@ -563,7 +563,7 @@ movements:
 
       Run tests, verify the build, and perform final approval.
 
-      **Workflow Overall Review:**
+      **Piece Overall Review:**
       1. Does the implementation match the plan ({report:00-plan.md})?
       2. Were all review movement issues addressed?
       3. Was the original task objective achieved?

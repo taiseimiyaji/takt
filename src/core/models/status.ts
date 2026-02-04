@@ -5,7 +5,7 @@
 /** Built-in agent types */
 export type AgentType = 'coder' | 'architect' | 'supervisor' | 'custom';
 
-/** Execution status for agents and workflows */
+/** Execution status for agents and pieces */
 export type Status =
   | 'pending'
   | 'done'

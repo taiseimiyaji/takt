@@ -13,7 +13,7 @@ import { z } from 'zod/v4';
  *   task: "認証機能を追加する"
  *   worktree: true                  # 共有クローンで隔離実行
  *   branch: "feat/add-auth"         # オプション（省略時は自動生成）
- *   workflow: "default"             # オプション（省略時はcurrent workflow）
+ *   piece: "default"             # オプション（省略時はcurrent piece）
  *
  * worktree patterns (uses git clone --shared internally):
  *   - true: create shared clone in sibling dir or worktree_dir
@@ -28,7 +28,7 @@ export const TaskFileSchema = z.object({
   task: z.string().min(1),
   worktree: z.union([z.boolean(), z.string()]).optional(),
   branch: z.string().optional(),
-  workflow: z.string().optional(),
+  piece: z.string().optional(),
   issue: z.number().int().positive().optional(),
 });
 

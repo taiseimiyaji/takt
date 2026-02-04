@@ -12,22 +12,22 @@ import {
   type ReportInstructionContext,
   type StatusJudgmentContext,
   type InstructionContext,
-} from '../core/workflow/index.js';
+} from '../core/piece/index.js';
 
 // Function wrappers for test readability
-function buildInstruction(step: WorkflowMovement, ctx: InstructionContext): string {
+function buildInstruction(step: PieceMovement, ctx: InstructionContext): string {
   return new InstructionBuilder(step, ctx).build();
 }
-function buildReportInstruction(step: WorkflowMovement, ctx: ReportInstructionContext): string {
+function buildReportInstruction(step: PieceMovement, ctx: ReportInstructionContext): string {
   return new ReportInstructionBuilder(step, ctx).build();
 }
-function buildStatusJudgmentInstruction(step: WorkflowMovement, ctx: StatusJudgmentContext): string {
+function buildStatusJudgmentInstruction(step: PieceMovement, ctx: StatusJudgmentContext): string {
   return new StatusJudgmentBuilder(step, ctx).build();
 }
-import type { WorkflowMovement, WorkflowRule } from '../core/models/index.js';
+import type { PieceMovement, PieceRule } from '../core/models/index.js';
 
 
-function createMinimalStep(template: string): WorkflowMovement {
+function createMinimalStep(template: string): PieceMovement {
   return {
     name: 'test-step',
     agent: 'test-agent',
@@ -186,7 +186,7 @@ describe('instruction-builder', () => {
   });
 
   describe('generateStatusRulesComponents', () => {
-    const rules: WorkflowRule[] = [
+    const rules: PieceRule[] = [
       { condition: '要件が明確で実装可能', next: 'implement' },
       { condition: 'ユーザーが質問をしている', next: 'COMPLETE' },
       { condition: '要件が不明確、情報不足', next: 'ABORT', appendix: '確認事項:\n- {質問1}\n- {質問2}' },
@@ -201,7 +201,7 @@ describe('instruction-builder', () => {
     });
 
     it('should generate criteria table with numbered tags (en)', () => {
-      const enRules: WorkflowRule[] = [
+      const enRules: PieceRule[] = [
         { condition: 'Requirements are clear', next: 'implement' },
         { condition: 'User is asking a question', next: 'COMPLETE' },
       ];
@@ -229,7 +229,7 @@ describe('instruction-builder', () => {
     });
 
     it('should not generate appendix when no rules have appendix', () => {
-      const noAppendixRules: WorkflowRule[] = [
+      const noAppendixRules: PieceRule[] = [
         { condition: 'Done', next: 'review' },
         { condition: 'Blocked', next: 'plan' },
       ];
@@ -248,7 +248,7 @@ describe('instruction-builder', () => {
     });
 
     it('should omit interactive-only rules when interactive is false', () => {
-      const filteredRules: WorkflowRule[] = [
+      const filteredRules: PieceRule[] = [
         { condition: 'Clear', next: 'implement' },
         { condition: 'User input required', next: 'implement', interactiveOnly: true },
         { condition: 'Blocked', next: 'plan' },
@@ -298,7 +298,7 @@ describe('instruction-builder', () => {
     });
   });
 
-  describe('auto-injected Workflow Context section', () => {
+  describe('auto-injected Piece Context section', () => {
     it('should include iteration, step iteration, and step name', () => {
       const step = createMinimalStep('Do work');
       step.name = 'implement';
@@ -311,7 +311,7 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('## Workflow Context');
+      expect(result).toContain('## Piece Context');
       expect(result).toContain('- Iteration: 3/20');
       expect(result).toContain('- Movement Iteration: 2');
       expect(result).toContain('- Movement: implement');
@@ -328,7 +328,7 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('## Workflow Context');
+      expect(result).toContain('## Piece Context');
       expect(result).toContain('Report Directory');
       expect(result).toContain('Report File');
       expect(result).toContain('Phase 1');
@@ -380,12 +380,12 @@ describe('instruction-builder', () => {
       expect(result).toContain('- Movement Iteration: 3（このムーブメントの実行回数）');
     });
 
-    it('should include workflow structure when workflowSteps is provided', () => {
+    it('should include piece structure when pieceSteps is provided', () => {
       const step = createMinimalStep('Do work');
       step.name = 'implement';
       const context = createMinimalContext({
         language: 'en',
-        workflowMovements: [
+        pieceMovements: [
           { name: 'plan' },
           { name: 'implement' },
           { name: 'review' },
@@ -395,7 +395,7 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('This workflow consists of 3 movements:');
+      expect(result).toContain('This piece consists of 3 movements:');
       expect(result).toContain('- Movement 1: plan');
       expect(result).toContain('- Movement 2: implement');
       expect(result).toContain('← current');
@@ -407,7 +407,7 @@ describe('instruction-builder', () => {
       step.name = 'plan';
       const context = createMinimalContext({
         language: 'en',
-        workflowMovements: [
+        pieceMovements: [
           { name: 'plan' },
           { name: 'implement' },
         ],
@@ -425,7 +425,7 @@ describe('instruction-builder', () => {
       step.name = 'plan';
       const context = createMinimalContext({
         language: 'ja',
-        workflowMovements: [
+        pieceMovements: [
           { name: 'plan', description: 'タスクを分析し実装計画を作成する' },
           { name: 'implement' },
         ],
@@ -437,34 +437,34 @@ describe('instruction-builder', () => {
       expect(result).toContain('- Movement 1: plan（タスクを分析し実装計画を作成する） ← 現在');
     });
 
-    it('should skip workflow structure when workflowSteps is not provided', () => {
+    it('should skip piece structure when pieceSteps is not provided', () => {
       const step = createMinimalStep('Do work');
       const context = createMinimalContext({ language: 'en' });
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('This workflow consists of');
+      expect(result).not.toContain('This piece consists of');
     });
 
-    it('should skip workflow structure when workflowSteps is empty', () => {
+    it('should skip piece structure when pieceSteps is empty', () => {
       const step = createMinimalStep('Do work');
       const context = createMinimalContext({
         language: 'en',
-        workflowMovements: [],
+        pieceMovements: [],
         currentMovementIndex: -1,
       });
 
       const result = buildInstruction(step, context);
 
-      expect(result).not.toContain('This workflow consists of');
+      expect(result).not.toContain('This piece consists of');
     });
 
-    it('should render workflow structure in Japanese', () => {
+    it('should render piece structure in Japanese', () => {
       const step = createMinimalStep('Do work');
       step.name = 'plan';
       const context = createMinimalContext({
         language: 'ja',
-        workflowMovements: [
+        pieceMovements: [
           { name: 'plan' },
           { name: 'implement' },
         ],
@@ -473,7 +473,7 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('このワークフローは2ムーブメントで構成されています:');
+      expect(result).toContain('このピースは2ムーブメントで構成されています:');
       expect(result).toContain('← 現在');
     });
 
@@ -482,7 +482,7 @@ describe('instruction-builder', () => {
       step.name = 'sub-step';
       const context = createMinimalContext({
         language: 'en',
-        workflowMovements: [
+        pieceMovements: [
           { name: 'plan' },
           { name: 'implement' },
         ],
@@ -491,7 +491,7 @@ describe('instruction-builder', () => {
 
       const result = buildInstruction(step, context);
 
-      expect(result).toContain('This workflow consists of 2 movements:');
+      expect(result).toContain('This piece consists of 2 movements:');
       expect(result).not.toContain('← current');
     });
   });

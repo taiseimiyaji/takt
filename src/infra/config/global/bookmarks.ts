@@ -1,5 +1,5 @@
 /**
- * Workflow bookmarks management (separate from config.yaml)
+ * Piece bookmarks management (separate from config.yaml)
  *
  * Bookmarks are stored in a configurable location (default: ~/.takt/preferences/bookmarks.yaml)
  */
@@ -11,7 +11,7 @@ import { getGlobalConfigDir } from '../paths.js';
 import { loadGlobalConfig } from './globalConfig.js';
 
 interface BookmarksFile {
-  workflows: string[];
+  pieces: string[];
 }
 
 function getDefaultBookmarksPath(): string {
@@ -33,20 +33,20 @@ function getBookmarksPath(): string {
 function loadBookmarksFile(): BookmarksFile {
   const bookmarksPath = getBookmarksPath();
   if (!existsSync(bookmarksPath)) {
-    return { workflows: [] };
+    return { pieces: [] };
   }
 
   try {
     const content = readFileSync(bookmarksPath, 'utf-8');
     const parsed = parseYaml(content);
-    if (parsed && typeof parsed === 'object' && 'workflows' in parsed && Array.isArray(parsed.workflows)) {
-      return { workflows: parsed.workflows };
+    if (parsed && typeof parsed === 'object' && 'pieces' in parsed && Array.isArray(parsed.pieces)) {
+      return { pieces: parsed.pieces };
     }
   } catch {
     // Ignore parse errors
   }
 
-  return { workflows: [] };
+  return { pieces: [] };
 }
 
 function saveBookmarksFile(bookmarks: BookmarksFile): void {
@@ -59,43 +59,43 @@ function saveBookmarksFile(bookmarks: BookmarksFile): void {
   writeFileSync(bookmarksPath, content, 'utf-8');
 }
 
-/** Get bookmarked workflow names */
-export function getBookmarkedWorkflows(): string[] {
+/** Get bookmarked piece names */
+export function getBookmarkedPieces(): string[] {
   const bookmarks = loadBookmarksFile();
-  return bookmarks.workflows;
+  return bookmarks.pieces;
 }
 
 /**
- * Add a workflow to bookmarks.
+ * Add a piece to bookmarks.
  * Persists to ~/.takt/bookmarks.yaml and returns the updated bookmarks list.
  */
-export function addBookmark(workflowName: string): string[] {
+export function addBookmark(pieceName: string): string[] {
   const bookmarks = loadBookmarksFile();
-  if (!bookmarks.workflows.includes(workflowName)) {
-    bookmarks.workflows.push(workflowName);
+  if (!bookmarks.pieces.includes(pieceName)) {
+    bookmarks.pieces.push(pieceName);
     saveBookmarksFile(bookmarks);
   }
-  return bookmarks.workflows;
+  return bookmarks.pieces;
 }
 
 /**
- * Remove a workflow from bookmarks.
+ * Remove a piece from bookmarks.
  * Persists to ~/.takt/bookmarks.yaml and returns the updated bookmarks list.
  */
-export function removeBookmark(workflowName: string): string[] {
+export function removeBookmark(pieceName: string): string[] {
   const bookmarks = loadBookmarksFile();
-  const index = bookmarks.workflows.indexOf(workflowName);
+  const index = bookmarks.pieces.indexOf(pieceName);
   if (index >= 0) {
-    bookmarks.workflows.splice(index, 1);
+    bookmarks.pieces.splice(index, 1);
     saveBookmarksFile(bookmarks);
   }
-  return bookmarks.workflows;
+  return bookmarks.pieces;
 }
 
 /**
- * Check if a workflow is bookmarked.
+ * Check if a piece is bookmarked.
  */
-export function isBookmarked(workflowName: string): boolean {
+export function isBookmarked(pieceName: string): boolean {
   const bookmarks = loadBookmarksFile();
-  return bookmarks.workflows.includes(workflowName);
+  return bookmarks.pieces.includes(pieceName);
 }

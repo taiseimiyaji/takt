@@ -2,7 +2,7 @@
  * Task execution logic
  */
 
-import { loadWorkflowByIdentifier, isWorkflowPath, loadGlobalConfig } from '../../../infra/config/index.js';
+import { loadPieceByIdentifier, isPiecePath, loadGlobalConfig } from '../../../infra/config/index.js';
 import { TaskRunner, type TaskInfo, createSharedClone, autoCommitAndPush, summarizeTaskName } from '../../../infra/task/index.js';
 import {
   header,
@@ -13,8 +13,8 @@ import {
   blankLine,
 } from '../../../shared/ui/index.js';
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
-import { executeWorkflow } from './workflowExecution.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
+import { executePiece } from './pieceExecution.js';
+import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import type { TaskExecutionOptions, ExecuteTaskOptions } from './types.js';
 
 export type { TaskExecutionOptions, ExecuteTaskOptions };
@@ -22,30 +22,30 @@ export type { TaskExecutionOptions, ExecuteTaskOptions };
 const log = createLogger('task');
 
 /**
- * Execute a single task with workflow.
+ * Execute a single task with piece.
  */
 export async function executeTask(options: ExecuteTaskOptions): Promise<boolean> {
-  const { task, cwd, workflowIdentifier, projectCwd, agentOverrides, interactiveUserInput, interactiveMetadata } = options;
-  const workflowConfig = loadWorkflowByIdentifier(workflowIdentifier, projectCwd);
+  const { task, cwd, pieceIdentifier, projectCwd, agentOverrides, interactiveUserInput, interactiveMetadata } = options;
+  const pieceConfig = loadPieceByIdentifier(pieceIdentifier, projectCwd);
 
-  if (!workflowConfig) {
-    if (isWorkflowPath(workflowIdentifier)) {
-      error(`Workflow file not found: ${workflowIdentifier}`);
+  if (!pieceConfig) {
+    if (isPiecePath(pieceIdentifier)) {
+      error(`Piece file not found: ${pieceIdentifier}`);
     } else {
-      error(`Workflow "${workflowIdentifier}" not found.`);
-      info('Available workflows are in ~/.takt/pieces/ or .takt/workflows/');
-      info('Use "takt switch" to select a workflow.');
+      error(`Piece "${pieceIdentifier}" not found.`);
+      info('Available pieces are in ~/.takt/pieces/ or .takt/pieces/');
+      info('Use "takt switch" to select a piece.');
     }
     return false;
   }
 
-  log.debug('Running workflow', {
-    name: workflowConfig.name,
-    movements: workflowConfig.movements.map((s: { name: string }) => s.name),
+  log.debug('Running piece', {
+    name: pieceConfig.name,
+    movements: pieceConfig.movements.map((s: { name: string }) => s.name),
   });
 
   const globalConfig = loadGlobalConfig();
-  const result = await executeWorkflow(workflowConfig, task, cwd, {
+  const result = await executePiece(pieceConfig, task, cwd, {
     projectCwd,
     language: globalConfig.language,
     provider: agentOverrides?.provider,
@@ -57,7 +57,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<boolean>
 }
 
 /**
- * Execute a task: resolve clone → run workflow → auto-commit+push → remove clone → record completion.
+ * Execute a task: resolve clone → run piece → auto-commit+push → remove clone → record completion.
  *
  * Shared by runAllTasks() and watchTasks() to avoid duplicated
  * resolve → execute → autoCommit → complete logic.
@@ -68,20 +68,20 @@ export async function executeAndCompleteTask(
   task: TaskInfo,
   taskRunner: TaskRunner,
   cwd: string,
-  workflowName: string,
+  pieceName: string,
   options?: TaskExecutionOptions,
 ): Promise<boolean> {
   const startedAt = new Date().toISOString();
   const executionLog: string[] = [];
 
   try {
-    const { execCwd, execWorkflow, isWorktree } = await resolveTaskExecution(task, cwd, workflowName);
+    const { execCwd, execPiece, isWorktree } = await resolveTaskExecution(task, cwd, pieceName);
 
     // cwd is always the project root; pass it as projectCwd so reports/sessions go there
     const taskSuccess = await executeTask({
       task: task.content,
       cwd: execCwd,
-      workflowIdentifier: execWorkflow,
+      pieceIdentifier: execPiece,
       projectCwd: cwd,
       agentOverrides: options,
     });
@@ -139,7 +139,7 @@ export async function executeAndCompleteTask(
  */
 export async function runAllTasks(
   cwd: string,
-  workflowName: string = DEFAULT_WORKFLOW_NAME,
+  pieceName: string = DEFAULT_PIECE_NAME,
   options?: TaskExecutionOptions,
 ): Promise<void> {
   const taskRunner = new TaskRunner(cwd);
@@ -163,7 +163,7 @@ export async function runAllTasks(
     info(`=== Task: ${task.name} ===`);
     blankLine();
 
-    const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName, options);
+    const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, pieceName, options);
 
     if (taskSuccess) {
       successCount++;
@@ -186,20 +186,20 @@ export async function runAllTasks(
 }
 
 /**
- * Resolve execution directory and workflow from task data.
+ * Resolve execution directory and piece from task data.
  * If the task has worktree settings, create a shared clone and use it as cwd.
  * Task name is summarized to English by AI for use in branch/clone names.
  */
 export async function resolveTaskExecution(
   task: TaskInfo,
   defaultCwd: string,
-  defaultWorkflow: string
-): Promise<{ execCwd: string; execWorkflow: string; isWorktree: boolean; branch?: string }> {
+  defaultPiece: string
+): Promise<{ execCwd: string; execPiece: string; isWorktree: boolean; branch?: string }> {
   const data = task.data;
 
   // No structured data: use defaults
   if (!data) {
-    return { execCwd: defaultCwd, execWorkflow: defaultWorkflow, isWorktree: false };
+    return { execCwd: defaultCwd, execPiece: defaultPiece, isWorktree: false };
   }
 
   let execCwd = defaultCwd;
@@ -224,8 +224,8 @@ export async function resolveTaskExecution(
     info(`Clone created: ${result.path} (branch: ${result.branch})`);
   }
 
-  // Handle workflow override
-  const execWorkflow = data.workflow || defaultWorkflow;
+  // Handle piece override
+  const execPiece = data.piece || defaultPiece;
 
-  return { execCwd, execWorkflow, isWorktree, branch };
+  return { execCwd, execPiece, isWorktree, branch };
 }

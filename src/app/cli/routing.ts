@@ -8,11 +8,11 @@
 import { info, error } from '../../shared/ui/index.js';
 import { getErrorMessage } from '../../shared/utils/index.js';
 import { resolveIssueTask, isIssueReference } from '../../infra/github/index.js';
-import { selectAndExecuteTask, determineWorkflow, type SelectAndExecuteOptions } from '../../features/tasks/index.js';
+import { selectAndExecuteTask, determinePiece, type SelectAndExecuteOptions } from '../../features/tasks/index.js';
 import { executePipeline } from '../../features/pipeline/index.js';
 import { interactiveMode } from '../../features/interactive/index.js';
-import { getWorkflowDescription } from '../../infra/config/index.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../shared/constants.js';
+import { getPieceDescription } from '../../infra/config/index.js';
+import { DEFAULT_PIECE_NAME } from '../../shared/constants.js';
 import { program, resolvedCwd, pipelineMode } from './program.js';
 import { resolveAgentOverrides, parseCreateWorktreeOption, isDirectTask } from './helpers.js';
 
@@ -25,7 +25,7 @@ program
     const selectOptions: SelectAndExecuteOptions = {
       autoPr: opts.autoPr === true,
       repo: opts.repo as string | undefined,
-      workflow: opts.workflow as string | undefined,
+      piece: opts.piece as string | undefined,
       createWorktree: createWorktreeOverride,
     };
 
@@ -34,7 +34,7 @@ program
       const exitCode = await executePipeline({
         issueNumber: opts.issue as number | undefined,
         task: opts.task as string | undefined,
-        workflow: (opts.workflow as string | undefined) ?? DEFAULT_WORKFLOW_NAME,
+        piece: (opts.piece as string | undefined) ?? DEFAULT_PIECE_NAME,
         branch: opts.branch as string | undefined,
         autoPr: opts.autoPr === true,
         repo: opts.repo as string | undefined,
@@ -89,21 +89,21 @@ program
     }
 
     // Short single word or no task → interactive mode (with optional initial input)
-    const workflowId = await determineWorkflow(resolvedCwd, selectOptions.workflow);
-    if (workflowId === null) {
+    const pieceId = await determinePiece(resolvedCwd, selectOptions.piece);
+    if (pieceId === null) {
       info('Cancelled');
       return;
     }
 
-    const workflowContext = getWorkflowDescription(workflowId, resolvedCwd);
-    const result = await interactiveMode(resolvedCwd, task, workflowContext);
+    const pieceContext = getPieceDescription(pieceId, resolvedCwd);
+    const result = await interactiveMode(resolvedCwd, task, pieceContext);
 
     if (!result.confirmed) {
       return;
     }
 
     selectOptions.interactiveUserInput = true;
-    selectOptions.workflow = workflowId;
+    selectOptions.piece = pieceId;
     selectOptions.interactiveMetadata = { confirmed: result.confirmed, task: result.task };
     await selectAndExecuteTask(resolvedCwd, result.task, selectOptions, agentOverrides);
   });

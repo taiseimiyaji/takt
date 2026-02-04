@@ -4,22 +4,32 @@
 
 **T**ask **A**gent **K**oordination **T**ool - A governance-first orchestrator for running coding agents safely and responsibly
 
-TAKT coordinates AI agents like Claude Code and Codex according to your organization's rules and workflows. It clarifies who is responsible, what is permitted, and how to recover from failures, while automating complex development tasks.
+TAKT coordinates AI agents like Claude Code and Codex according to your organization's rules and pieces. It clarifies who is responsible, what is permitted, and how to recover from failures, while automating complex development tasks.
 
 TAKT is built with TAKT itself (dogfooding).
 
+## Metaphor
+
+TAKT uses a music metaphor to describe orchestration:
+
+- **Piece**: A task execution definition (what to do and how agents coordinate)
+- **Movement**: A step inside a piece (a single stage in the flow)
+- **Orchestration**: The engine that coordinates agents across movements
+
+You can read every term as standard workflow language (piece = workflow, movement = step), but the metaphor is used to keep the system conceptually consistent.
+
 ## TAKT is For Teams That Need
 
-- **Want to integrate AI into CI/CD but fear runaway execution** — Clarify control scope with workflow definitions
+- **Want to integrate AI into CI/CD but fear runaway execution** — Clarify control scope with piece definitions
 - **Want automated PR generation but need audit logs** — Record and track all execution history
-- **Want to use multiple AI models but manage them uniformly** — Control Claude/Codex/Mock with the same workflow
+- **Want to use multiple AI models but manage them uniformly** — Control Claude/Codex/Mock with the same piece
 - **Want to reproduce and debug agent failures** — Maintain complete history with session logs and reports
 
 ## What TAKT is NOT
 
 - **Not an autonomous engineer** — TAKT doesn't complete implementations itself; it governs and coordinates multiple agents
-- **Not competing with Claude Code Swarm** — While leveraging Swarm's execution power, TAKT provides "operational guardrails" such as workflow definitions, permission controls, and audit logs
-- **Not just a workflow engine** — TAKT is designed to address AI-specific challenges (non-determinism, accountability, audit requirements, and reproducibility)
+- **Not competing with Claude Code Swarm** — While leveraging Swarm's execution power, TAKT provides "operational guardrails" such as piece definitions, permission controls, and audit logs
+- **Not just a piece engine** — TAKT is designed to address AI-specific challenges (non-determinism, accountability, audit requirements, and reproducibility)
 
 ## Requirements
 
@@ -71,17 +81,17 @@ takt hello
 **Note:** If you specify a string with spaces, Issue reference (`#6`), or `--task` / `--issue` options, interactive mode will be skipped and the task will be executed directly.
 
 **Flow:**
-1. Select workflow
+1. Select piece
 2. Refine task content through conversation with AI
 3. Finalize task instructions with `/go` (you can also add additional instructions like `/go additional instructions`)
-4. Execute (create worktree, run workflow, create PR)
+4. Execute (create worktree, run piece, create PR)
 
 #### Execution Example
 
 ```
 $ takt
 
-Select workflow:
+Select piece:
   ❯ 🎼 default (current)
     📁 Development/
     📁 Research/
@@ -110,7 +120,7 @@ Proceed with these task instructions? (Y/n) y
 
 ? Create worktree? (Y/n) y
 
-[Workflow execution starts...]
+[Piece execution starts...]
 ```
 
 ### Direct Task Execution
@@ -124,8 +134,8 @@ takt "Add login feature"
 # Specify task content with --task option
 takt --task "Fix bug"
 
-# Specify workflow
-takt "Add authentication" --workflow expert
+# Specify piece
+takt "Add authentication" --piece expert
 
 # Auto-create PR
 takt "Fix bug" --auto-pr
@@ -140,8 +150,8 @@ You can execute GitHub Issues directly as tasks. Issue title, body, labels, and 
 takt #6
 takt --issue 6
 
-# Issue + workflow specification
-takt #6 --workflow expert
+# Issue + piece specification
+takt #6 --piece expert
 
 # Issue + auto-create PR
 takt #6 --auto-pr
@@ -186,7 +196,7 @@ takt list
 
 ### Pipeline Mode (for CI/Automation)
 
-Specifying `--pipeline` enables non-interactive pipeline mode. Automatically creates branch → runs workflow → commits & pushes. Suitable for CI/CD automation.
+Specifying `--pipeline` enables non-interactive pipeline mode. Automatically creates branch → runs piece → commits & pushes. Suitable for CI/CD automation.
 
 ```bash
 # Execute task in pipeline mode
@@ -198,13 +208,13 @@ takt --pipeline --task "Fix bug" --auto-pr
 # Link issue information
 takt --pipeline --issue 99 --auto-pr
 
-# Specify workflow and branch
+# Specify piece and branch
 takt --pipeline --task "Fix bug" -w magi -b feat/fix-bug
 
 # Specify repository (for PR creation)
 takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
 
-# Workflow execution only (skip branch creation, commit, push)
+# Piece execution only (skip branch creation, commit, push)
 takt --pipeline --task "Fix bug" --skip-git
 
 # Minimal output mode (for CI)
@@ -218,10 +228,10 @@ In pipeline mode, PRs are not created unless `--auto-pr` is specified.
 ### Other Commands
 
 ```bash
-# Interactively switch workflows
+# Interactively switch pieces
 takt switch
 
-# Copy builtin workflows/agents to ~/.takt/ for customization
+# Copy builtin pieces/agents to ~/.takt/ for customization
 takt eject
 
 # Clear agent conversation sessions
@@ -231,13 +241,13 @@ takt clear
 takt config
 ```
 
-### Recommended Workflows
+### Recommended Pieces
 
-| Workflow | Recommended Use |
+| Piece | Recommended Use |
 |----------|-----------------|
 | `default` | Serious development tasks. Used for TAKT's own development. Multi-stage review with parallel reviews (architect + security). |
-| `minimal` | Simple fixes and straightforward tasks. Minimal workflow with basic review. |
-| `review-fix-minimal` | Review & fix workflow. Specialized for iterative improvement based on review feedback. |
+| `minimal` | Simple fixes and straightforward tasks. Minimal piece with basic review. |
+| `review-fix-minimal` | Review & fix piece. Specialized for iterative improvement based on review feedback. |
 | `research` | Investigation and research. Autonomously executes research without asking questions. |
 
 ### Main Options
@@ -247,23 +257,23 @@ takt config
 | `--pipeline` | **Enable pipeline (non-interactive) mode** — Required for CI/automation |
 | `-t, --task <text>` | Task content (alternative to GitHub Issue) |
 | `-i, --issue <N>` | GitHub issue number (same as `#N` in interactive mode) |
-| `-w, --workflow <name or path>` | Workflow name or path to workflow YAML file |
+| `-w, --piece <name or path>` | Piece name or path to piece YAML file |
 | `-b, --branch <name>` | Specify branch name (auto-generated if omitted) |
 | `--auto-pr` | Create PR (interactive: skip confirmation, pipeline: enable PR) |
-| `--skip-git` | Skip branch creation, commit, and push (pipeline mode, workflow-only) |
+| `--skip-git` | Skip branch creation, commit, and push (pipeline mode, piece-only) |
 | `--repo <owner/repo>` | Specify repository (for PR creation) |
 | `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
 | `-q, --quiet` | Minimal output mode: suppress AI output (for CI) |
 | `--provider <name>` | Override agent provider (claude\|codex\|mock) |
 | `--model <name>` | Override agent model |
 
-## Workflows
+## Pieces
 
-TAKT uses YAML-based workflow definitions and rule-based routing. Builtin workflows are embedded in the package, with user workflows in `~/.takt/workflows/` taking priority. Use `takt eject` to copy builtins to `~/.takt/` for customization.
+TAKT uses YAML-based piece definitions and rule-based routing. Builtin pieces are embedded in the package, with user pieces in `~/.takt/pieces/` taking priority. Use `takt eject` to copy builtins to `~/.takt/` for customization.
 
-> **Note (v0.4.0)**: Internal terminology has changed from "step" to "movement" for workflow components. User-facing workflow files remain compatible, but if you customize workflows, you may see `movements:` instead of `steps:` in YAML files. The functionality remains the same.
+> **Note (v0.4.0)**: Internal terminology has changed from "step" to "movement" for piece components. User-facing piece files remain compatible, but if you customize pieces, you may see `movements:` instead of `steps:` in YAML files. The functionality remains the same.
 
-### Workflow Example
+### Piece Example
 
 ```yaml
 name: default
@@ -370,22 +380,22 @@ Execute sub-movements in parallel within a movement and evaluate with aggregate 
 | AI judge | `ai("condition text")` | AI evaluates condition against agent output |
 | Aggregate | `all("X")` / `any("X")` | Aggregates parallel sub-movement matched conditions |
 
-## Builtin Workflows
+## Builtin Pieces
 
-TAKT includes multiple builtin workflows:
+TAKT includes multiple builtin pieces:
 
-| Workflow | Description |
+| Piece | Description |
 |----------|-------------|
-| `default` | Full development workflow: plan → architecture design → implement → AI review → parallel review (architect + security) → supervisor approval. Includes fix loops at each review stage. |
-| `minimal` | Quick workflow: plan → implement → review → supervisor. Minimal steps for fast iteration. |
-| `review-fix-minimal` | Review-focused workflow: review → fix → supervisor. For iterative improvement based on review feedback. |
-| `research` | Research workflow: planner → digger → supervisor. Autonomously executes research without asking questions. |
-| `expert` | Full-stack development workflow: architecture, frontend, security, QA reviews with fix loops. |
-| `expert-cqrs` | Full-stack development workflow (CQRS+ES specialized): CQRS+ES, frontend, security, QA reviews with fix loops. |
+| `default` | Full development piece: plan → architecture design → implement → AI review → parallel review (architect + security) → supervisor approval. Includes fix loops at each review stage. |
+| `minimal` | Quick piece: plan → implement → review → supervisor. Minimal steps for fast iteration. |
+| `review-fix-minimal` | Review-focused piece: review → fix → supervisor. For iterative improvement based on review feedback. |
+| `research` | Research piece: planner → digger → supervisor. Autonomously executes research without asking questions. |
+| `expert` | Full-stack development piece: architecture, frontend, security, QA reviews with fix loops. |
+| `expert-cqrs` | Full-stack development piece (CQRS+ES specialized): CQRS+ES, frontend, security, QA reviews with fix loops. |
 | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
-| `review-only` | Read-only code review workflow that makes no changes. |
+| `review-only` | Read-only code review piece that makes no changes. |
 
-Use `takt switch` to switch workflows.
+Use `takt switch` to switch pieces.
 
 ## Builtin Agents
 
@@ -415,7 +425,7 @@ You are a code reviewer specialized in security.
 
 ## Model Selection
 
-The `model` field (in workflow movements, agent config, or global config) is passed directly to the provider (Claude Code CLI / Codex SDK). TAKT does not resolve model aliases.
+The `model` field (in piece movements, agent config, or global config) is passed directly to the provider (Claude Code CLI / Codex SDK). TAKT does not resolve model aliases.
 
 ### Claude Code
 
@@ -429,14 +439,14 @@ The model string is passed to the Codex SDK. If unspecified, defaults to `codex`
 
 ```
 ~/.takt/                    # Global configuration directory
-├── config.yaml             # Global config (provider, model, workflow, etc.)
-├── workflows/              # User workflow definitions (override builtins)
+├── config.yaml             # Global config (provider, model, piece, etc.)
+├── pieces/              # User piece definitions (override builtins)
 │   └── custom.yaml
 └── agents/                 # User agent prompt files (.md)
     └── my-agent.md
 
 .takt/                      # Project-level configuration
-├── config.yaml             # Project config (current workflow, etc.)
+├── config.yaml             # Project config (current piece, etc.)
 ├── tasks/                  # Pending task files (.yaml, .md)
 ├── completed/              # Completed tasks and reports
 ├── reports/                # Execution reports (auto-generated)
@@ -444,7 +454,7 @@ The model string is passed to the Codex SDK. If unspecified, defaults to `codex`
 └── logs/                   # NDJSON format session logs
     ├── latest.json         # Pointer to current/latest session
     ├── previous.json       # Pointer to previous session
-    └── {sessionId}.jsonl   # NDJSON session log per workflow execution
+    └── {sessionId}.jsonl   # NDJSON session log per piece execution
 ```
 
 Builtin resources are embedded in the npm package (`dist/resources/`). User files in `~/.takt/` take priority.
@@ -456,7 +466,7 @@ Configure default provider and model in `~/.takt/config.yaml`:
 ```yaml
 # ~/.takt/config.yaml
 language: en
-default_workflow: default
+default_piece: default
 log_level: info
 provider: claude         # Default provider: claude or codex
 model: sonnet            # Default model (optional)
@@ -505,10 +515,10 @@ Priority: Environment variables > `config.yaml` settings
 | `{title}` | Commit message | Issue title |
 | `{issue}` | Commit message, PR body | Issue number |
 | `{issue_body}` | PR body | Issue body |
-| `{report}` | PR body | Workflow execution report |
+| `{report}` | PR body | Piece execution report |
 
 **Model Resolution Priority:**
-1. Workflow movement `model` (highest priority)
+1. Piece movement `model` (highest priority)
 2. Custom agent `model`
 3. Global config `model`
 4. Provider default (Claude: sonnet, Codex: codex)
@@ -519,14 +529,14 @@ Priority: Environment variables > `config.yaml` settings
 
 TAKT supports batch processing with task files in `.takt/tasks/`. Both `.yaml`/`.yml` and `.md` file formats are supported.
 
-**YAML format** (recommended, supports worktree/branch/workflow options):
+**YAML format** (recommended, supports worktree/branch/piece options):
 
 ```yaml
 # .takt/tasks/add-auth.yaml
 task: "Add authentication feature"
 worktree: true                  # Execute in isolated shared clone
 branch: "feat/add-auth"         # Branch name (auto-generated if omitted)
-workflow: "default"             # Workflow specification (uses current if omitted)
+piece: "default"             # Piece specification (uses current if omitted)
 ```
 
 **Markdown format** (simple, backward compatible):
@@ -561,25 +571,25 @@ TAKT writes session logs in NDJSON (`.jsonl`) format to `.takt/logs/`. Each reco
 
 - `.takt/logs/latest.json` - Pointer to current (or latest) session
 - `.takt/logs/previous.json` - Pointer to previous session
-- `.takt/logs/{sessionId}.jsonl` - NDJSON session log per workflow execution
+- `.takt/logs/{sessionId}.jsonl` - NDJSON session log per piece execution
 
-Record types: `workflow_start`, `step_start`, `step_complete`, `workflow_complete`, `workflow_abort`
+Record types: `piece_start`, `step_start`, `step_complete`, `piece_complete`, `piece_abort`
 
 Agents can read `previous.json` to inherit context from the previous execution. Session continuation is automatic — just run `takt "task"` to continue from the previous session.
 
-### Adding Custom Workflows
+### Adding Custom Pieces
 
-Add YAML files to `~/.takt/workflows/` or customize builtins with `takt eject`:
+Add YAML files to `~/.takt/pieces/` or customize builtins with `takt eject`:
 
 ```bash
-# Copy default workflow to ~/.takt/workflows/ and edit
+# Copy default piece to ~/.takt/pieces/ and edit
 takt eject default
 ```
 
 ```yaml
-# ~/.takt/workflows/my-workflow.yaml
-name: my-workflow
-description: Custom workflow
+# ~/.takt/pieces/my-piece.yaml
+name: my-piece
+description: Custom piece
 max_iterations: 5
 initial_movement: analyze
 
@@ -609,10 +619,10 @@ movements:
 
 ### Specifying Agents by Path
 
-In workflow definitions, specify agents using file paths:
+In piece definitions, specify agents using file paths:
 
 ```yaml
-# Relative path from workflow file
+# Relative path from piece file
 agent: ../agents/default/coder.md
 
 # Home directory
@@ -622,24 +632,24 @@ agent: ~/.takt/agents/default/coder.md
 agent: /path/to/custom/agent.md
 ```
 
-### Workflow Variables
+### Piece Variables
 
 Variables available in `instruction_template`:
 
 | Variable | Description |
 |----------|-------------|
 | `{task}` | Original user request (auto-injected if not in template) |
-| `{iteration}` | Workflow-wide turn count (total steps executed) |
+| `{iteration}` | Piece-wide turn count (total steps executed) |
 | `{max_iterations}` | Maximum iteration count |
 | `{movement_iteration}` | Per-movement iteration count (times this movement has been executed) |
 | `{previous_response}` | Output from previous movement (auto-injected if not in template) |
-| `{user_inputs}` | Additional user inputs during workflow (auto-injected if not in template) |
+| `{user_inputs}` | Additional user inputs during piece (auto-injected if not in template) |
 | `{report_dir}` | Report directory path (e.g., `.takt/reports/20250126-143052-task-summary`) |
 | `{report:filename}` | Expands to `{report_dir}/filename` (e.g., `{report:00-plan.md}`) |
 
-### Workflow Design
+### Piece Design
 
-Elements needed for each workflow movement:
+Elements needed for each piece movement:
 
 **1. Agent** - Markdown file containing system prompt:
 
@@ -675,13 +685,13 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure)
 ## API Usage Example
 
 ```typescript
-import { WorkflowEngine, loadWorkflow } from 'takt';  // npm install takt
+import { PieceEngine, loadPiece } from 'takt';  // npm install takt
 
-const config = loadWorkflow('default');
+const config = loadPiece('default');
 if (!config) {
-  throw new Error('Workflow not found');
+  throw new Error('Piece not found');
 }
-const engine = new WorkflowEngine(config, process.cwd(), 'My task');
+const engine = new PieceEngine(config, process.cwd(), 'My task');
 
 engine.on('step:complete', (step, response) => {
   console.log(`${step.name}: ${response.status}`);
@@ -700,7 +710,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 
 TAKT provides a GitHub Action for automating PR reviews and task execution. See [takt-action](https://github.com/nrslib/takt-action) for details.
 
-**Workflow example** (see [.github/workflows/takt-action.yml](../.github/workflows/takt-action.yml) in this repository):
+**Piece example** (see [.github/workflows/takt-action.yml](../.github/workflows/takt-action.yml) in this repository):
 
 ```yaml
 name: TAKT
@@ -755,7 +765,7 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 ## Documentation
 
-- [Workflow Guide](./docs/workflows.md) - Creating and customizing workflows
+- [Piece Guide](./docs/pieces.md) - Creating and customizing pieces
 - [Agent Guide](./docs/agents.md) - Configuring custom agents
 - [Changelog](../CHANGELOG.md) - Version history
 - [Security Policy](../SECURITY.md) - Vulnerability reporting

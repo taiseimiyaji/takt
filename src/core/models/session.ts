@@ -6,7 +6,7 @@ import type { AgentResponse } from './response.js';
 import type { Status } from './status.js';
 
 /**
- * Session state for workflow execution
+ * Session state for piece execution
  */
 export interface SessionState {
   task: string;
@@ -74,7 +74,7 @@ export interface InteractiveSession {
   sessionId: string | null;
   messages: ConversationMessage[];
   userApprovedTools: string[];
-  currentWorkflow: string;
+  currentPiece: string;
 }
 
 /**
@@ -90,7 +90,7 @@ export function createInteractiveSession(
     sessionId: null,
     messages: [],
     userApprovedTools: [],
-    currentWorkflow: 'default',
+    currentPiece: 'default',
     ...options,
   };
 }

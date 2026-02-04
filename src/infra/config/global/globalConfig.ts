@@ -18,10 +18,10 @@ function createDefaultGlobalConfig(): GlobalConfig {
   return {
     language: DEFAULT_LANGUAGE,
     trustedDirectories: [],
-    defaultWorkflow: 'default',
+    defaultPiece: 'default',
     logLevel: 'info',
     provider: 'claude',
-    enableBuiltinWorkflows: true,
+    enableBuiltinPieces: true,
   };
 }
 
@@ -69,7 +69,7 @@ export class GlobalConfigManager {
     const config: GlobalConfig = {
       language: parsed.language,
       trustedDirectories: parsed.trusted_directories,
-      defaultWorkflow: parsed.default_workflow,
+      defaultPiece: parsed.default_piece,
       logLevel: parsed.log_level,
       provider: parsed.provider,
       model: parsed.model,
@@ -79,7 +79,7 @@ export class GlobalConfigManager {
       } : undefined,
       worktreeDir: parsed.worktree_dir,
       disabledBuiltins: parsed.disabled_builtins,
-      enableBuiltinWorkflows: parsed.enable_builtin_workflows,
+      enableBuiltinPieces: parsed.enable_builtin_pieces,
       anthropicApiKey: parsed.anthropic_api_key,
       openaiApiKey: parsed.openai_api_key,
       pipeline: parsed.pipeline ? {
@@ -89,7 +89,7 @@ export class GlobalConfigManager {
       } : undefined,
       minimalOutput: parsed.minimal_output,
       bookmarksFile: parsed.bookmarks_file,
-      workflowCategoriesFile: parsed.workflow_categories_file,
+      pieceCategoriesFile: parsed.piece_categories_file,
     };
     this.cachedConfig = config;
     return config;
@@ -101,7 +101,7 @@ export class GlobalConfigManager {
     const raw: Record<string, unknown> = {
       language: config.language,
       trusted_directories: config.trustedDirectories,
-      default_workflow: config.defaultWorkflow,
+      default_piece: config.defaultPiece,
       log_level: config.logLevel,
       provider: config.provider,
     };
@@ -120,8 +120,8 @@ export class GlobalConfigManager {
     if (config.disabledBuiltins && config.disabledBuiltins.length > 0) {
       raw.disabled_builtins = config.disabledBuiltins;
     }
-    if (config.enableBuiltinWorkflows !== undefined) {
-      raw.enable_builtin_workflows = config.enableBuiltinWorkflows;
+    if (config.enableBuiltinPieces !== undefined) {
+      raw.enable_builtin_pieces = config.enableBuiltinPieces;
     }
     if (config.anthropicApiKey) {
       raw.anthropic_api_key = config.anthropicApiKey;
@@ -144,8 +144,8 @@ export class GlobalConfigManager {
     if (config.bookmarksFile) {
       raw.bookmarks_file = config.bookmarksFile;
     }
-    if (config.workflowCategoriesFile) {
-      raw.workflow_categories_file = config.workflowCategoriesFile;
+    if (config.pieceCategoriesFile) {
+      raw.piece_categories_file = config.pieceCategoriesFile;
     }
     writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
     this.invalidateCache();
@@ -173,10 +173,10 @@ export function getDisabledBuiltins(): string[] {
   }
 }
 
-export function getBuiltinWorkflowsEnabled(): boolean {
+export function getBuiltinPiecesEnabled(): boolean {
   try {
     const config = loadGlobalConfig();
-    return config.enableBuiltinWorkflows !== false;
+    return config.enableBuiltinPieces !== false;
   } catch {
     return true;
   }

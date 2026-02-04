@@ -2,7 +2,7 @@
  * Interactive task input mode
  *
  * Allows users to refine task requirements through conversation with AI
- * before executing the task. Uses the same SDK call pattern as workflow
+ * before executing the task. Uses the same SDK call pattern as piece
  * execution (with onStream) to ensure compatibility.
  *
  * Commands:
@@ -39,19 +39,19 @@ function resolveLanguage(lang?: Language): 'en' | 'ja' {
   return lang === 'ja' ? 'ja' : 'en';
 }
 
-function getInteractivePrompts(lang: 'en' | 'ja', workflowContext?: WorkflowContext) {
-  const hasWorkflow = !!workflowContext;
+function getInteractivePrompts(lang: 'en' | 'ja', pieceContext?: PieceContext) {
+  const hasPiece = !!pieceContext;
 
   const systemPrompt = loadTemplate('score_interactive_system_prompt', lang, {
-    workflowInfo: hasWorkflow,
-    workflowName: workflowContext?.name ?? '',
-    workflowDescription: workflowContext?.description ?? '',
+    pieceInfo: hasPiece,
+    pieceName: pieceContext?.name ?? '',
+    pieceDescription: pieceContext?.description ?? '',
   });
 
   return {
     systemPrompt,
     lang,
-    workflowContext,
+    pieceContext,
     conversationLabel: getLabel('interactive.conversationLabel', lang),
     noTranscript: getLabel('interactive.noTranscript', lang),
     ui: getLabelObject<InteractiveUIText>('interactive.ui', lang),
@@ -89,7 +89,7 @@ function buildSummaryPrompt(
   lang: 'en' | 'ja',
   noTranscriptNote: string,
   conversationLabel: string,
-  workflowContext?: WorkflowContext,
+  pieceContext?: PieceContext,
 ): string {
   let conversation = '';
   if (history.length > 0) {
@@ -101,11 +101,11 @@ function buildSummaryPrompt(
     return '';
   }
 
-  const hasWorkflow = !!workflowContext;
+  const hasPiece = !!pieceContext;
   return loadTemplate('score_summary_system_prompt', lang, {
-    workflowInfo: hasWorkflow,
-    workflowName: workflowContext?.name ?? '',
-    workflowDescription: workflowContext?.description ?? '',
+    pieceInfo: hasPiece,
+    pieceName: pieceContext?.name ?? '',
+    pieceDescription: pieceContext?.description ?? '',
     conversation,
   });
 }
@@ -155,7 +155,7 @@ function readLine(prompt: string): Promise<string | null> {
 }
 
 /**
- * Call AI with the same pattern as workflow execution.
+ * Call AI with the same pattern as piece execution.
  * The key requirement is passing onStream — the Agent SDK requires
  * includePartialMessages to be true for the async iterator to yield.
  */
@@ -189,10 +189,10 @@ export interface InteractiveModeResult {
   task: string;
 }
 
-export interface WorkflowContext {
-  /** Workflow name (e.g. "minimal") */
+export interface PieceContext {
+  /** Piece name (e.g. "minimal") */
   name: string;
-  /** Workflow description */
+  /** Piece description */
   description: string;
 }
 
@@ -208,11 +208,11 @@ export interface WorkflowContext {
 export async function interactiveMode(
   cwd: string,
   initialInput?: string,
-  workflowContext?: WorkflowContext,
+  pieceContext?: PieceContext,
 ): Promise<InteractiveModeResult> {
   const globalConfig = loadGlobalConfig();
   const lang = resolveLanguage(globalConfig.language);
-  const prompts = getInteractivePrompts(lang, workflowContext);
+  const prompts = getInteractivePrompts(lang, pieceContext);
   if (!globalConfig.provider) {
     throw new Error('Provider is not configured.');
   }
@@ -318,7 +318,7 @@ export async function interactiveMode(
         prompts.lang,
         prompts.noTranscript,
         prompts.conversationLabel,
-        prompts.workflowContext,
+        prompts.pieceContext,
       );
       if (!summaryPrompt) {
         info(prompts.ui.noConversation);

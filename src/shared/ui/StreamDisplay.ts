@@ -7,10 +7,10 @@
 
 import chalk from 'chalk';
 // NOTE: type-only import from core — acceptable because StreamDisplay is
-// a UI renderer tightly coupled to the workflow event protocol.
+// a UI renderer tightly coupled to the piece event protocol.
 // Moving StreamEvent/StreamCallback to shared would require relocating all
 // dependent event-data types, which is out of scope for this refactoring.
-import type { StreamEvent, StreamCallback } from '../../core/workflow/index.js';
+import type { StreamEvent, StreamCallback } from '../../core/piece/index.js';
 import { truncate } from './LogManager.js';
 
 /** Stream display manager for real-time Claude output */

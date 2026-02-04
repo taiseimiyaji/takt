@@ -19,8 +19,8 @@ interactive:
     confirm: "このタスク指示で進めますか？"
     cancelled: "キャンセルしました"
 
-# ===== Workflow Execution UI =====
-workflow:
+# ===== Piece Execution UI =====
+piece:
   iterationLimit:
     maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
     currentMovement: "現在のムーブメント: {currentMovement}"
@@ -31,7 +31,7 @@ workflow:
     inputPrompt: "追加するイテレーション数を入力してください（1以上）"
     invalidInput: "1以上の整数を入力してください。"
     userInputPrompt: "追加の指示を入力してください（空で中止）"
-  notifyComplete: "ワークフロー完了 ({iteration} iterations)"
+  notifyComplete: "ピース完了 ({iteration} iterations)"
   notifyAbort: "中断: {reason}"
-  sigintGraceful: "Ctrl+C: ワークフローを中断しています..."
+  sigintGraceful: "Ctrl+C: ピースを中断しています..."
   sigintForce: "Ctrl+C: 強制終了します"

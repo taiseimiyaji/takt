@@ -1,6 +1,6 @@
 # TAKTデータフロー解析
 
-このドキュメントでは、TAKTにおけるデータフロー、特にインタラクティブモードからワークフロー実行に至るまでのデータの流れを説明します。
+このドキュメントでは、TAKTにおけるデータフロー、特にインタラクティブモードからピース実行に至るまでのデータの流れを説明します。
 
 ## 目次
 
@@ -18,8 +18,8 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 
 1. **CLI Layer** - ユーザー入力の受付
 2. **Interactive Layer** - タスクの対話的な明確化
-3. **Execution Orchestration Layer** - ワークフロー選択とworktree管理
-4. **Workflow Execution Layer** - セッション管理とイベント処理
+3. **Execution Orchestration Layer** - ピース選択とworktree管理
+4. **Piece Execution Layer** - セッション管理とイベント処理
 5. **Engine Layer** - ステートマシンによるステップ実行
 6. **Instruction Building Layer** - プロンプト生成
 7. **Provider Layer** - AIプロバイダーとの通信
@@ -67,9 +67,9 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 │    (selectAndExecute.ts)                                        │
 │                                                                 │
 │  ┌──────────────────────┐                                      │
-│  │ determineWorkflow()  │ ← workflow選択 (interactive/override) │
+│  │ determinePiece()  │ ← piece選択 (interactive/override) │
 │  └─────────┬────────────┘                                      │
-│            │ workflowIdentifier: string                        │
+│            │ pieceIdentifier: string                        │
 │            ▼                                                    │
 │  ┌──────────────────────────────────┐                         │
 │  │ confirmAndCreateWorktree()       │                         │
@@ -82,19 +82,19 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 │  │ executeTask()                    │                         │
 │  │  - task: string                  │                         │
 │  │  - cwd: string (実行ディレクトリ)   │                         │
-│  │  - workflowIdentifier: string    │                         │
+│  │  - pieceIdentifier: string    │                         │
 │  │  - projectCwd: string (.takt/在処) │                         │
 │  └─────────┬────────────────────────┘                         │
 └────────────┼────────────────────────────────────────────────────┘
              │
              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 4. Workflow Execution Layer                                     │
-│    (workflowExecution.ts, taskExecution.ts)                     │
+│ 4. Piece Execution Layer                                     │
+│    (pieceExecution.ts, taskExecution.ts)                     │
 │                                                                 │
 │  ┌────────────────────────────────┐                            │
-│  │ loadWorkflowByIdentifier()     │                            │
-│  │  → WorkflowConfig              │                            │
+│  │ loadPieceByIdentifier()     │                            │
+│  │  → PieceConfig              │                            │
 │  └────────┬───────────────────────┘                            │
 │           │                                                     │
 │           ▼                                                     │
@@ -108,10 +108,10 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 │           │                                                     │
 │           ▼                                                     │
 │  ┌────────────────────────────────┐                            │
-│  │ WorkflowEngine initialization  │                            │
+│  │ PieceEngine initialization  │                            │
 │  │                                │                            │
-│  │  new WorkflowEngine(           │                            │
-│  │    config: WorkflowConfig,     │                            │
+│  │  new PieceEngine(           │                            │
+│  │    config: PieceConfig,     │                            │
 │  │    cwd: string,                │                            │
 │  │    task: string,               │                            │
 │  │    options: {                  │                            │
@@ -132,8 +132,8 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 │  │  - step:start                  │                            │
 │  │  - step:complete               │                            │
 │  │  - step:report                 │                            │
-│  │  - workflow:complete           │                            │
-│  │  - workflow:abort              │                            │
+│  │  - piece:complete           │                            │
+│  │  - piece:abort              │                            │
 │  └────────┬───────────────────────┘                            │
 │           │                                                     │
 │           ▼                                                     │
@@ -144,7 +144,7 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
             │
             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 5. Engine Layer (WorkflowEngine.ts)                             │
+│ 5. Engine Layer (PieceEngine.ts)                             │
 │                                                                 │
 │  ┌────────────────────────────────────────┐                    │
 │  │ State Machine Loop                     │                    │
@@ -222,7 +222,7 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 │  │  │                                                      │ ││
 │  │  │  InstructionBuilder.build()                         │ ││
 │  │  │    ├─ Execution Context (cwd, permission)           │ ││
-│  │  │    ├─ Workflow Context (iteration, step, report)    │ ││
+│  │  │    ├─ Piece Context (iteration, step, report)    │ ││
 │  │  │    ├─ User Request ({task})                         │ ││
 │  │  │    ├─ Previous Response ({previous_response})       │ ││
 │  │  │    ├─ Additional User Inputs ({user_inputs})        │ ││
@@ -317,11 +317,11 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 - パイプラインモード vs 通常モードの判定
 
 **データ入力**:
-- CLI引数: `task`, `--workflow`, `--issue`, など
+- CLI引数: `task`, `--piece`, `--issue`, など
 
 **データ出力**:
 - `task: string` (タスク記述)
-- `workflow: string | undefined` (ワークフロー名またはパス)
+- `piece: string | undefined` (ピース名またはパス)
 - `createWorktree: boolean | undefined`
 - その他オプション
 
@@ -362,15 +362,15 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 
 ### 3. Execution Orchestration Layer (`src/features/tasks/execute/selectAndExecute.ts`)
 
-**役割**: ワークフロー選択とworktree管理
+**役割**: ピース選択とworktree管理
 
 **主要な処理**:
 
-1. **ワークフロー決定** (`determineWorkflow()`):
+1. **ピース決定** (`determinePiece()`):
    - オーバーライド指定がある場合:
      - パス形式 → そのまま使用
      - 名前形式 → バリデーション
-   - オーバーライドなし → インタラクティブ選択 (`selectWorkflow()`)
+   - オーバーライドなし → インタラクティブ選択 (`selectPiece()`)
 
 2. **Worktree作成** (`confirmAndCreateWorktree()`):
    - ユーザー確認 (または `--create-worktree` フラグ)
@@ -385,7 +385,7 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 **データ入力**:
 - `task: string`
 - `options?: SelectAndExecuteOptions`:
-  - `workflow?: string`
+  - `piece?: string`
   - `createWorktree?: boolean`
   - `autoPr?: boolean`
 - `agentOverrides?: TaskExecutionOptions`
@@ -396,35 +396,35 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 
 ---
 
-### 4. Workflow Execution Layer
+### 4. Piece Execution Layer
 
 #### 4.1 Task Execution (`src/features/tasks/execute/taskExecution.ts`)
 
-**役割**: ワークフロー読み込みと実行の橋渡し
+**役割**: ピース読み込みと実行の橋渡し
 
 **主要な処理**:
-1. `loadWorkflowByIdentifier()`: YAMLまたは名前からワークフロー設定を読み込み
-2. `executeWorkflow()` を呼び出し
+1. `loadPieceByIdentifier()`: YAMLまたは名前からピース設定を読み込み
+2. `executePiece()` を呼び出し
 
 **データ入力**:
 - `ExecuteTaskOptions`:
   - `task: string`
   - `cwd: string` (実行ディレクトリ、cloneまたはプロジェクトルート)
-  - `workflowIdentifier: string`
+  - `pieceIdentifier: string`
   - `projectCwd: string` (`.takt/`がある場所)
   - `agentOverrides?: TaskExecutionOptions`
 
 **データ出力**:
 - `boolean` (成功/失敗)
 
-#### 4.2 Workflow Execution (`src/features/tasks/execute/workflowExecution.ts`)
+#### 4.2 Piece Execution (`src/features/tasks/execute/pieceExecution.ts`)
 
 **役割**: セッション管理、イベント購読、ログ記録
 
 **主要な処理**:
 
 1. **セッション管理**:
-   - `generateSessionId()`: ワークフローセッションID生成
+   - `generateSessionId()`: ピースセッションID生成
    - `loadAgentSessions()` / `loadWorktreeSessions()`: エージェントセッション復元
    - `updateAgentSession()` / `updateWorktreeSession()`: セッション保存
 
@@ -433,9 +433,9 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
    - `initNdjsonLog()`: NDJSON形式のログファイル初期化
    - `updateLatestPointer()`: `latest.json` ポインタ更新
 
-3. **WorkflowEngine初期化**:
+3. **PieceEngine初期化**:
    ```typescript
-   new WorkflowEngine(workflowConfig, cwd, task, {
+   new PieceEngine(pieceConfig, cwd, task, {
      onStream: streamHandler,           // UI表示用ストリームハンドラ
      initialSessions: savedSessions,    // 保存済みセッションID
      onSessionUpdate: sessionUpdateHandler,
@@ -451,36 +451,36 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
    - `step:start`: ステップ開始 → UI表示、NDJSON記録
    - `step:complete`: ステップ完了 → UI表示、NDJSON記録、セッション更新
    - `step:report`: レポートファイル出力
-   - `workflow:complete`: ワークフロー完了 → 通知
-   - `workflow:abort`: ワークフロー中断 → エラー通知
+   - `piece:complete`: ピース完了 → 通知
+   - `piece:abort`: ピース中断 → エラー通知
 
 5. **SIGINT処理**:
    - 1回目: Graceful abort (`engine.abort()`)
    - 2回目: 強制終了
 
 **データ入力**:
-- `WorkflowConfig`
+- `PieceConfig`
 - `task: string`
 - `cwd: string`
-- `WorkflowExecutionOptions`
+- `PieceExecutionOptions`
 
 **データ出力**:
-- `WorkflowExecutionResult`:
+- `PieceExecutionResult`:
   - `success: boolean`
   - `reason?: string`
 
 ---
 
-### 5. Engine Layer (`src/core/workflow/engine/WorkflowEngine.ts`)
+### 5. Engine Layer (`src/core/piece/engine/PieceEngine.ts`)
 
-**役割**: ステートマシンによるワークフロー実行制御
+**役割**: ステートマシンによるピース実行制御
 
 **主要な構成要素**:
 
-1. **State管理** (`WorkflowState`):
+1. **State管理** (`PieceState`):
    - `status`: 'running' | 'completed' | 'aborted'
    - `currentStep`: 現在実行中のステップ名
-   - `iteration`: ワークフロー全体のイテレーション数
+   - `iteration`: ピース全体のイテレーション数
    - `stepIterations`: Map<stepName, count> (ステップごとの実行回数)
    - `agentSessions`: Map<agent, sessionId> (エージェントごとのセッションID)
    - `stepOutputs`: Map<stepName, AgentResponse> (各ステップの出力)
@@ -540,20 +540,20 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
    - `determineNextStepByRules()` で次ステップ名を取得
 
 **データ入力**:
-- `WorkflowConfig`
+- `PieceConfig`
 - `cwd: string`
 - `task: string`
-- `WorkflowEngineOptions`
+- `PieceEngineOptions`
 
 **データ出力**:
-- `WorkflowState` (最終状態)
+- `PieceState` (最終状態)
 - イベント発行 (各ステップの進捗)
 
 ---
 
 ### 6. Instruction Building & Step Execution Layer
 
-#### 6.1 Step Execution (`src/core/workflow/engine/StepExecutor.ts`)
+#### 6.1 Step Execution (`src/core/piece/engine/StepExecutor.ts`)
 
 **役割**: 3フェーズモデルによるステップ実行
 
@@ -604,7 +604,7 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
 - `InstructionBuilder` を使用してインストラクション文字列を生成
 - コンテキスト情報を渡す
 
-#### 6.2 Instruction Building (`src/core/workflow/instruction/InstructionBuilder.ts`)
+#### 6.2 Instruction Building (`src/core/piece/instruction/InstructionBuilder.ts`)
 
 **役割**: Phase 1用のインストラクション文字列生成
 
@@ -614,8 +614,8 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
    - Working directory
    - Permission rules (edit mode)
 
-2. **Workflow Context**:
-   - Iteration (workflow-wide)
+2. **Piece Context**:
+   - Iteration (piece-wide)
    - Step Iteration (per-step)
    - Step name
    - Report Directory/File info
@@ -642,7 +642,7 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
 - `{task}`: ユーザーリクエスト
 - `{previous_response}`: 前ステップの出力
 - `{user_inputs}`: 追加ユーザー入力
-- `{iteration}`: ワークフロー全体のイテレーション
+- `{iteration}`: ピース全体のイテレーション
 - `{max_iterations}`: 最大イテレーション
 - `{step_iteration}`: ステップのイテレーション
 - `{report_dir}`: レポートディレクトリ
@@ -753,9 +753,9 @@ async call(
 
 ### ステージ2: 実行環境準備
 
-**ワークフロー選択**:
-- `--workflow` フラグ → 検証
-- なし → インタラクティブ選択 (`selectWorkflow()`)
+**ピース選択**:
+- `--piece` フラグ → 検証
+- なし → インタラクティブ選択 (`selectPiece()`)
 
 **Worktree作成** (オプション):
 - `confirmAndCreateWorktree()`:
@@ -764,21 +764,21 @@ async call(
   - `createSharedClone()`: git clone --shared
 
 **データ**:
-- `workflowIdentifier: string`
+- `pieceIdentifier: string`
 - `{ execCwd, isWorktree, branch }`
 
 ---
 
-### ステージ3: ワークフロー実行初期化
+### ステージ3: ピース実行初期化
 
 **セッション管理**:
 - `loadAgentSessions()`: 保存済みセッション復元
-- `generateSessionId()`: ワークフローセッションID生成
+- `generateSessionId()`: ピースセッションID生成
 - `initNdjsonLog()`: NDJSON ログファイル作成
 
-**WorkflowEngine作成**:
+**PieceEngine作成**:
 ```typescript
-new WorkflowEngine(workflowConfig, cwd, task, {
+new PieceEngine(pieceConfig, cwd, task, {
   onStream,
   initialSessions,
   onSessionUpdate,
@@ -790,7 +790,7 @@ new WorkflowEngine(workflowConfig, cwd, task, {
 ```
 
 **データ**:
-- `WorkflowState`: 初期状態
+- `PieceState`: 初期状態
   - `currentStep = config.initialStep`
   - `iteration = 0`
   - `agentSessions = initialSessions`
@@ -871,8 +871,8 @@ new WorkflowEngine(workflowConfig, cwd, task, {
 **遷移**:
 - `determineNextStepByRules()`: `rules[index].next` を取得
 - 特殊ステップ:
-  - `COMPLETE`: ワークフロー完了
-  - `ABORT`: ワークフロー中断
+  - `COMPLETE`: ピース完了
+  - `ABORT`: ピース中断
 - 通常ステップ: `state.currentStep = nextStep`
 
 ---
@@ -891,7 +891,7 @@ function buildTaskFromHistory(history: ConversationMessage[]): string {
 }
 ```
 
-**重要性**: インタラクティブモードで蓄積された会話全体が、後続のワークフロー実行で単一の `task` 文字列として扱われる。
+**重要性**: インタラクティブモードで蓄積された会話全体が、後続のピース実行で単一の `task` 文字列として扱われる。
 
 ---
 
@@ -912,15 +912,15 @@ await summarizeTaskName(task, { cwd })
 
 ---
 
-### 3. ワークフロー設定 → WorkflowState
+### 3. ピース設定 → PieceState
 
-**場所**: `src/core/workflow/engine/state-manager.ts`
+**場所**: `src/core/piece/engine/state-manager.ts`
 
 ```typescript
 function createInitialState(
-  config: WorkflowConfig,
-  options: WorkflowEngineOptions
-): WorkflowState {
+  config: PieceConfig,
+  options: PieceEngineOptions
+): PieceState {
   return {
     status: 'running',
     currentStep: config.initialStep,
@@ -939,10 +939,10 @@ function createInitialState(
 
 ### 4. コンテキスト → インストラクション文字列
 
-**場所**: `src/core/workflow/instruction/InstructionBuilder.ts`
+**場所**: `src/core/piece/instruction/InstructionBuilder.ts`
 
 **入力**:
-- `step: WorkflowStep`
+- `step: PieceStep`
 - `context: InstructionContext` (task, iteration, previousOutput, userInputs, など)
 
 **処理**:
@@ -958,13 +958,13 @@ function createInitialState(
 
 ### 5. AgentResponse → ルールマッチ
 
-**場所**: `src/core/workflow/evaluation/RuleEvaluator.ts`
+**場所**: `src/core/piece/evaluation/RuleEvaluator.ts`
 
 **入力**:
-- `step: WorkflowStep`
+- `step: PieceStep`
 - `content: string` (Phase 1 output)
 - `tagContent: string` (Phase 3 output)
-- `state: WorkflowState`
+- `state: PieceState`
 
 **処理**:
 1. タグ検出 (`[STEP:0]`, `[STEP:1]`, ...)
@@ -979,11 +979,11 @@ function createInitialState(
 
 ### 6. ルールマッチ → 次ステップ名
 
-**場所**: `src/core/workflow/engine/transitions.ts`
+**場所**: `src/core/piece/engine/transitions.ts`
 
 ```typescript
 function determineNextStepByRules(
-  step: WorkflowStep,
+  step: PieceStep,
   matchedRuleIndex: number
 ): string | null {
   const rule = step.rules?.[matchedRuleIndex];
@@ -1022,7 +1022,7 @@ TAKTのデータフローは、**7つのレイヤー**を通じて、ユーザ�
 1. **Progressive Transformation**: データは各レイヤーで少しずつ変換され、次のレイヤーに渡される
 2. **Context Accumulation**: タスク、イテレーション、ユーザー入力などのコンテキストが蓄積される
 3. **Session Continuity**: エージェントセッションIDが保存・復元され、会話の継続性を保つ
-4. **Event-Driven Architecture**: WorkflowEngineがイベントを発行し、UI、ログ、通知が連携
+4. **Event-Driven Architecture**: PieceEngineがイベントを発行し、UI、ログ、通知が連携
 5. **3-Phase Execution**: メイン実行、レポート出力、ステータス判断の3段階で、明確な責任分離
 6. **Rule-Based Routing**: ルール評価の5段階フォールバックで、柔軟かつ予測可能な遷移
 

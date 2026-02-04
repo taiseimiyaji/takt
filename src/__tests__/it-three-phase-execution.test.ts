@@ -6,7 +6,7 @@
  *
  * Mocked: UI, session, config, callAiJudge
  * Selectively mocked: phase-runner (to inspect call patterns)
- * Not mocked: WorkflowEngine, runAgent, detectMatchedRule, rule-evaluator
+ * Not mocked: PieceEngine, runAgent, detectMatchedRule, rule-evaluator
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -14,7 +14,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setMockScenario, resetScenario } from '../infra/mock/index.js';
-import type { WorkflowConfig, WorkflowMovement, WorkflowRule } from '../core/models/index.js';
+import type { PieceConfig, PieceMovement, PieceRule } from '../core/models/index.js';
 import { callAiJudge, detectRuleIndex } from '../infra/claude/index.js';
 
 // --- Mocks ---
@@ -31,7 +31,7 @@ const mockNeedsStatusJudgmentPhase = vi.fn();
 const mockRunReportPhase = vi.fn();
 const mockRunStatusJudgmentPhase = vi.fn();
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: (...args: unknown[]) => mockNeedsStatusJudgmentPhase(...args),
   runReportPhase: (...args: unknown[]) => mockRunReportPhase(...args),
   runStatusJudgmentPhase: (...args: unknown[]) => mockRunStatusJudgmentPhase(...args),
@@ -47,7 +47,7 @@ vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
   getDisabledBuiltins: vi.fn().mockReturnValue([]),
-  getBuiltinWorkflowsEnabled: vi.fn().mockReturnValue(true),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock('../infra/config/project/projectConfig.js', () => ({
@@ -56,11 +56,11 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../core/workflow/index.js';
+import { PieceEngine } from '../core/piece/index.js';
 
 // --- Test helpers ---
 
-function makeRule(condition: string, next: string): WorkflowRule {
+function makeRule(condition: string, next: string): PieceRule {
   return { condition, next };
 }
 
@@ -87,9 +87,9 @@ function buildEngineOptions(projectCwd: string) {
 function makeMovement(
   name: string,
   agentPath: string,
-  rules: WorkflowRule[],
+  rules: PieceRule[],
   options: { report?: string | { label: string; path: string }[]; edit?: boolean } = {},
-): WorkflowMovement {
+): PieceMovement {
   return {
     name,
     agent: './agents/agent.md',
@@ -129,7 +129,7 @@ describe('Three-Phase Execution IT: phase1 only (no report, no tag rules)', () =
       { status: 'done', content: '[STEP:1]\n\nDone.' },
     ]);
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-phase1-only',
       description: 'Test',
       maxIterations: 5,
@@ -142,7 +142,7 @@ describe('Three-Phase Execution IT: phase1 only (no report, no tag rules)', () =
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });
@@ -181,7 +181,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
       { status: 'done', content: '[STEP:1]\n\nDone.' },
     ]);
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-phase1-2',
       description: 'Test',
       maxIterations: 5,
@@ -194,7 +194,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });
@@ -211,7 +211,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
       { status: 'done', content: '[STEP:1]\n\nDone.' },
     ]);
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-phase1-2-multi',
       description: 'Test',
       maxIterations: 5,
@@ -223,7 +223,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });
@@ -262,7 +262,7 @@ describe('Three-Phase Execution IT: phase1 + phase3 (tag rules defined)', () => 
       { status: 'done', content: 'Agent completed the work.' },
     ]);
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-phase1-3',
       description: 'Test',
       maxIterations: 5,
@@ -275,7 +275,7 @@ describe('Three-Phase Execution IT: phase1 + phase3 (tag rules defined)', () => 
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });
@@ -313,7 +313,7 @@ describe('Three-Phase Execution IT: all three phases', () => {
       { status: 'done', content: 'Agent completed the work.' },
     ]);
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-all-phases',
       description: 'Test',
       maxIterations: 5,
@@ -326,7 +326,7 @@ describe('Three-Phase Execution IT: all three phases', () => {
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });
@@ -373,7 +373,7 @@ describe('Three-Phase Execution IT: phase3 tag → rule match', () => {
     // Phase 3 returns rule 2 (ABORT)
     mockRunStatusJudgmentPhase.mockResolvedValue('[STEP1:2]');
 
-    const config: WorkflowConfig = {
+    const config: PieceConfig = {
       name: 'it-phase3-tag',
       description: 'Test',
       maxIterations: 5,
@@ -389,7 +389,7 @@ describe('Three-Phase Execution IT: phase3 tag → rule match', () => {
       ],
     };
 
-    const engine = new WorkflowEngine(config, testDir, 'Test task', {
+    const engine = new PieceEngine(config, testDir, 'Test task', {
       ...buildEngineOptions(testDir),
       provider: 'mock',
     });

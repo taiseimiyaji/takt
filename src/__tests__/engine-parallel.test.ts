@@ -1,5 +1,5 @@
 /**
- * WorkflowEngine integration tests: parallel movement aggregation.
+ * PieceEngine integration tests: parallel movement aggregation.
  *
  * Covers:
  * - Aggregated output format (## headers and --- separators)
@@ -16,11 +16,11 @@ vi.mock('../agents/runner.js', () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock('../core/workflow/evaluation/index.js', () => ({
+vi.mock('../core/piece/evaluation/index.js', () => ({
   detectMatchedRule: vi.fn(),
 }));
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -33,18 +33,18 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 
 // --- Imports (after mocks) ---
 
-import { WorkflowEngine } from '../core/workflow/index.js';
+import { PieceEngine } from '../core/piece/index.js';
 import { runAgent } from '../agents/runner.js';
 import {
   makeResponse,
-  buildDefaultWorkflowConfig,
+  buildDefaultPieceConfig,
   mockRunAgentSequence,
   mockDetectMatchedRuleSequence,
   createTestTmpDir,
   applyDefaultMocks,
 } from './engine-test-helpers.js';
 
-describe('WorkflowEngine Integration: Parallel Movement Aggregation', () => {
+describe('PieceEngine Integration: Parallel Movement Aggregation', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -60,8 +60,8 @@ describe('WorkflowEngine Integration: Parallel Movement Aggregation', () => {
   });
 
   it('should aggregate sub-movement outputs with ## headers and --- separators', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan done' }),
@@ -97,8 +97,8 @@ describe('WorkflowEngine Integration: Parallel Movement Aggregation', () => {
   });
 
   it('should store individual sub-movement outputs in movementOutputs', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan' }),
@@ -129,8 +129,8 @@ describe('WorkflowEngine Integration: Parallel Movement Aggregation', () => {
   });
 
   it('should execute sub-movements concurrently (both runAgent calls happen)', async () => {
-    const config = buildDefaultWorkflowConfig();
-    const engine = new WorkflowEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
+    const config = buildDefaultPieceConfig();
+    const engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
     mockRunAgentSequence([
       makeResponse({ agent: 'plan', content: 'Plan' }),

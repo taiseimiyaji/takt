@@ -8,13 +8,13 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import {
-  getBuiltinWorkflow,
-  loadAllWorkflows,
-  loadWorkflow,
-  listWorkflows,
+  getBuiltinPiece,
+  loadAllPieces,
+  loadPiece,
+  listPieces,
   loadAgentPromptFromPath,
-  getCurrentWorkflow,
-  setCurrentWorkflow,
+  getCurrentPiece,
+  setCurrentPiece,
   getProjectConfigDir,
   getBuiltinAgentsDir,
   loadInputHistory,
@@ -37,34 +37,34 @@ import {
   loadProjectConfig,
 } from '../infra/config/index.js';
 
-describe('getBuiltinWorkflow', () => {
-  it('should return builtin workflow when it exists in resources', () => {
-    const workflow = getBuiltinWorkflow('default');
-    expect(workflow).not.toBeNull();
-    expect(workflow!.name).toBe('default');
+describe('getBuiltinPiece', () => {
+  it('should return builtin piece when it exists in resources', () => {
+    const piece = getBuiltinPiece('default');
+    expect(piece).not.toBeNull();
+    expect(piece!.name).toBe('default');
   });
 
-  it('should return null for non-existent workflow names', () => {
-    expect(getBuiltinWorkflow('passthrough')).toBeNull();
-    expect(getBuiltinWorkflow('unknown')).toBeNull();
-    expect(getBuiltinWorkflow('')).toBeNull();
+  it('should return null for non-existent piece names', () => {
+    expect(getBuiltinPiece('passthrough')).toBeNull();
+    expect(getBuiltinPiece('unknown')).toBeNull();
+    expect(getBuiltinPiece('')).toBeNull();
   });
 });
 
-describe('default workflow parallel reviewers movement', () => {
+describe('default piece parallel reviewers movement', () => {
   it('should have a reviewers movement with parallel sub-movements', () => {
-    const workflow = getBuiltinWorkflow('default');
-    expect(workflow).not.toBeNull();
+    const piece = getBuiltinPiece('default');
+    expect(piece).not.toBeNull();
 
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers');
     expect(reviewersMovement).toBeDefined();
     expect(reviewersMovement!.parallel).toBeDefined();
     expect(reviewersMovement!.parallel).toHaveLength(2);
   });
 
   it('should have arch-review and security-review as parallel sub-movements', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers')!;
+    const piece = getBuiltinPiece('default');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
     const subMovementNames = reviewersMovement.parallel!.map((s) => s.name);
 
     expect(subMovementNames).toContain('arch-review');
@@ -72,8 +72,8 @@ describe('default workflow parallel reviewers movement', () => {
   });
 
   it('should have aggregate conditions on the reviewers parent movement', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers')!;
+    const piece = getBuiltinPiece('default');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     expect(reviewersMovement.rules).toBeDefined();
     expect(reviewersMovement.rules).toHaveLength(2);
@@ -90,8 +90,8 @@ describe('default workflow parallel reviewers movement', () => {
   });
 
   it('should have matching conditions on sub-movements for aggregation', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers')!;
+    const piece = getBuiltinPiece('default');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     for (const subMovement of reviewersMovement.parallel!) {
       expect(subMovement.rules).toBeDefined();
@@ -102,32 +102,32 @@ describe('default workflow parallel reviewers movement', () => {
   });
 
   it('should have ai_review transitioning to reviewers movement', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const aiReviewMovement = workflow!.movements.find((s) => s.name === 'ai_review')!;
+    const piece = getBuiltinPiece('default');
+    const aiReviewMovement = piece!.movements.find((s) => s.name === 'ai_review')!;
 
     const approveRule = aiReviewMovement.rules!.find((r) => r.next === 'reviewers');
     expect(approveRule).toBeDefined();
   });
 
   it('should have ai_fix transitioning to ai_review movement', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const aiFixMovement = workflow!.movements.find((s) => s.name === 'ai_fix')!;
+    const piece = getBuiltinPiece('default');
+    const aiFixMovement = piece!.movements.find((s) => s.name === 'ai_fix')!;
 
     const fixedRule = aiFixMovement.rules!.find((r) => r.next === 'ai_review');
     expect(fixedRule).toBeDefined();
   });
 
   it('should have fix movement transitioning back to reviewers', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const fixMovement = workflow!.movements.find((s) => s.name === 'fix')!;
+    const piece = getBuiltinPiece('default');
+    const fixMovement = piece!.movements.find((s) => s.name === 'fix')!;
 
     const fixedRule = fixMovement.rules!.find((r) => r.next === 'reviewers');
     expect(fixedRule).toBeDefined();
   });
 
   it('should not have old separate review/security_review/improve movements', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const movementNames = workflow!.movements.map((s) => s.name);
+    const piece = getBuiltinPiece('default');
+    const movementNames = piece!.movements.map((s) => s.name);
 
     expect(movementNames).not.toContain('review');
     expect(movementNames).not.toContain('security_review');
@@ -136,8 +136,8 @@ describe('default workflow parallel reviewers movement', () => {
   });
 
   it('should have sub-movements with correct agents', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers')!;
+    const piece = getBuiltinPiece('default');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     const archReview = reviewersMovement.parallel!.find((s) => s.name === 'arch-review')!;
     expect(archReview.agent).toContain('architecture-reviewer');
@@ -147,8 +147,8 @@ describe('default workflow parallel reviewers movement', () => {
   });
 
   it('should have reports configured on sub-movements', () => {
-    const workflow = getBuiltinWorkflow('default');
-    const reviewersMovement = workflow!.movements.find((s) => s.name === 'reviewers')!;
+    const piece = getBuiltinPiece('default');
+    const reviewersMovement = piece!.movements.find((s) => s.name === 'reviewers')!;
 
     const archReview = reviewersMovement.parallel!.find((s) => s.name === 'arch-review')!;
     expect(archReview.report).toBeDefined();
@@ -158,7 +158,7 @@ describe('default workflow parallel reviewers movement', () => {
   });
 });
 
-describe('loadAllWorkflows', () => {
+describe('loadAllPieces', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -172,13 +172,13 @@ describe('loadAllWorkflows', () => {
     }
   });
 
-  it('should load project-local workflows when cwd is provided', () => {
-    const workflowsDir = join(testDir, '.takt', 'workflows');
-    mkdirSync(workflowsDir, { recursive: true });
+  it('should load project-local pieces when cwd is provided', () => {
+    const piecesDir = join(testDir, '.takt', 'pieces');
+    mkdirSync(piecesDir, { recursive: true });
 
-    const sampleWorkflow = `
-name: test-workflow
-description: Test workflow
+    const samplePiece = `
+name: test-piece
+description: Test piece
 max_iterations: 10
 movements:
   - name: step1
@@ -188,38 +188,38 @@ movements:
       - condition: Task completed
         next: COMPLETE
 `;
-    writeFileSync(join(workflowsDir, 'test.yaml'), sampleWorkflow);
+    writeFileSync(join(piecesDir, 'test.yaml'), samplePiece);
 
-    const workflows = loadAllWorkflows(testDir);
+    const pieces = loadAllPieces(testDir);
 
-    expect(workflows.has('test')).toBe(true);
+    expect(pieces.has('test')).toBe(true);
   });
 });
 
-describe('loadWorkflow (builtin fallback)', () => {
-  it('should load builtin workflow when user workflow does not exist', () => {
-    const workflow = loadWorkflow('default', process.cwd());
-    expect(workflow).not.toBeNull();
-    expect(workflow!.name).toBe('default');
+describe('loadPiece (builtin fallback)', () => {
+  it('should load builtin piece when user piece does not exist', () => {
+    const piece = loadPiece('default', process.cwd());
+    expect(piece).not.toBeNull();
+    expect(piece!.name).toBe('default');
   });
 
-  it('should return null for non-existent workflow', () => {
-    const workflow = loadWorkflow('does-not-exist', process.cwd());
-    expect(workflow).toBeNull();
+  it('should return null for non-existent piece', () => {
+    const piece = loadPiece('does-not-exist', process.cwd());
+    expect(piece).toBeNull();
   });
 
-  it('should load builtin workflows like minimal, research', () => {
-    const minimal = loadWorkflow('minimal', process.cwd());
+  it('should load builtin pieces like minimal, research', () => {
+    const minimal = loadPiece('minimal', process.cwd());
     expect(minimal).not.toBeNull();
     expect(minimal!.name).toBe('minimal');
 
-    const research = loadWorkflow('research', process.cwd());
+    const research = loadPiece('research', process.cwd());
     expect(research).not.toBeNull();
     expect(research!.name).toBe('research');
   });
 });
 
-describe('listWorkflows (builtin fallback)', () => {
+describe('listPieces (builtin fallback)', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -233,20 +233,20 @@ describe('listWorkflows (builtin fallback)', () => {
     }
   });
 
-  it('should include builtin workflows', () => {
-    const workflows = listWorkflows(testDir);
-    expect(workflows).toContain('default');
-    expect(workflows).toContain('minimal');
+  it('should include builtin pieces', () => {
+    const pieces = listPieces(testDir);
+    expect(pieces).toContain('default');
+    expect(pieces).toContain('minimal');
   });
 
   it('should return sorted list', () => {
-    const workflows = listWorkflows(testDir);
-    const sorted = [...workflows].sort();
-    expect(workflows).toEqual(sorted);
+    const pieces = listPieces(testDir);
+    const sorted = [...pieces].sort();
+    expect(pieces).toEqual(sorted);
   });
 });
 
-describe('loadAllWorkflows (builtin fallback)', () => {
+describe('loadAllPieces (builtin fallback)', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -260,10 +260,10 @@ describe('loadAllWorkflows (builtin fallback)', () => {
     }
   });
 
-  it('should include builtin workflows in the map', () => {
-    const workflows = loadAllWorkflows(testDir);
-    expect(workflows.has('default')).toBe(true);
-    expect(workflows.has('minimal')).toBe(true);
+  it('should include builtin pieces in the map', () => {
+    const pieces = loadAllPieces(testDir);
+    expect(pieces.has('default')).toBe(true);
+    expect(pieces.has('minimal')).toBe(true);
   });
 });
 
@@ -281,7 +281,7 @@ describe('loadAgentPromptFromPath (builtin paths)', () => {
   });
 });
 
-describe('getCurrentWorkflow', () => {
+describe('getCurrentPiece', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -296,19 +296,19 @@ describe('getCurrentWorkflow', () => {
   });
 
   it('should return default when no config exists', () => {
-    const workflow = getCurrentWorkflow(testDir);
+    const piece = getCurrentPiece(testDir);
 
-    expect(workflow).toBe('default');
+    expect(piece).toBe('default');
   });
 
-  it('should return saved workflow name from config.yaml', () => {
+  it('should return saved piece name from config.yaml', () => {
     const configDir = getProjectConfigDir(testDir);
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'config.yaml'), 'workflow: default\n');
+    writeFileSync(join(configDir, 'config.yaml'), 'piece: default\n');
 
-    const workflow = getCurrentWorkflow(testDir);
+    const piece = getCurrentPiece(testDir);
 
-    expect(workflow).toBe('default');
+    expect(piece).toBe('default');
   });
 
   it('should return default for empty config', () => {
@@ -316,13 +316,13 @@ describe('getCurrentWorkflow', () => {
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'config.yaml'), '');
 
-    const workflow = getCurrentWorkflow(testDir);
+    const piece = getCurrentPiece(testDir);
 
-    expect(workflow).toBe('default');
+    expect(piece).toBe('default');
   });
 });
 
-describe('setCurrentWorkflow', () => {
+describe('setCurrentPiece', () => {
   let testDir: string;
 
   beforeEach(() => {
@@ -336,30 +336,30 @@ describe('setCurrentWorkflow', () => {
     }
   });
 
-  it('should save workflow name to config.yaml', () => {
-    setCurrentWorkflow(testDir, 'my-workflow');
+  it('should save piece name to config.yaml', () => {
+    setCurrentPiece(testDir, 'my-piece');
 
     const config = loadProjectConfig(testDir);
 
-    expect(config.workflow).toBe('my-workflow');
+    expect(config.piece).toBe('my-piece');
   });
 
   it('should create config directory if not exists', () => {
     const configDir = getProjectConfigDir(testDir);
     expect(existsSync(configDir)).toBe(false);
 
-    setCurrentWorkflow(testDir, 'test');
+    setCurrentPiece(testDir, 'test');
 
     expect(existsSync(configDir)).toBe(true);
   });
 
-  it('should overwrite existing workflow name', () => {
-    setCurrentWorkflow(testDir, 'first');
-    setCurrentWorkflow(testDir, 'second');
+  it('should overwrite existing piece name', () => {
+    setCurrentPiece(testDir, 'first');
+    setCurrentPiece(testDir, 'second');
 
-    const workflow = getCurrentWorkflow(testDir);
+    const piece = getCurrentPiece(testDir);
 
-    expect(workflow).toBe('second');
+    expect(piece).toBe('second');
   });
 });
 
@@ -592,7 +592,7 @@ describe('saveProjectConfig - gitignore copy', () => {
   });
 
   it('should copy .gitignore when creating new config', () => {
-    setCurrentWorkflow(testDir, 'test');
+    setCurrentPiece(testDir, 'test');
 
     const configDir = getProjectConfigDir(testDir);
     const gitignorePath = join(configDir, '.gitignore');
@@ -604,10 +604,10 @@ describe('saveProjectConfig - gitignore copy', () => {
     // Create config directory without .gitignore
     const configDir = getProjectConfigDir(testDir);
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'config.yaml'), 'workflow: existing\n');
+    writeFileSync(join(configDir, 'config.yaml'), 'piece: existing\n');
 
     // Save config should still copy .gitignore
-    setCurrentWorkflow(testDir, 'updated');
+    setCurrentPiece(testDir, 'updated');
 
     const gitignorePath = join(configDir, '.gitignore');
     expect(existsSync(gitignorePath)).toBe(true);
@@ -619,7 +619,7 @@ describe('saveProjectConfig - gitignore copy', () => {
     const customContent = '# Custom gitignore\nmy-custom-file';
     writeFileSync(join(configDir, '.gitignore'), customContent);
 
-    setCurrentWorkflow(testDir, 'test');
+    setCurrentPiece(testDir, 'test');
 
     const gitignorePath = join(configDir, '.gitignore');
     const content = readFileSync(gitignorePath, 'utf-8');

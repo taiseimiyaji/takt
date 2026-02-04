@@ -1,5 +1,5 @@
-# Expert Review Workflow
-# アーキテクチャ、フロントエンド、セキュリティ、QAの専門家によるレビューワークフロー
+# Expert Review Piece
+# アーキテクチャ、フロントエンド、セキュリティ、QAの専門家によるレビューピース
 #
 # フロー:
 # plan -> implement -> ai_review -> reviewers (parallel) -> supervise -> COMPLETE
@@ -10,12 +10,12 @@
 #                                   any("needs_fix") → fix → reviewers
 #
 # テンプレート変数:
-#   {iteration}      - ワークフロー全体のターン数（全エージェントで実行されたムーブメントの合計）
-#   {max_iterations} - ワークフローの最大イテレーション数
+#   {iteration}      - ピース全体のターン数（全エージェントで実行されたムーブメントの合計）
+#   {max_iterations} - ピースの最大イテレーション数
 #   {movement_iteration} - ムーブメントごとのイテレーション数（このムーブメントが何回実行されたか）
 #   {task}           - 元のユーザー要求
 #   {previous_response} - 前のムーブメントの出力
-#   {user_inputs}    - ワークフロー中に蓄積されたユーザー入力
+#   {user_inputs}    - ピース中に蓄積されたユーザー入力
 #   {report_dir}     - レポートディレクトリ名（例: "20250126-143052-task-summary"）
 
 name: expert
@@ -101,7 +101,7 @@ movements:
     instruction_template: |
       planムーブメントで立てた計画に従って実装してください。
       計画レポート（{report:00-plan.md}）を参照し、実装を進めてください。
-      Workflow Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
+      Piece Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
 
       **Scopeレポートフォーマット（実装開始時に作成）:**
       ```markdown
@@ -549,7 +549,7 @@ movements:
 
       テスト実行、ビルド確認、最終承認を行ってください。
 
-      **ワークフロー全体の確認:**
+      **ピース全体の確認:**
       1. 計画（{report:00-plan.md}）と実装結果が一致しているか
       2. 各レビュームーブメントの指摘が対応されているか
       3. 元のタスク目的が達成されているか

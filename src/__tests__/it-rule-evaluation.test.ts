@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { WorkflowMovement, WorkflowState, WorkflowRule, AgentResponse } from '../core/models/index.js';
+import type { PieceMovement, PieceState, PieceRule, AgentResponse } from '../core/models/index.js';
 
 // --- Mocks ---
 
@@ -24,7 +24,7 @@ const mockCallAiJudge = vi.fn();
 vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
-  getBuiltinWorkflowsEnabled: vi.fn().mockReturnValue(true),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock('../infra/config/project/projectConfig.js', () => ({
@@ -33,21 +33,21 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { detectMatchedRule, evaluateAggregateConditions } from '../core/workflow/index.js';
+import { detectMatchedRule, evaluateAggregateConditions } from '../core/piece/index.js';
 import { detectRuleIndex } from '../infra/claude/index.js';
-import type { RuleMatch, RuleEvaluatorContext } from '../core/workflow/index.js';
+import type { RuleMatch, RuleEvaluatorContext } from '../core/piece/index.js';
 
 // --- Test helpers ---
 
-function makeRule(condition: string, next: string, extra?: Partial<WorkflowRule>): WorkflowRule {
+function makeRule(condition: string, next: string, extra?: Partial<PieceRule>): PieceRule {
   return { condition, next, ...extra };
 }
 
 function makeMovement(
   name: string,
-  rules: WorkflowRule[],
-  parallel?: WorkflowMovement[],
-): WorkflowMovement {
+  rules: PieceRule[],
+  parallel?: PieceMovement[],
+): PieceMovement {
   return {
     name,
     agent: 'test-agent',
@@ -59,9 +59,9 @@ function makeMovement(
   };
 }
 
-function makeState(movementOutputs?: Map<string, AgentResponse>): WorkflowState {
+function makeState(movementOutputs?: Map<string, AgentResponse>): PieceState {
   return {
-    workflowName: 'it-test',
+    pieceName: 'it-test',
     currentMovement: 'test',
     iteration: 1,
     status: 'running',
@@ -399,7 +399,7 @@ describe('Rule Evaluation IT: movements without rules', () => {
   });
 
   it('should return undefined for movement with no rules', async () => {
-    const step: WorkflowMovement = {
+    const step: PieceMovement = {
       name: 'step',
       agent: 'agent',
       agentDisplayName: 'step',

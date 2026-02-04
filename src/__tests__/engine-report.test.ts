@@ -8,8 +8,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
-import { isReportObjectConfig } from '../core/workflow/index.js';
-import type { WorkflowMovement, ReportObjectConfig, ReportConfig } from '../core/models/index.js';
+import { isReportObjectConfig } from '../core/piece/index.js';
+import type { PieceMovement, ReportObjectConfig, ReportConfig } from '../core/models/index.js';
 
 /**
  * Extracted emitMovementReports logic for unit testing.
@@ -19,7 +19,7 @@ import type { WorkflowMovement, ReportObjectConfig, ReportConfig } from '../core
  */
 function emitMovementReports(
   emitter: EventEmitter,
-  movement: WorkflowMovement,
+  movement: PieceMovement,
   reportDir: string,
   projectCwd: string,
 ): void {
@@ -39,7 +39,7 @@ function emitMovementReports(
 
 function emitIfReportExists(
   emitter: EventEmitter,
-  movement: WorkflowMovement,
+  movement: PieceMovement,
   baseDir: string,
   fileName: string,
 ): void {
@@ -49,8 +49,8 @@ function emitIfReportExists(
   }
 }
 
-/** Create a minimal WorkflowMovement for testing */
-function createMovement(overrides: Partial<WorkflowMovement> = {}): WorkflowMovement {
+/** Create a minimal PieceMovement for testing */
+function createMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'test-movement',
     agent: 'coder',

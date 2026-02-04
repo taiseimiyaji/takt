@@ -1,99 +1,99 @@
 /**
  * Task execution orchestration.
  *
- * Coordinates workflow selection, worktree creation, task execution,
+ * Coordinates piece selection, worktree creation, task execution,
  * auto-commit, and PR creation. Extracted from cli.ts to avoid
  * mixing CLI parsing with business logic.
  */
 
 import {
-  getCurrentWorkflow,
-  listWorkflows,
-  listWorkflowEntries,
-  isWorkflowPath,
-  loadAllWorkflowsWithSources,
-  getWorkflowCategories,
-  buildCategorizedWorkflows,
+  getCurrentPiece,
+  listPieces,
+  listPieceEntries,
+  isPiecePath,
+  loadAllPiecesWithSources,
+  getPieceCategories,
+  buildCategorizedPieces,
 } from '../../../infra/config/index.js';
 import { confirm } from '../../../shared/prompt/index.js';
 import { createSharedClone, autoCommitAndPush, summarizeTaskName } from '../../../infra/task/index.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
+import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import { info, error, success } from '../../../shared/ui/index.js';
 import { createLogger } from '../../../shared/utils/index.js';
 import { createPullRequest, buildPrBody } from '../../../infra/github/index.js';
 import { executeTask } from './taskExecution.js';
 import type { TaskExecutionOptions, WorktreeConfirmationResult, SelectAndExecuteOptions } from './types.js';
 import {
-  warnMissingWorkflows,
-  selectWorkflowFromCategorizedWorkflows,
-  selectWorkflowFromEntries,
-} from '../../workflowSelection/index.js';
+  warnMissingPieces,
+  selectPieceFromCategorizedPieces,
+  selectPieceFromEntries,
+} from '../../pieceSelection/index.js';
 
 export type { WorktreeConfirmationResult, SelectAndExecuteOptions };
 
 const log = createLogger('selectAndExecute');
 
 /**
- * Select a workflow interactively with directory categories and bookmarks.
+ * Select a piece interactively with directory categories and bookmarks.
  */
-async function selectWorkflowWithDirectoryCategories(cwd: string): Promise<string | null> {
-  const availableWorkflows = listWorkflows(cwd);
-  const currentWorkflow = getCurrentWorkflow(cwd);
+async function selectPieceWithDirectoryCategories(cwd: string): Promise<string | null> {
+  const availablePieces = listPieces(cwd);
+  const currentPiece = getCurrentPiece(cwd);
 
-  if (availableWorkflows.length === 0) {
-    info(`No workflows found. Using default: ${DEFAULT_WORKFLOW_NAME}`);
-    return DEFAULT_WORKFLOW_NAME;
+  if (availablePieces.length === 0) {
+    info(`No pieces found. Using default: ${DEFAULT_PIECE_NAME}`);
+    return DEFAULT_PIECE_NAME;
   }
 
-  if (availableWorkflows.length === 1 && availableWorkflows[0]) {
-    return availableWorkflows[0];
+  if (availablePieces.length === 1 && availablePieces[0]) {
+    return availablePieces[0];
   }
 
-  const entries = listWorkflowEntries(cwd);
-  return selectWorkflowFromEntries(entries, currentWorkflow);
+  const entries = listPieceEntries(cwd);
+  return selectPieceFromEntries(entries, currentPiece);
 }
 
 
 /**
- * Select a workflow interactively with 2-stage category support.
+ * Select a piece interactively with 2-stage category support.
  */
-async function selectWorkflow(cwd: string): Promise<string | null> {
-  const categoryConfig = getWorkflowCategories(cwd);
+async function selectPiece(cwd: string): Promise<string | null> {
+  const categoryConfig = getPieceCategories(cwd);
   if (categoryConfig) {
-    const current = getCurrentWorkflow(cwd);
-    const allWorkflows = loadAllWorkflowsWithSources(cwd);
-    if (allWorkflows.size === 0) {
-      info(`No workflows found. Using default: ${DEFAULT_WORKFLOW_NAME}`);
-      return DEFAULT_WORKFLOW_NAME;
+    const current = getCurrentPiece(cwd);
+    const allPieces = loadAllPiecesWithSources(cwd);
+    if (allPieces.size === 0) {
+      info(`No pieces found. Using default: ${DEFAULT_PIECE_NAME}`);
+      return DEFAULT_PIECE_NAME;
     }
-    const categorized = buildCategorizedWorkflows(allWorkflows, categoryConfig);
-    warnMissingWorkflows(categorized.missingWorkflows);
-    return selectWorkflowFromCategorizedWorkflows(categorized, current);
+    const categorized = buildCategorizedPieces(allPieces, categoryConfig);
+    warnMissingPieces(categorized.missingPieces);
+    return selectPieceFromCategorizedPieces(categorized, current);
   }
-  return selectWorkflowWithDirectoryCategories(cwd);
+  return selectPieceWithDirectoryCategories(cwd);
 }
 
 /**
- * Determine workflow to use.
+ * Determine piece to use.
  *
- * - If override looks like a path (isWorkflowPath), return it directly (validation is done at load time).
- * - If override is a name, validate it exists in available workflows.
+ * - If override looks like a path (isPiecePath), return it directly (validation is done at load time).
+ * - If override is a name, validate it exists in available pieces.
  * - If no override, prompt user to select interactively.
  */
-export async function determineWorkflow(cwd: string, override?: string): Promise<string | null> {
+export async function determinePiece(cwd: string, override?: string): Promise<string | null> {
   if (override) {
-    if (isWorkflowPath(override)) {
+    if (isPiecePath(override)) {
       return override;
     }
-    const availableWorkflows = listWorkflows(cwd);
-    const knownWorkflows = availableWorkflows.length === 0 ? [DEFAULT_WORKFLOW_NAME] : availableWorkflows;
-    if (!knownWorkflows.includes(override)) {
-      error(`Workflow not found: ${override}`);
+    const availablePieces = listPieces(cwd);
+    const knownPieces = availablePieces.length === 0 ? [DEFAULT_PIECE_NAME] : availablePieces;
+    if (!knownPieces.includes(override)) {
+      error(`Piece not found: ${override}`);
       return null;
     }
     return override;
   }
-  return selectWorkflow(cwd);
+  return selectPiece(cwd);
 }
 
 export async function confirmAndCreateWorktree(
@@ -123,7 +123,7 @@ export async function confirmAndCreateWorktree(
 }
 
 /**
- * Execute a task with workflow selection, optional worktree, and auto-commit.
+ * Execute a task with piece selection, optional worktree, and auto-commit.
  * Shared by direct task execution and interactive mode.
  */
 export async function selectAndExecuteTask(
@@ -132,9 +132,9 @@ export async function selectAndExecuteTask(
   options?: SelectAndExecuteOptions,
   agentOverrides?: TaskExecutionOptions,
 ): Promise<void> {
-  const workflowIdentifier = await determineWorkflow(cwd, options?.workflow);
+  const pieceIdentifier = await determinePiece(cwd, options?.piece);
 
-  if (workflowIdentifier === null) {
+  if (pieceIdentifier === null) {
     info('Cancelled');
     return;
   }
@@ -145,11 +145,11 @@ export async function selectAndExecuteTask(
     options?.createWorktree,
   );
 
-  log.info('Starting task execution', { workflow: workflowIdentifier, worktree: isWorktree });
+  log.info('Starting task execution', { piece: pieceIdentifier, worktree: isWorktree });
   const taskSuccess = await executeTask({
     task,
     cwd: execCwd,
-    workflowIdentifier,
+    pieceIdentifier,
     projectCwd: cwd,
     agentOverrides,
     interactiveUserInput: options?.interactiveUserInput === true,
@@ -168,7 +168,7 @@ export async function selectAndExecuteTask(
       const shouldCreatePr = options?.autoPr === true || await confirm('Create pull request?', false);
       if (shouldCreatePr) {
         info('Creating pull request...');
-        const prBody = buildPrBody(undefined, `Workflow \`${workflowIdentifier}\` completed successfully.`);
+        const prBody = buildPrBody(undefined, `Piece \`${pieceIdentifier}\` completed successfully.`);
         const prResult = createPullRequest(execCwd, {
           branch,
           title: task.length > 100 ? `${task.slice(0, 97)}...` : task,

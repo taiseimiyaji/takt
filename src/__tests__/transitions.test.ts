@@ -1,12 +1,12 @@
 /**
- * Tests for workflow transitions module (movement-based)
+ * Tests for piece transitions module (movement-based)
  */
 
 import { describe, it, expect } from 'vitest';
-import { determineNextMovementByRules } from '../core/workflow/index.js';
-import type { WorkflowMovement } from '../core/models/index.js';
+import { determineNextMovementByRules } from '../core/piece/index.js';
+import type { PieceMovement } from '../core/models/index.js';
 
-function createMovementWithRules(rules: { condition: string; next: string }[]): WorkflowMovement {
+function createMovementWithRules(rules: { condition: string; next: string }[]): PieceMovement {
   return {
     name: 'test-step',
     agent: 'test-agent',
@@ -42,7 +42,7 @@ describe('determineNextMovementByRules', () => {
   });
 
   it('should return null when movement has no rules', () => {
-    const step: WorkflowMovement = {
+    const step: PieceMovement = {
       name: 'test-step',
       agent: 'test-agent',
       agentDisplayName: 'Test Agent',
@@ -63,7 +63,7 @@ describe('determineNextMovementByRules', () => {
 
   it('should return null when rule exists but next is undefined', () => {
     // Parallel sub-movement rules may omit `next` (optional field)
-    const step: WorkflowMovement = {
+    const step: PieceMovement = {
       name: 'sub-step',
       agent: 'test-agent',
       agentDisplayName: 'Test Agent',

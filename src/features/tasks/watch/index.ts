@@ -6,7 +6,7 @@
  */
 
 import { TaskRunner, type TaskInfo, TaskWatcher } from '../../../infra/task/index.js';
-import { getCurrentWorkflow } from '../../../infra/config/index.js';
+import { getCurrentPiece } from '../../../infra/config/index.js';
 import {
   header,
   info,
@@ -15,7 +15,7 @@ import {
   blankLine,
 } from '../../../shared/ui/index.js';
 import { executeAndCompleteTask } from '../execute/taskExecution.js';
-import { DEFAULT_WORKFLOW_NAME } from '../../../shared/constants.js';
+import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import type { TaskExecutionOptions } from '../execute/types.js';
 
 /**
@@ -23,7 +23,7 @@ import type { TaskExecutionOptions } from '../execute/types.js';
  * Runs until Ctrl+C.
  */
 export async function watchTasks(cwd: string, options?: TaskExecutionOptions): Promise<void> {
-  const workflowName = getCurrentWorkflow(cwd) || DEFAULT_WORKFLOW_NAME;
+  const pieceName = getCurrentPiece(cwd) || DEFAULT_PIECE_NAME;
   const taskRunner = new TaskRunner(cwd);
   const watcher = new TaskWatcher(cwd);
 
@@ -32,7 +32,7 @@ export async function watchTasks(cwd: string, options?: TaskExecutionOptions): P
   let failCount = 0;
 
   header('TAKT Watch Mode');
-  info(`Workflow: ${workflowName}`);
+  info(`Piece: ${pieceName}`);
   info(`Watching: ${taskRunner.getTasksDir()}`);
   info('Waiting for tasks... (Ctrl+C to stop)');
   blankLine();
@@ -52,7 +52,7 @@ export async function watchTasks(cwd: string, options?: TaskExecutionOptions): P
       info(`=== Task ${taskCount}: ${task.name} ===`);
       blankLine();
 
-      const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, workflowName, options);
+      const taskSuccess = await executeAndCompleteTask(task, taskRunner, cwd, pieceName, options);
 
       if (taskSuccess) {
         successCount++;

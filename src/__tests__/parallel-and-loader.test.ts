@@ -3,12 +3,12 @@
  *
  * Covers:
  * - Schema validation for parallel sub-movements
- * - Workflow loader normalization of ai() conditions and parallel movements
+ * - Piece loader normalization of ai() conditions and parallel movements
  * - Engine parallel movement aggregation logic
  */
 
 import { describe, it, expect } from 'vitest';
-import { WorkflowConfigRawSchema, ParallelSubMovementRawSchema, WorkflowMovementRawSchema } from '../core/models/index.js';
+import { PieceConfigRawSchema, ParallelSubMovementRawSchema, PieceMovementRawSchema } from '../core/models/index.js';
 
 describe('ParallelSubMovementRawSchema', () => {
   it('should validate a valid parallel sub-movement', () => {
@@ -73,7 +73,7 @@ describe('ParallelSubMovementRawSchema', () => {
   });
 });
 
-describe('WorkflowMovementRawSchema with parallel', () => {
+describe('PieceMovementRawSchema with parallel', () => {
   it('should accept a movement with parallel sub-movements (no agent)', () => {
     const raw = {
       name: 'parallel-review',
@@ -86,7 +86,7 @@ describe('WorkflowMovementRawSchema with parallel', () => {
       ],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 
@@ -96,7 +96,7 @@ describe('WorkflowMovementRawSchema with parallel', () => {
       instruction_template: 'Do something',
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe('WorkflowMovementRawSchema with parallel', () => {
       instruction_template: 'Code something',
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 
@@ -117,15 +117,15 @@ describe('WorkflowMovementRawSchema with parallel', () => {
       parallel: [],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 });
 
-describe('WorkflowConfigRawSchema with parallel movements', () => {
-  it('should validate a workflow with parallel movement', () => {
+describe('PieceConfigRawSchema with parallel movements', () => {
+  it('should validate a piece with parallel movement', () => {
     const raw = {
-      name: 'test-parallel-workflow',
+      name: 'test-parallel-piece',
       movements: [
         {
           name: 'plan',
@@ -148,7 +148,7 @@ describe('WorkflowConfigRawSchema with parallel movements', () => {
       max_iterations: 10,
     };
 
-    const result = WorkflowConfigRawSchema.safeParse(raw);
+    const result = PieceConfigRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.movements).toHaveLength(2);
@@ -156,9 +156,9 @@ describe('WorkflowConfigRawSchema with parallel movements', () => {
     }
   });
 
-  it('should validate a workflow mixing normal and parallel movements', () => {
+  it('should validate a piece mixing normal and parallel movements', () => {
     const raw = {
-      name: 'mixed-workflow',
+      name: 'mixed-piece',
       movements: [
         { name: 'plan', agent: 'planner.md', rules: [{ condition: 'Done', next: 'implement' }] },
         { name: 'implement', agent: 'coder.md', rules: [{ condition: 'Done', next: 'review' }] },
@@ -174,7 +174,7 @@ describe('WorkflowConfigRawSchema with parallel movements', () => {
       initial_movement: 'plan',
     };
 
-    const result = WorkflowConfigRawSchema.safeParse(raw);
+    const result = PieceConfigRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.movements[0].agent).toBe('planner.md');
@@ -183,7 +183,7 @@ describe('WorkflowConfigRawSchema with parallel movements', () => {
   });
 });
 
-describe('ai() condition in WorkflowRuleSchema', () => {
+describe('ai() condition in PieceRuleSchema', () => {
   it('should accept ai() condition as a string', () => {
     const raw = {
       name: 'test-step',
@@ -194,7 +194,7 @@ describe('ai() condition in WorkflowRuleSchema', () => {
       ],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.rules?.[0].condition).toBe('ai("All reviews approved")');
@@ -212,13 +212,13 @@ describe('ai() condition in WorkflowRuleSchema', () => {
       ],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 });
 
 describe('ai() condition regex parsing', () => {
-  // Test the regex pattern used in workflowLoader.ts
+  // Test the regex pattern used in pieceLoader.ts
   const AI_CONDITION_REGEX = /^ai\("(.+)"\)$/;
 
   it('should match simple ai() condition', () => {
@@ -299,7 +299,7 @@ describe('all()/any() aggregate condition regex parsing', () => {
   });
 });
 
-describe('all()/any() condition in WorkflowMovementRawSchema', () => {
+describe('all()/any() condition in PieceMovementRawSchema', () => {
   it('should accept all() condition as a string', () => {
     const raw = {
       name: 'parallel-review',
@@ -312,7 +312,7 @@ describe('all()/any() condition in WorkflowMovementRawSchema', () => {
       ],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.rules?.[0].condition).toBe('all("approved")');
@@ -333,7 +333,7 @@ describe('all()/any() condition in WorkflowMovementRawSchema', () => {
       ],
     };
 
-    const result = WorkflowMovementRawSchema.safeParse(raw);
+    const result = PieceMovementRawSchema.safeParse(raw);
     expect(result.success).toBe(true);
   });
 });

@@ -23,16 +23,16 @@ export type {
   SessionState,
 } from './session.js';
 
-// Workflow configuration and runtime state
+// Piece configuration and runtime state
 export type {
-  WorkflowRule,
+  PieceRule,
   ReportConfig,
   ReportObjectConfig,
-  WorkflowMovement,
+  PieceMovement,
   LoopDetectionConfig,
-  WorkflowConfig,
-  WorkflowState,
-} from './workflow-types.js';
+  PieceConfig,
+  PieceState,
+} from './piece-types.js';
 
 // Configuration types (global and project)
 export type {

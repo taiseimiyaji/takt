@@ -9,17 +9,17 @@ import { generateReportDir as buildReportDir } from '../../shared/utils/index.js
 import type {
   SessionLog,
   NdjsonRecord,
-  NdjsonWorkflowStart,
+  NdjsonPieceStart,
   LatestLogPointer,
 } from '../../shared/utils/index.js';
 
 export type {
   SessionLog,
-  NdjsonWorkflowStart,
+  NdjsonPieceStart,
   NdjsonStepStart,
   NdjsonStepComplete,
-  NdjsonWorkflowComplete,
-  NdjsonWorkflowAbort,
+  NdjsonPieceComplete,
+  NdjsonPieceAbort,
   NdjsonPhaseStart,
   NdjsonPhaseComplete,
   NdjsonInteractiveStart,
@@ -39,11 +39,11 @@ export class SessionManager {
   }
 
 
-  /** Initialize an NDJSON log file with the workflow_start record */
+  /** Initialize an NDJSON log file with the piece_start record */
   initNdjsonLog(
     sessionId: string,
     task: string,
-    workflowName: string,
+    pieceName: string,
     projectDir?: string,
   ): string {
     const logsDir = projectDir
@@ -52,10 +52,10 @@ export class SessionManager {
     ensureDir(logsDir);
 
     const filepath = join(logsDir, `${sessionId}.jsonl`);
-    const record: NdjsonWorkflowStart = {
-      type: 'workflow_start',
+    const record: NdjsonPieceStart = {
+      type: 'piece_start',
       task,
-      workflowName,
+      pieceName,
       startTime: new Date().toISOString(),
     };
     this.appendNdjsonLine(filepath, record);
@@ -79,11 +79,11 @@ export class SessionManager {
       const record = JSON.parse(line) as NdjsonRecord;
 
       switch (record.type) {
-        case 'workflow_start':
+        case 'piece_start':
           sessionLog = {
             task: record.task,
             projectDir: '',
-            workflowName: record.workflowName,
+            pieceName: record.pieceName,
             iterations: 0,
             startTime: record.startTime,
             status: 'running',
@@ -108,14 +108,14 @@ export class SessionManager {
           }
           break;
 
-        case 'workflow_complete':
+        case 'piece_complete':
           if (sessionLog) {
             sessionLog.status = 'completed';
             sessionLog.endTime = record.endTime;
           }
           break;
 
-        case 'workflow_abort':
+        case 'piece_abort':
           if (sessionLog) {
             sessionLog.status = 'aborted';
             sessionLog.endTime = record.endTime;
@@ -149,12 +149,12 @@ export class SessionManager {
   createSessionLog(
     task: string,
     projectDir: string,
-    workflowName: string,
+    pieceName: string,
   ): SessionLog {
     return {
       task,
       projectDir,
-      workflowName,
+      pieceName,
       iterations: 0,
       startTime: new Date().toISOString(),
       status: 'running',
@@ -227,7 +227,7 @@ export class SessionManager {
       sessionId,
       logFile: `${sessionId}.jsonl`,
       task: log.task,
-      workflowName: log.workflowName,
+      pieceName: log.pieceName,
       status: log.status,
       startTime: log.startTime,
       updatedAt: new Date().toISOString(),
@@ -247,10 +247,10 @@ export function appendNdjsonLine(filepath: string, record: NdjsonRecord): void {
 export function initNdjsonLog(
   sessionId: string,
   task: string,
-  workflowName: string,
+  pieceName: string,
   projectDir?: string,
 ): string {
-  return defaultManager.initNdjsonLog(sessionId, task, workflowName, projectDir);
+  return defaultManager.initNdjsonLog(sessionId, task, pieceName, projectDir);
 }
 
 
@@ -270,9 +270,9 @@ export function generateReportDir(task: string): string {
 export function createSessionLog(
   task: string,
   projectDir: string,
-  workflowName: string,
+  pieceName: string,
 ): SessionLog {
-  return defaultManager.createSessionLog(task, projectDir, workflowName);
+  return defaultManager.createSessionLog(task, projectDir, pieceName);
 }
 
 export function finalizeSessionLog(

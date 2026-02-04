@@ -5,8 +5,8 @@
 import type { Language } from '../../../core/models/index.js';
 import type { ProviderType } from '../../../infra/providers/index.js';
 
-/** Result of workflow execution */
-export interface WorkflowExecutionResult {
+/** Result of piece execution */
+export interface PieceExecutionResult {
   success: boolean;
   reason?: string;
 }
@@ -19,8 +19,8 @@ export interface InteractiveMetadata {
   task?: string;
 }
 
-/** Options for workflow execution */
-export interface WorkflowExecutionOptions {
+/** Options for piece execution */
+export interface PieceExecutionOptions {
   /** Header prefix for display */
   headerPrefix?: string;
   /** Project root directory (where .takt/ lives). */
@@ -45,8 +45,8 @@ export interface ExecuteTaskOptions {
   task: string;
   /** Working directory (may be a clone path) */
   cwd: string;
-  /** Workflow name or path (auto-detected by isWorkflowPath) */
-  workflowIdentifier: string;
+  /** Piece name or path (auto-detected by isPiecePath) */
+  pieceIdentifier: string;
   /** Project root (where .takt/ lives) */
   projectCwd: string;
   /** Agent provider/model overrides */
@@ -62,15 +62,15 @@ export interface PipelineExecutionOptions {
   issueNumber?: number;
   /** Task content (alternative to issue) */
   task?: string;
-  /** Workflow name or path to workflow file */
-  workflow: string;
+  /** Piece name or path to piece file */
+  piece: string;
   /** Branch name (auto-generated if omitted) */
   branch?: string;
   /** Whether to create a PR after successful execution */
   autoPr: boolean;
   /** Repository in owner/repo format */
   repo?: string;
-  /** Skip branch creation, commit, and push (workflow-only execution) */
+  /** Skip branch creation, commit, and push (piece-only execution) */
   skipGit?: boolean;
   /** Working directory */
   cwd: string;
@@ -87,7 +87,7 @@ export interface WorktreeConfirmationResult {
 export interface SelectAndExecuteOptions {
   autoPr?: boolean;
   repo?: string;
-  workflow?: string;
+  piece?: string;
   createWorktree?: boolean | undefined;
   /** Enable interactive user input during step transitions */
   interactiveUserInput?: boolean;

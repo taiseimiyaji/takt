@@ -10,7 +10,7 @@ vi.mock('../infra/providers/index.js', () => ({
 
 vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(),
-  getBuiltinWorkflowsEnabled: vi.fn().mockReturnValue(true),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
@@ -41,7 +41,7 @@ beforeEach(() => {
   mockLoadGlobalConfig.mockReturnValue({
     language: 'ja',
     trustedDirectories: [],
-    defaultWorkflow: 'default',
+    defaultPiece: 'default',
     logLevel: 'info',
     provider: 'claude',
     model: 'haiku',
@@ -168,7 +168,7 @@ describe('summarizeTaskName', () => {
     mockLoadGlobalConfig.mockReturnValue({
       language: 'ja',
       trustedDirectories: [],
-      defaultWorkflow: 'default',
+      defaultPiece: 'default',
       logLevel: 'info',
       provider: 'codex',
       model: 'gpt-4',

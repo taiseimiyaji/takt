@@ -2,11 +2,11 @@
  * Pipeline execution mode integration tests.
  *
  * Tests various --pipeline mode option combinations including:
- * - --task, --issue, --skip-git, --auto-pr, --workflow (name/path), --provider, --model
+ * - --task, --issue, --skip-git, --auto-pr, --piece (name/path), --provider, --model
  * - Exit codes for different failure scenarios
  *
  * Mocked: git (child_process), GitHub API, UI, notifications, session, phase-runner, config
- * Not mocked: executePipeline, executeTask, WorkflowEngine, runAgent, rule evaluation
+ * Not mocked: executePipeline, executeTask, PieceEngine, runAgent, rule evaluation
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -109,7 +109,7 @@ vi.mock('../infra/config/paths.js', async (importOriginal) => {
     updateAgentSession: vi.fn(),
     loadWorktreeSessions: vi.fn().mockReturnValue({}),
     updateWorktreeSession: vi.fn(),
-    getCurrentWorkflow: vi.fn().mockReturnValue('default'),
+    getCurrentPiece: vi.fn().mockReturnValue('default'),
     getProjectConfigDir: vi.fn().mockImplementation((cwd: string) => join(cwd, '.takt')),
   };
 });
@@ -141,7 +141,7 @@ vi.mock('../shared/prompt/index.js', () => ({
   promptInput: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock('../core/workflow/phase-runner.js', () => ({
+vi.mock('../core/piece/phase-runner.js', () => ({
   needsStatusJudgmentPhase: vi.fn().mockReturnValue(false),
   runReportPhase: vi.fn().mockResolvedValue(undefined),
   runStatusJudgmentPhase: vi.fn().mockResolvedValue(''),
@@ -152,13 +152,13 @@ vi.mock('../core/workflow/phase-runner.js', () => ({
 import { executePipeline } from '../features/pipeline/index.js';
 import {
   EXIT_ISSUE_FETCH_FAILED,
-  EXIT_WORKFLOW_FAILED,
+  EXIT_PIECE_FAILED,
   EXIT_PR_CREATION_FAILED,
 } from '../shared/exitCodes.js';
 
 // --- Test helpers ---
 
-function createTestWorkflowDir(): { dir: string; workflowPath: string } {
+function createTestPieceDir(): { dir: string; piecePath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'takt-it-pm-'));
   mkdirSync(join(dir, '.takt', 'reports', 'test-report-dir'), { recursive: true });
 
@@ -168,9 +168,9 @@ function createTestWorkflowDir(): { dir: string; workflowPath: string } {
   writeFileSync(join(agentsDir, 'coder.md'), 'You are a coder.');
   writeFileSync(join(agentsDir, 'reviewer.md'), 'You are a reviewer.');
 
-  const workflowYaml = `
+  const pieceYaml = `
 name: it-pipeline
-description: Pipeline test workflow
+description: Pipeline test piece
 max_iterations: 10
 initial_movement: plan
 
@@ -203,10 +203,10 @@ movements:
     instruction: "{task}"
 `;
 
-  const workflowPath = join(dir, 'workflow.yaml');
-  writeFileSync(workflowPath, workflowYaml);
+  const piecePath = join(dir, 'piece.yaml');
+  writeFileSync(piecePath, pieceYaml);
 
-  return { dir, workflowPath };
+  return { dir, piecePath };
 }
 
 function happyScenario(): void {
@@ -217,15 +217,15 @@ function happyScenario(): void {
   ]);
 }
 
-describe('Pipeline Modes IT: --task + --workflow path', () => {
+describe('Pipeline Modes IT: --task + --piece path', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -238,7 +238,7 @@ describe('Pipeline Modes IT: --task + --workflow path', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -248,30 +248,30 @@ describe('Pipeline Modes IT: --task + --workflow path', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should return EXIT_WORKFLOW_FAILED (3) on ABORT', async () => {
+  it('should return EXIT_PIECE_FAILED (3) on ABORT', async () => {
     setMockScenario([
       { agent: 'planner', status: 'done', content: '[PLAN:2]\n\nRequirements unclear.' },
     ]);
 
     const exitCode = await executePipeline({
       task: 'Vague task',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    expect(exitCode).toBe(EXIT_WORKFLOW_FAILED);
+    expect(exitCode).toBe(EXIT_PIECE_FAILED);
   });
 });
 
-describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
+describe('Pipeline Modes IT: --task + --piece name (builtin)', () => {
   let testDir: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
   });
 
@@ -280,7 +280,7 @@ describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should load and execute builtin minimal workflow by name', async () => {
+  it('should load and execute builtin minimal piece by name', async () => {
     setMockScenario([
       { agent: 'coder', status: 'done', content: 'Implementation complete' },
       { agent: 'ai-antipattern-reviewer', status: 'done', content: 'No AI-specific issues' },
@@ -289,7 +289,7 @@ describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: 'minimal',
+      piece: 'minimal',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -299,29 +299,29 @@ describe('Pipeline Modes IT: --task + --workflow name (builtin)', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should return EXIT_WORKFLOW_FAILED for non-existent workflow name', async () => {
+  it('should return EXIT_PIECE_FAILED for non-existent piece name', async () => {
     const exitCode = await executePipeline({
       task: 'Test task',
-      workflow: 'non-existent-workflow-xyz',
+      piece: 'non-existent-piece-xyz',
       autoPr: false,
       skipGit: true,
       cwd: testDir,
       provider: 'mock',
     });
 
-    expect(exitCode).toBe(EXIT_WORKFLOW_FAILED);
+    expect(exitCode).toBe(EXIT_PIECE_FAILED);
   });
 });
 
 describe('Pipeline Modes IT: --issue', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -329,7 +329,7 @@ describe('Pipeline Modes IT: --issue', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should fetch issue and execute workflow', async () => {
+  it('should fetch issue and execute piece', async () => {
     mockCheckGhCli.mockReturnValue({ available: true });
     mockFetchIssue.mockReturnValue({
       number: 42,
@@ -341,7 +341,7 @@ describe('Pipeline Modes IT: --issue', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 42,
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -357,7 +357,7 @@ describe('Pipeline Modes IT: --issue', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 42,
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -375,7 +375,7 @@ describe('Pipeline Modes IT: --issue', () => {
 
     const exitCode = await executePipeline({
       issueNumber: 999,
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -387,7 +387,7 @@ describe('Pipeline Modes IT: --issue', () => {
 
   it('should return EXIT_ISSUE_FETCH_FAILED when neither --issue nor --task specified', async () => {
     const exitCode = await executePipeline({
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -400,13 +400,13 @@ describe('Pipeline Modes IT: --issue', () => {
 
 describe('Pipeline Modes IT: --auto-pr', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -420,7 +420,7 @@ describe('Pipeline Modes IT: --auto-pr', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: true,
       skipGit: false,
       cwd: testDir,
@@ -437,7 +437,7 @@ describe('Pipeline Modes IT: --auto-pr', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: true,
       skipGit: false,
       cwd: testDir,
@@ -452,7 +452,7 @@ describe('Pipeline Modes IT: --auto-pr', () => {
 
     const exitCode = await executePipeline({
       task: 'Add a feature',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: true,
       skipGit: true,
       cwd: testDir,
@@ -466,13 +466,13 @@ describe('Pipeline Modes IT: --auto-pr', () => {
 
 describe('Pipeline Modes IT: --provider and --model overrides', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -480,12 +480,12 @@ describe('Pipeline Modes IT: --provider and --model overrides', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('should pass provider override to workflow execution', async () => {
+  it('should pass provider override to piece execution', async () => {
     happyScenario();
 
     const exitCode = await executePipeline({
       task: 'Test task',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -495,12 +495,12 @@ describe('Pipeline Modes IT: --provider and --model overrides', () => {
     expect(exitCode).toBe(0);
   });
 
-  it('should pass model override to workflow execution', async () => {
+  it('should pass model override to piece execution', async () => {
     happyScenario();
 
     const exitCode = await executePipeline({
       task: 'Test task',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,
@@ -514,13 +514,13 @@ describe('Pipeline Modes IT: --provider and --model overrides', () => {
 
 describe('Pipeline Modes IT: review → fix loop', () => {
   let testDir: string;
-  let workflowPath: string;
+  let piecePath: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const setup = createTestWorkflowDir();
+    const setup = createTestPieceDir();
     testDir = setup.dir;
-    workflowPath = setup.workflowPath;
+    piecePath = setup.piecePath;
   });
 
   afterEach(() => {
@@ -542,7 +542,7 @@ describe('Pipeline Modes IT: review → fix loop', () => {
 
     const exitCode = await executePipeline({
       task: 'Task with fix loop',
-      workflow: workflowPath,
+      piece: piecePath,
       autoPr: false,
       skipGit: true,
       cwd: testDir,

@@ -7,7 +7,7 @@
 
 import type { PermissionUpdate, AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
 import type { PermissionMode } from '../../core/models/index.js';
-import type { PermissionResult } from '../../core/workflow/index.js';
+import type { PermissionResult } from '../../core/piece/index.js';
 
 // Re-export PermissionResult for convenience
 export type { PermissionResult, PermissionUpdate };
@@ -126,7 +126,7 @@ export interface ClaudeCallOptions {
   systemPrompt?: string;
   /** SDK agents to register for sub-agent execution */
   agents?: Record<string, AgentDefinition>;
-  /** Permission mode for tool execution (from workflow step) */
+  /** Permission mode for tool execution (from piece step) */
   permissionMode?: PermissionMode;
   /** Enable streaming mode with callback for real-time output */
   onStream?: StreamCallback;

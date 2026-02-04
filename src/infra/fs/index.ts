@@ -4,11 +4,11 @@
 
 export type {
   SessionLog,
-  NdjsonWorkflowStart,
+  NdjsonPieceStart,
   NdjsonStepStart,
   NdjsonStepComplete,
-  NdjsonWorkflowComplete,
-  NdjsonWorkflowAbort,
+  NdjsonPieceComplete,
+  NdjsonPieceAbort,
   NdjsonPhaseStart,
   NdjsonPhaseComplete,
   NdjsonInteractiveStart,

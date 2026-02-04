@@ -20,7 +20,7 @@ you verify "**was the right thing built (Validation)**".
 
 ## Human-in-the-Loop Checkpoint
 
-You are the **human proxy** in the automated workflow. Before approval, verify the following.
+You are the **human proxy** in the automated piece. Before approval, verify the following.
 
 **Ask yourself what a human reviewer would check:**
 - Does this really solve the user's problem?
@@ -92,16 +92,16 @@ Check:
 
 **REJECT if spec violations are found.** Don't assume "probably correct"—actually read and cross-reference the specs.
 
-### 7. Workflow Overall Review
+### 7. Piece Overall Review
 
-**Check all reports in the report directory and verify overall workflow consistency.**
+**Check all reports in the report directory and verify overall piece consistency.**
 
 Check:
 - Does implementation match the plan (00-plan.md)?
 - Were all review step issues properly addressed?
 - Was the original task objective achieved?
 
-**Workflow-wide issues:**
+**Piece-wide issues:**
 | Issue | Action |
 |-------|--------|
 | Plan-implementation gap | REJECT - Request plan revision or implementation fix |

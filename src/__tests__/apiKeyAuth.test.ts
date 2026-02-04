@@ -84,7 +84,7 @@ describe('GlobalConfig load/save with API keys', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
       'anthropic_api_key: sk-ant-from-yaml',
@@ -101,7 +101,7 @@ describe('GlobalConfig load/save with API keys', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
     ].join('\n');
@@ -117,7 +117,7 @@ describe('GlobalConfig load/save with API keys', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
     ].join('\n');
@@ -137,7 +137,7 @@ describe('GlobalConfig load/save with API keys', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
     ].join('\n');
@@ -174,7 +174,7 @@ describe('resolveAnthropicApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
       'anthropic_api_key: sk-ant-from-yaml',
@@ -190,7 +190,7 @@ describe('resolveAnthropicApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
       'anthropic_api_key: sk-ant-from-yaml',
@@ -206,7 +206,7 @@ describe('resolveAnthropicApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
     ].join('\n');
@@ -248,7 +248,7 @@ describe('resolveOpenaiApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
       'openai_api_key: sk-openai-from-yaml',
@@ -264,7 +264,7 @@ describe('resolveOpenaiApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
       'openai_api_key: sk-openai-from-yaml',
@@ -280,7 +280,7 @@ describe('resolveOpenaiApiKey', () => {
     const yaml = [
       'language: en',
       'trusted_directories: []',
-      'default_workflow: default',
+      'default_piece: default',
       'log_level: info',
       'provider: claude',
     ].join('\n');

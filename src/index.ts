@@ -15,8 +15,8 @@ export {
   loadProjectConfig,
   saveProjectConfig,
   updateProjectConfig,
-  getCurrentWorkflow,
-  setCurrentWorkflow,
+  getCurrentPiece,
+  setCurrentPiece,
   isVerboseMode,
   type ProjectLocalConfig,
   writeFileAtomic,
@@ -98,9 +98,9 @@ export * from './infra/codex/index.js';
 // Agent execution
 export * from './agents/index.js';
 
-// Workflow engine
+// Piece engine
 export {
-  WorkflowEngine,
+  PieceEngine,
   COMPLETE_MOVEMENT,
   ABORT_MOVEMENT,
   ERROR_MESSAGES,
@@ -124,14 +124,14 @@ export {
   needsStatusJudgmentPhase,
   runReportPhase,
   runStatusJudgmentPhase,
-} from './core/workflow/index.js';
+} from './core/piece/index.js';
 export type {
-  WorkflowEvents,
+  PieceEvents,
   UserInputRequest,
   IterationLimitRequest,
   SessionUpdateCallback,
   IterationLimitCallback,
-  WorkflowEngineOptions,
+  PieceEngineOptions,
   LoopCheckResult,
   ProviderType,
   RuleMatch,
@@ -141,7 +141,7 @@ export type {
   InstructionContext,
   StatusRulesComponents,
   BlockedHandlerResult,
-} from './core/workflow/index.js';
+} from './core/piece/index.js';
 
 // Utilities
 export * from './shared/utils/index.js';

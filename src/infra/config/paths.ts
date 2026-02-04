@@ -90,8 +90,8 @@ export {
   loadProjectConfig,
   saveProjectConfig,
   updateProjectConfig,
-  getCurrentWorkflow,
-  setCurrentWorkflow,
+  getCurrentPiece,
+  setCurrentPiece,
   isVerboseMode,
   type ProjectLocalConfig,
 } from './project/projectConfig.js';

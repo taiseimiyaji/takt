@@ -1,5 +1,5 @@
-# Expert CQRS Review Workflow
-# Review workflow with CQRS+ES, Frontend, Security, and QA experts
+# Expert CQRS Review Piece
+# Review piece with CQRS+ES, Frontend, Security, and QA experts
 #
 # Flow:
 # plan -> implement -> ai_review -> reviewers (parallel) -> supervise -> COMPLETE
@@ -10,12 +10,12 @@
 #                                    any("needs_fix") → fix → reviewers
 #
 # Template Variables:
-#   {iteration}      - Workflow-wide turn count (total movements executed across all agents)
-#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {iteration}      - Piece-wide turn count (total movements executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the piece
 #   {movement_iteration} - Per-movement iteration count (how many times THIS movement has been executed)
 #   {task}           - Original user request
 #   {previous_response} - Output from the previous movement
-#   {user_inputs}    - Accumulated user inputs during workflow
+#   {user_inputs}    - Accumulated user inputs during piece
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: expert-cqrs
@@ -101,7 +101,7 @@ movements:
     instruction_template: |
       Follow the plan from the plan movement and implement.
       Refer to the plan report ({report:00-plan.md}) and proceed with implementation.
-      Use only the Report Directory files shown in Workflow Context. Do not search or open reports outside that directory.
+      Use only the Report Directory files shown in Piece Context. Do not search or open reports outside that directory.
 
       **Scope report format (create at implementation start):**
       ```markdown
@@ -550,7 +550,7 @@ movements:
 
       Run tests, verify the build, and perform final approval.
 
-      **Workflow Overall Review:**
+      **Piece Overall Review:**
       1. Does the implementation match the plan ({report:00-plan.md})?
       2. Were all review movement issues addressed?
       3. Was the original task objective achieved?

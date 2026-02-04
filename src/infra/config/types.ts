@@ -2,7 +2,7 @@
  * Config module type definitions
  */
 
-import type { WorkflowCategoryConfigNode } from '../../core/models/schemas.js';
+import type { PieceCategoryConfigNode } from '../../core/models/schemas.js';
 
 /** Permission mode for the project
  * - default: Uses Agent SDK's acceptEdits mode (auto-accepts file edits, minimal prompts)
@@ -14,17 +14,17 @@ export type PermissionMode = 'default' | 'sacrifice-my-pc';
 
 /** Project configuration stored in .takt/config.yaml */
 export interface ProjectLocalConfig {
-  /** Current workflow name */
-  workflow?: string;
+  /** Current piece name */
+  piece?: string;
   /** Provider selection for agent runtime */
   provider?: 'claude' | 'codex';
   /** Permission mode setting */
   permissionMode?: PermissionMode;
   /** Verbose output mode */
   verbose?: boolean;
-  /** Workflow categories (name -> workflow list) */
-  workflow_categories?: Record<string, WorkflowCategoryConfigNode>;
-  /** Show uncategorized workflows under Others category */
+  /** Piece categories (name -> piece list) */
+  piece_categories?: Record<string, PieceCategoryConfigNode>;
+  /** Show uncategorized pieces under Others category */
   show_others_category?: boolean;
   /** Display name for Others category */
   others_category_name?: string;

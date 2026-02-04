@@ -2,43 +2,43 @@
  * Instruction builder integration tests.
  *
  * Tests template variable expansion and auto-injection in buildInstruction().
- * Uses real workflow movement configs (not mocked) against the buildInstruction function.
+ * Uses real piece movement configs (not mocked) against the buildInstruction function.
  *
  * Not mocked: buildInstruction, buildReportInstruction, buildStatusJudgmentInstruction
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import type { WorkflowMovement, WorkflowRule, AgentResponse } from '../core/models/index.js';
+import type { PieceMovement, PieceRule, AgentResponse } from '../core/models/index.js';
 
 vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
   getLanguage: vi.fn().mockReturnValue('en'),
-  getBuiltinWorkflowsEnabled: vi.fn().mockReturnValue(true),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
-import { InstructionBuilder } from '../core/workflow/index.js';
-import { ReportInstructionBuilder, type ReportInstructionContext } from '../core/workflow/index.js';
-import { StatusJudgmentBuilder, type StatusJudgmentContext } from '../core/workflow/index.js';
-import type { InstructionContext } from '../core/workflow/index.js';
+import { InstructionBuilder } from '../core/piece/index.js';
+import { ReportInstructionBuilder, type ReportInstructionContext } from '../core/piece/index.js';
+import { StatusJudgmentBuilder, type StatusJudgmentContext } from '../core/piece/index.js';
+import type { InstructionContext } from '../core/piece/index.js';
 
 // Function wrappers for test readability
-function buildInstruction(movement: WorkflowMovement, ctx: InstructionContext): string {
+function buildInstruction(movement: PieceMovement, ctx: InstructionContext): string {
   return new InstructionBuilder(movement, ctx).build();
 }
-function buildReportInstruction(movement: WorkflowMovement, ctx: ReportInstructionContext): string {
+function buildReportInstruction(movement: PieceMovement, ctx: ReportInstructionContext): string {
   return new ReportInstructionBuilder(movement, ctx).build();
 }
-function buildStatusJudgmentInstruction(movement: WorkflowMovement, ctx: StatusJudgmentContext): string {
+function buildStatusJudgmentInstruction(movement: PieceMovement, ctx: StatusJudgmentContext): string {
   return new StatusJudgmentBuilder(movement, ctx).build();
 }
 
 // --- Test helpers ---
 
-function makeRule(condition: string, next: string, extra?: Partial<WorkflowRule>): WorkflowRule {
+function makeRule(condition: string, next: string, extra?: Partial<PieceRule>): PieceRule {
   return { condition, next, ...extra };
 }
 
-function makeMovement(overrides: Partial<WorkflowMovement> = {}): WorkflowMovement {
+function makeMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'test-step',
     agent: 'test-agent',
@@ -187,7 +187,7 @@ describe('Instruction Builder IT: iteration variables', () => {
     expect(result).toContain('Iter: 5/30, movement iter: 2');
   });
 
-  it('should include iteration in Workflow Context section', () => {
+  it('should include iteration in Piece Context section', () => {
     const step = makeMovement();
     const ctx = makeContext({ iteration: 7, maxIterations: 20, movementIteration: 3 });
 

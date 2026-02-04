@@ -11,8 +11,8 @@ import { stringify as stringifyYaml } from 'yaml';
 import { promptInput, confirm } from '../../../shared/prompt/index.js';
 import { success, info } from '../../../shared/ui/index.js';
 import { summarizeTaskName, type TaskFileData } from '../../../infra/task/index.js';
-import { getWorkflowDescription } from '../../../infra/config/index.js';
-import { determineWorkflow } from '../execute/selectAndExecute.js';
+import { getPieceDescription } from '../../../infra/config/index.js';
+import { determinePiece } from '../execute/selectAndExecute.js';
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import { isIssueReference, resolveIssueTask, parseIssueNumbers } from '../../../infra/github/index.js';
 import { interactiveMode } from '../../interactive/index.js';
@@ -38,7 +38,7 @@ async function generateFilename(tasksDir: string, taskContent: string, cwd: stri
  * add command handler
  *
  * Flow:
- *   1. ワークフロー選択
+ *   1. ピース選択
  *   2. AI対話モードでタスクを詰める
  *   3. 会話履歴からAIがタスク要約を生成
  *   4. 要約からファイル名をAIで生成
@@ -49,10 +49,10 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
   const tasksDir = path.join(cwd, '.takt', 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
 
-  // 1. ワークフロー選択（Issue参照以外の場合、対話モードの前に実施）
+  // 1. ピース選択（Issue参照以外の場合、対話モードの前に実施）
   let taskContent: string;
   let issueNumber: number | undefined;
-  let workflow: string | undefined;
+  let piece: string | undefined;
 
   if (task && isIssueReference(task)) {
     // Issue reference: fetch issue and use directly as task content
@@ -70,18 +70,18 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
       return;
     }
   } else {
-    // ワークフロー選択を先に行い、結果を対話モードに渡す
-    const workflowId = await determineWorkflow(cwd);
-    if (workflowId === null) {
+    // ピース選択を先に行い、結果を対話モードに渡す
+    const pieceId = await determinePiece(cwd);
+    if (pieceId === null) {
       info('Cancelled.');
       return;
     }
-    workflow = workflowId;
+    piece = pieceId;
 
-    const workflowContext = getWorkflowDescription(workflowId, cwd);
+    const pieceContext = getPieceDescription(pieceId, cwd);
 
     // Interactive mode: AI conversation to refine task
-    const result = await interactiveMode(cwd, undefined, workflowContext);
+    const result = await interactiveMode(cwd, undefined, pieceContext);
     if (!result.confirmed) {
       info('Cancelled.');
       return;
@@ -118,8 +118,8 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
   if (branch) {
     taskData.branch = branch;
   }
-  if (workflow) {
-    taskData.workflow = workflow;
+  if (piece) {
+    taskData.piece = piece;
   }
   if (issueNumber !== undefined) {
     taskData.issue = issueNumber;
@@ -139,7 +139,7 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
   if (branch) {
     info(`  Branch: ${branch}`);
   }
-  if (workflow) {
-    info(`  Workflow: ${workflow}`);
+  if (piece) {
+    info(`  Piece: ${piece}`);
   }
 }

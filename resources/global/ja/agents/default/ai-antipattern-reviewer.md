@@ -153,8 +153,8 @@ AIは自信を持って間違える——もっともらしく見えるが動か
 
 ```typescript
 // ❌ 悪い例 - 全呼び出し元が省略している
-function loadWorkflow(name: string, cwd = process.cwd()) { ... }
-// 全呼び出し元: loadWorkflow('default')  ← cwd を渡していない
+function loadPiece(name: string, cwd = process.cwd()) { ... }
+// 全呼び出し元: loadPiece('default')  ← cwd を渡していない
 // 問題: cwd の値がどこから来るか、呼び出し元を見ても分からない
 // 修正: cwd を必須引数にし、呼び出し元で明示的に渡す
 

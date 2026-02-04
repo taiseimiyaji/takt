@@ -1,7 +1,7 @@
 /**
  * Notification utilities for takt
  *
- * Provides audio and visual notifications for workflow events.
+ * Provides audio and visual notifications for piece events.
  */
 
 import { exec } from 'node:child_process';

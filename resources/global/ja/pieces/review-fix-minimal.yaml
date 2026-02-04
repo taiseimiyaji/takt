@@ -1,18 +1,18 @@
-# Review-Fix Minimal TAKT Workflow
+# Review-Fix Minimal TAKT Piece
 # Review -> Fix (if needed) -> Re-review -> Complete
 # (レビューから開始、実装ムーブメントなし)
 #
 # Template Variables (auto-injected):
-#   {iteration}      - Workflow-wide turn count (total movements executed across all agents)
-#   {max_iterations} - Maximum iterations allowed for the workflow
+#   {iteration}      - Piece-wide turn count (total movements executed across all agents)
+#   {max_iterations} - Maximum iterations allowed for the piece
 #   {movement_iteration} - Per-movement iteration count (how many times THIS movement has been executed)
 #   {task}           - Original user request (auto-injected)
 #   {previous_response} - Output from the previous movement (auto-injected)
-#   {user_inputs}    - Accumulated user inputs during workflow (auto-injected)
+#   {user_inputs}    - Accumulated user inputs during piece (auto-injected)
 #   {report_dir}     - Report directory name (e.g., "20250126-143052-task-summary")
 
 name: review-fix-minimal
-description: 既存コードのレビューと修正ワークフロー（レビュー開始、実装なし）
+description: 既存コードのレビューと修正ピース（レビュー開始、実装なし）
 
 max_iterations: 20
 
@@ -37,7 +37,7 @@ movements:
     permission_mode: edit
     instruction_template: |
       タスクを実装してください。
-      Workflow Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
+      Piece Contextに示されたReport Directory内のファイルのみ参照してください。他のレポートディレクトリは検索/参照しないでください。
 
       **Scopeレポートフォーマット（実装開始時に作成）:**
       ```markdown
@@ -154,7 +154,7 @@ movements:
         instruction_template: |
           テスト実行、ビルド確認、最終承認を行ってください。
 
-          **ワークフロー全体の確認:**
+          **ピース全体の確認:**
           1. 実装結果が元の要求を満たしているか
           2. AI Reviewの指摘が対応されているか
           3. 元のタスク目的が達成されているか

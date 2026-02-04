@@ -18,7 +18,7 @@ vi.mock('../infra/providers/index.js', () => ({
 
 vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn(() => ({ provider: 'claude' })),
-  getBuiltinWorkflowsEnabled: vi.fn().mockReturnValue(true),
+  getBuiltinPiecesEnabled: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock('../shared/prompt/index.js', () => ({
@@ -46,11 +46,11 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 }));
 
 vi.mock('../features/tasks/execute/selectAndExecute.js', () => ({
-  determineWorkflow: vi.fn(),
+  determinePiece: vi.fn(),
 }));
 
-vi.mock('../infra/config/loaders/workflowResolver.js', () => ({
-  getWorkflowDescription: vi.fn(() => ({ name: 'default', description: '' })),
+vi.mock('../infra/config/loaders/pieceResolver.js', () => ({
+  getPieceDescription: vi.fn(() => ({ name: 'default', description: '' })),
 }));
 
 vi.mock('../infra/github/issue.js', () => ({
@@ -71,8 +71,8 @@ vi.mock('../infra/github/issue.js', () => ({
 import { interactiveMode } from '../features/interactive/index.js';
 import { promptInput, confirm } from '../shared/prompt/index.js';
 import { summarizeTaskName } from '../infra/task/summarize.js';
-import { determineWorkflow } from '../features/tasks/execute/selectAndExecute.js';
-import { getWorkflowDescription } from '../infra/config/loaders/workflowResolver.js';
+import { determinePiece } from '../features/tasks/execute/selectAndExecute.js';
+import { getPieceDescription } from '../infra/config/loaders/pieceResolver.js';
 import { resolveIssueTask } from '../infra/github/issue.js';
 import { addTask } from '../features/tasks/index.js';
 
@@ -81,8 +81,8 @@ const mockInteractiveMode = vi.mocked(interactiveMode);
 const mockPromptInput = vi.mocked(promptInput);
 const mockConfirm = vi.mocked(confirm);
 const mockSummarizeTaskName = vi.mocked(summarizeTaskName);
-const mockDetermineWorkflow = vi.mocked(determineWorkflow);
-const mockGetWorkflowDescription = vi.mocked(getWorkflowDescription);
+const mockDeterminePiece = vi.mocked(determinePiece);
+const mockGetPieceDescription = vi.mocked(getPieceDescription);
 
 function setupFullFlowMocks(overrides?: {
   task?: string;
@@ -91,8 +91,8 @@ function setupFullFlowMocks(overrides?: {
   const task = overrides?.task ?? '# 認証機能追加\nJWT認証を実装する';
   const slug = overrides?.slug ?? 'add-auth';
 
-  mockDetermineWorkflow.mockResolvedValue('default');
-  mockGetWorkflowDescription.mockReturnValue({ name: 'default', description: '' });
+  mockDeterminePiece.mockResolvedValue('default');
+  mockGetPieceDescription.mockReturnValue({ name: 'default', description: '' });
   mockInteractiveMode.mockResolvedValue({ confirmed: true, task });
   mockSummarizeTaskName.mockResolvedValue(slug);
   mockConfirm.mockResolvedValue(false);
@@ -103,8 +103,8 @@ let testDir: string;
 beforeEach(() => {
   vi.clearAllMocks();
   testDir = fs.mkdtempSync(path.join(tmpdir(), 'takt-test-'));
-  mockDetermineWorkflow.mockResolvedValue('default');
-  mockGetWorkflowDescription.mockReturnValue({ name: 'default', description: '' });
+  mockDeterminePiece.mockResolvedValue('default');
+  mockGetPieceDescription.mockReturnValue({ name: 'default', description: '' });
   mockConfirm.mockResolvedValue(false);
 });
 
@@ -117,7 +117,7 @@ afterEach(() => {
 describe('addTask', () => {
   it('should cancel when interactive mode is not confirmed', async () => {
     // Given: user cancels interactive mode
-    mockDetermineWorkflow.mockResolvedValue('default');
+    mockDeterminePiece.mockResolvedValue('default');
     mockInteractiveMode.mockResolvedValue({ confirmed: false, task: '' });
 
     // When
@@ -221,48 +221,48 @@ describe('addTask', () => {
     expect(content).toContain('branch: feat/my-branch');
   });
 
-  it('should include workflow selection in task file', async () => {
-    // Given: determineWorkflow returns a non-default workflow
-    setupFullFlowMocks({ slug: 'with-workflow' });
-    mockDetermineWorkflow.mockResolvedValue('review');
-    mockGetWorkflowDescription.mockReturnValue({ name: 'review', description: 'Code review workflow' });
+  it('should include piece selection in task file', async () => {
+    // Given: determinePiece returns a non-default piece
+    setupFullFlowMocks({ slug: 'with-piece' });
+    mockDeterminePiece.mockResolvedValue('review');
+    mockGetPieceDescription.mockReturnValue({ name: 'review', description: 'Code review piece' });
     mockConfirm.mockResolvedValue(false);
 
     // When
     await addTask(testDir);
 
     // Then
-    const taskFile = path.join(testDir, '.takt', 'tasks', 'with-workflow.yaml');
+    const taskFile = path.join(testDir, '.takt', 'tasks', 'with-piece.yaml');
     const content = fs.readFileSync(taskFile, 'utf-8');
-    expect(content).toContain('workflow: review');
+    expect(content).toContain('piece: review');
   });
 
-  it('should cancel when workflow selection returns null', async () => {
-    // Given: user cancels workflow selection
-    mockDetermineWorkflow.mockResolvedValue(null);
+  it('should cancel when piece selection returns null', async () => {
+    // Given: user cancels piece selection
+    mockDeterminePiece.mockResolvedValue(null);
 
     // When
     await addTask(testDir);
 
-    // Then: no task file created (cancelled at workflow selection)
+    // Then: no task file created (cancelled at piece selection)
     const tasksDir = path.join(testDir, '.takt', 'tasks');
     const files = fs.readdirSync(tasksDir);
     expect(files.length).toBe(0);
   });
 
-  it('should always include workflow from determineWorkflow', async () => {
-    // Given: determineWorkflow returns 'default'
+  it('should always include piece from determinePiece', async () => {
+    // Given: determinePiece returns 'default'
     setupFullFlowMocks({ slug: 'default-wf' });
-    mockDetermineWorkflow.mockResolvedValue('default');
+    mockDeterminePiece.mockResolvedValue('default');
     mockConfirm.mockResolvedValue(false);
 
     // When
     await addTask(testDir);
 
-    // Then: workflow field is included
+    // Then: piece field is included
     const taskFile = path.join(testDir, '.takt', 'tasks', 'default-wf.yaml');
     const content = fs.readFileSync(taskFile, 'utf-8');
-    expect(content).toContain('workflow: default');
+    expect(content).toContain('piece: default');
   });
 
   it('should fetch issue and use directly as task content when given issue reference', async () => {

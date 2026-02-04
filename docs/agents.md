@@ -17,10 +17,10 @@ TAKT includes six built-in agents (located in `resources/global/{lang}/agents/de
 
 ## Specifying Agents
 
-In workflow YAML, agents are specified by file path:
+In piece YAML, agents are specified by file path:
 
 ```yaml
-# Relative to workflow file directory
+# Relative to piece file directory
 agent: ../agents/default/coder.md
 
 # Home directory
@@ -52,7 +52,7 @@ You are a security-focused code reviewer.
 - Verify proper error handling
 ```
 
-> **Note**: Agents do NOT need to output status markers manually. The workflow engine auto-injects status output rules into agent instructions based on the step's `rules` configuration. Agents output `[STEP:N]` tags (where N is the 0-based rule index) which the engine uses for routing.
+> **Note**: Agents do NOT need to output status markers manually. The piece engine auto-injects status output rules into agent instructions based on the step's `rules` configuration. Agents output `[STEP:N]` tags (where N is the 0-based rule index) which the engine uses for routing.
 
 ### Using agents.yaml
 
@@ -74,7 +74,7 @@ agents:
 
 | Field | Description |
 |-------|-------------|
-| `name` | Agent identifier (referenced in workflow steps) |
+| `name` | Agent identifier (referenced in piece steps) |
 | `prompt_file` | Path to Markdown prompt file |
 | `prompt` | Inline prompt text (alternative to `prompt_file`) |
 | `allowed_tools` | List of tools the agent can use |
@@ -113,7 +113,7 @@ agents:
 ```
 
 ```yaml
-# workflow.yaml
+# piece.yaml
 steps:
   - name: implement
     agent: ../agents/default/coder.md

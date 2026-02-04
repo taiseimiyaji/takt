@@ -1,7 +1,7 @@
 /**
- * Shared helpers for WorkflowEngine integration tests.
+ * Shared helpers for PieceEngine integration tests.
  *
- * Provides mock setup, factory functions, and a default workflow config
+ * Provides mock setup, factory functions, and a default piece config
  * matching the parallel reviewers structure (plan → implement → ai_review → reviewers → supervise).
  */
 
@@ -10,14 +10,14 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { WorkflowConfig, WorkflowMovement, AgentResponse, WorkflowRule } from '../core/models/index.js';
+import type { PieceConfig, PieceMovement, AgentResponse, PieceRule } from '../core/models/index.js';
 
 // --- Mock imports (consumers must call vi.mock before importing this) ---
 
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../core/workflow/index.js';
-import type { RuleMatch } from '../core/workflow/index.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/workflow/index.js';
+import { detectMatchedRule } from '../core/piece/index.js';
+import type { RuleMatch } from '../core/piece/index.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/index.js';
 import { generateReportDir } from '../shared/utils/index.js';
 
 // --- Factory functions ---
@@ -33,11 +33,11 @@ export function makeResponse(overrides: Partial<AgentResponse> = {}): AgentRespo
   };
 }
 
-export function makeRule(condition: string, next: string, extra: Partial<WorkflowRule> = {}): WorkflowRule {
+export function makeRule(condition: string, next: string, extra: Partial<PieceRule> = {}): PieceRule {
   return { condition, next, ...extra };
 }
 
-export function makeMovement(name: string, overrides: Partial<WorkflowMovement> = {}): WorkflowMovement {
+export function makeMovement(name: string, overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name,
     agent: `../agents/${name}.md`,
@@ -49,10 +49,10 @@ export function makeMovement(name: string, overrides: Partial<WorkflowMovement> 
 }
 
 /**
- * Build a workflow config matching the default.yaml parallel reviewers structure:
+ * Build a piece config matching the default.yaml parallel reviewers structure:
  * plan → implement → ai_review → (ai_fix↔) → reviewers(parallel) → (fix↔) → supervise
  */
-export function buildDefaultWorkflowConfig(overrides: Partial<WorkflowConfig> = {}): WorkflowConfig {
+export function buildDefaultPieceConfig(overrides: Partial<PieceConfig> = {}): PieceConfig {
   const archReviewSubMovement = makeMovement('arch-review', {
     rules: [
       makeRule('approved', 'COMPLETE'),
@@ -69,7 +69,7 @@ export function buildDefaultWorkflowConfig(overrides: Partial<WorkflowConfig> = 
 
   return {
     name: 'test-default',
-    description: 'Test workflow',
+    description: 'Test piece',
     maxIterations: 30,
     initialMovement: 'plan',
     movements: [

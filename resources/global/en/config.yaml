@@ -7,8 +7,8 @@ language: en
 # Trusted directories - projects in these directories skip confirmation prompts
 trusted_directories: []
 
-# Default workflow to use when no workflow is specified
-default_workflow: default
+# Default piece to use when no piece is specified
+default_piece: default
 
 # Log level: debug, info, warn, error
 log_level: info
@@ -16,8 +16,8 @@ log_level: info
 # Provider runtime: claude or codex
 provider: claude
 
-# Builtin workflows (resources/global/{lang}/workflows)
-# enable_builtin_workflows: true
+# Builtin pieces (resources/global/{lang}/pieces)
+# enable_builtin_pieces: true
 
 # Default model (optional)
 # Claude: opus, sonnet, haiku, opusplan, default, or full model name
