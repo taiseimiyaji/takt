@@ -2,6 +2,7 @@ piece_categories:
   "🚀 クイックスタート":
     pieces:
       - default
+      - coding
       - minimal
 
   "🔍 レビュー＆修正":

@@ -7,7 +7,7 @@
 import { clearAgentSessions, getCurrentPiece } from '../../infra/config/index.js';
 import { success } from '../../shared/ui/index.js';
 import { runAllTasks, addTask, watchTasks, listTasks } from '../../features/tasks/index.js';
-import { switchPiece, switchConfig, ejectBuiltin } from '../../features/config/index.js';
+import { switchPiece, switchConfig, ejectBuiltin, resetCategoriesToDefault } from '../../features/config/index.js';
 import { previewPrompts } from '../../features/prompt/index.js';
 import { program, resolvedCwd } from './program.js';
 import { resolveAgentOverrides } from './helpers.js';
@@ -87,6 +87,17 @@ program
   .argument('[key]', 'Configuration key')
   .action(async (key?: string) => {
     await switchConfig(resolvedCwd, key);
+  });
+
+const reset = program
+  .command('reset')
+  .description('Reset settings to defaults');
+
+reset
+  .command('categories')
+  .description('Reset piece categories to builtin defaults')
+  .action(async () => {
+    await resetCategoriesToDefault();
   });
 
 program
