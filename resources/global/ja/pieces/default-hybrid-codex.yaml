@@ -56,7 +56,7 @@ loop_monitors:
   - cycle: [ai_review, ai_fix]
     threshold: 3
     judge:
-      agent: ../agents/default/supervisor.md
+      persona: supervisor
       instruction_template: |
         ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
 

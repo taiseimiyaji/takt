@@ -41,7 +41,7 @@ export async function previewPrompts(cwd: string, pieceIdentifier?: string): Pro
     const separator = '='.repeat(60);
 
     console.log(separator);
-    console.log(`Movement ${i + 1}: ${movement.name} (agent: ${movement.agentDisplayName})`);
+    console.log(`Movement ${i + 1}: ${movement.name} (persona: ${movement.personaDisplayName})`);
     console.log(separator);
 
     // Phase 1: Main execution

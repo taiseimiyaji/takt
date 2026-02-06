@@ -53,8 +53,8 @@ function emitIfReportExists(
 function createMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'test-movement',
-    agent: 'coder',
-    agentDisplayName: 'Coder',
+    persona: 'coder',
+    personaDisplayName: 'Coder',
     instructionTemplate: '',
     passPreviousResponse: false,
     ...overrides,

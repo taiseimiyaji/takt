@@ -20,26 +20,26 @@ type RawStep = z.output<typeof PieceMovementRawSchema>;
  * - Relative path (./agent.md): relative to piece directory
  * - Absolute path (/path/to/agent.md or ~/...): use as-is
  */
-function resolveAgentPathForPiece(agentSpec: string, pieceDir: string): string {
-  if (agentSpec.startsWith('./')) {
-    return join(pieceDir, agentSpec.slice(2));
+function resolvePersonaPathForPiece(personaSpec: string, pieceDir: string): string {
+  if (personaSpec.startsWith('./')) {
+    return join(pieceDir, personaSpec.slice(2));
   }
-  if (agentSpec.startsWith('~')) {
+  if (personaSpec.startsWith('~')) {
     const homedir = process.env.HOME || process.env.USERPROFILE || '';
-    return join(homedir, agentSpec.slice(1));
+    return join(homedir, personaSpec.slice(1));
   }
-  if (agentSpec.startsWith('/')) {
-    return agentSpec;
+  if (personaSpec.startsWith('/')) {
+    return personaSpec;
   }
-  return join(pieceDir, agentSpec);
+  return join(pieceDir, personaSpec);
 }
 
 /**
- * Extract display name from agent path.
+ * Extract display name from persona path.
  * e.g., "~/.takt/agents/default/coder.md" -> "coder"
  */
-function extractAgentDisplayName(agentPath: string): string {
-  return basename(agentPath, '.md');
+function extractPersonaDisplayName(personaPath: string): string {
+  return basename(personaPath, '.md');
 }
 
 /**
@@ -233,24 +233,22 @@ function normalizeStepFromRaw(
 ): PieceMovement {
   const rules: PieceRule[] | undefined = step.rules?.map(normalizeRule);
 
-  // persona is an alias for agent (persona takes priority), with section reference expansion
+  // Resolve persona via section reference expansion
   const rawPersona = (step as Record<string, unknown>).persona as string | undefined;
   const expandedPersona = rawPersona ? resolveSectionReference(rawPersona, sections.personas) : undefined;
-  const agentSpec: string | undefined = expandedPersona || step.agent || undefined;
+  const personaSpec: string | undefined = expandedPersona || undefined;
 
-  // Resolve agent path: if the resolved path exists on disk, use it; otherwise leave agentPath undefined
-  // so that the runner treats agentSpec as an inline system prompt string.
-  let agentPath: string | undefined;
-  if (agentSpec) {
-    const resolved = resolveAgentPathForPiece(agentSpec, pieceDir);
+  // Resolve persona path: if the resolved path exists on disk, use it; otherwise leave personaPath undefined
+  // so that the runner treats personaSpec as an inline system prompt string.
+  let personaPath: string | undefined;
+  if (personaSpec) {
+    const resolved = resolvePersonaPathForPiece(personaSpec, pieceDir);
     if (existsSync(resolved)) {
-      agentPath = resolved;
+      personaPath = resolved;
     }
   }
 
-  // persona_name is an alias for agent_name (persona_name takes priority)
   const displayName: string | undefined = (step as Record<string, unknown>).persona_name as string
-    || step.agent_name
     || undefined;
 
   // Resolve stance references (supports section key, file paths)
@@ -265,10 +263,10 @@ function normalizeStepFromRaw(
   const result: PieceMovement = {
     name: step.name,
     description: step.description,
-    agent: agentSpec,
+    persona: personaSpec,
     session: step.session,
-    agentDisplayName: displayName || (agentSpec ? extractAgentDisplayName(agentSpec) : step.name),
-    agentPath,
+    personaDisplayName: displayName || (personaSpec ? extractPersonaDisplayName(personaSpec) : step.name),
+    personaPath,
     allowedTools: step.allowed_tools,
     provider: step.provider,
     model: step.model,
@@ -290,25 +288,28 @@ function normalizeStepFromRaw(
 
 /**
  * Normalize a raw loop monitor judge from YAML into internal format.
- * Resolves agent paths and instruction_template content paths.
+ * Resolves persona paths and instruction_template content paths.
  */
 function normalizeLoopMonitorJudge(
-  raw: { agent?: string; instruction_template?: string; rules: Array<{ condition: string; next: string }> },
+  raw: { persona?: string; instruction_template?: string; rules: Array<{ condition: string; next: string }> },
   pieceDir: string,
+  sections: PieceSections,
 ): LoopMonitorJudge {
-  const agentSpec = raw.agent || undefined;
+  const rawPersona = raw.persona || undefined;
+  const expandedPersona = rawPersona ? resolveSectionReference(rawPersona, sections.personas) : undefined;
+  const personaSpec = expandedPersona || undefined;
 
-  let agentPath: string | undefined;
-  if (agentSpec) {
-    const resolved = resolveAgentPathForPiece(agentSpec, pieceDir);
+  let personaPath: string | undefined;
+  if (personaSpec) {
+    const resolved = resolvePersonaPathForPiece(personaSpec, pieceDir);
     if (existsSync(resolved)) {
-      agentPath = resolved;
+      personaPath = resolved;
     }
   }
 
   return {
-    agent: agentSpec,
-    agentPath,
+    persona: personaSpec,
+    personaPath,
     instructionTemplate: resolveContentPath(raw.instruction_template, pieceDir),
     rules: raw.rules.map((r) => ({ condition: r.condition, next: r.next })),
   };
@@ -318,14 +319,15 @@ function normalizeLoopMonitorJudge(
  * Normalize raw loop monitors from YAML into internal format.
  */
 function normalizeLoopMonitors(
-  raw: Array<{ cycle: string[]; threshold: number; judge: { agent?: string; instruction_template?: string; rules: Array<{ condition: string; next: string }> } }> | undefined,
+  raw: Array<{ cycle: string[]; threshold: number; judge: { persona?: string; instruction_template?: string; rules: Array<{ condition: string; next: string }> } }> | undefined,
   pieceDir: string,
+  sections: PieceSections,
 ): LoopMonitorConfig[] | undefined {
   if (!raw || raw.length === 0) return undefined;
   return raw.map((monitor) => ({
     cycle: monitor.cycle,
     threshold: monitor.threshold,
-    judge: normalizeLoopMonitorJudge(monitor.judge, pieceDir),
+    judge: normalizeLoopMonitorJudge(monitor.judge, pieceDir, sections),
   }));
 }
 
@@ -386,7 +388,7 @@ export function normalizePieceConfig(raw: unknown, pieceDir: string): PieceConfi
     movements,
     initialMovement,
     maxIterations: parsed.max_iterations,
-    loopMonitors: normalizeLoopMonitors(parsed.loop_monitors, pieceDir),
+    loopMonitors: normalizeLoopMonitors(parsed.loop_monitors, pieceDir, sections),
     answerAgent: parsed.answer_agent,
   };
 }

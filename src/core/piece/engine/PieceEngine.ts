@@ -92,7 +92,7 @@ export class PieceEngine extends EventEmitter {
       options,
       () => this.cwd,
       () => this.projectCwd,
-      (agent) => this.state.agentSessions.get(agent),
+      (persona) => this.state.personaSessions.get(persona),
       () => this.reportDir,
       () => this.options.language,
       () => this.config.movements.map(s => ({ name: s.name, description: s.description })),
@@ -262,15 +262,15 @@ export class PieceEngine extends EventEmitter {
     return movement;
   }
 
-  /** Update agent session and notify via callback if session changed */
-  private updateAgentSession(agent: string, sessionId: string | undefined): void {
+  /** Update persona session and notify via callback if session changed */
+  private updatePersonaSession(persona: string, sessionId: string | undefined): void {
     if (!sessionId) return;
 
-    const previousSessionId = this.state.agentSessions.get(agent);
-    this.state.agentSessions.set(agent, sessionId);
+    const previousSessionId = this.state.personaSessions.get(persona);
+    this.state.personaSessions.set(persona, sessionId);
 
     if (this.options.onSessionUpdate && sessionId !== previousSessionId) {
-      this.options.onSessionUpdate(agent, sessionId);
+      this.options.onSessionUpdate(persona, sessionId);
     }
   }
 
@@ -283,7 +283,7 @@ export class PieceEngine extends EventEmitter {
 
   /** Run a single movement (delegates to ParallelRunner if movement has parallel sub-movements) */
   private async runMovement(step: PieceMovement, prebuiltInstruction?: string): Promise<{ response: AgentResponse; instruction: string }> {
-    const updateSession = this.updateAgentSession.bind(this);
+    const updateSession = this.updatePersonaSession.bind(this);
     let result: { response: AgentResponse; instruction: string };
 
     if (step.parallel && step.parallel.length > 0) {
@@ -382,9 +382,9 @@ export class PieceEngine extends EventEmitter {
     // Build a synthetic PieceMovement for the judge
     const judgeMovement: PieceMovement = {
       name: `_loop_judge_${monitor.cycle.join('_')}`,
-      agent: monitor.judge.agent,
-      agentPath: monitor.judge.agentPath,
-      agentDisplayName: 'loop-judge',
+      persona: monitor.judge.persona,
+      personaPath: monitor.judge.personaPath,
+      personaDisplayName: 'loop-judge',
       edit: false,
       instructionTemplate: processedTemplate,
       rules: monitor.judge.rules.map((r) => ({
@@ -414,7 +414,7 @@ export class PieceEngine extends EventEmitter {
       this.state,
       this.task,
       this.config.maxIterations,
-      this.updateAgentSession.bind(this),
+      this.updatePersonaSession.bind(this),
       prebuiltInstruction,
     );
     this.emitCollectedReports();
@@ -605,7 +605,7 @@ export class PieceEngine extends EventEmitter {
       this.state.status = 'aborted';
       return {
         response: {
-          agent: movement.agent ?? movement.name,
+          persona: movement.persona ?? movement.name,
           status: 'blocked',
           content: ERROR_MESSAGES.LOOP_DETECTED(movement.name, loopCheck.count),
           timestamp: new Date(),

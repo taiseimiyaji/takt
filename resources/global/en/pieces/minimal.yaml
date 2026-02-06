@@ -16,12 +16,17 @@ description: Minimal development piece (implement -> parallel review -> fix if n
 
 max_iterations: 20
 
+personas:
+  coder: ../personas/coder.md
+  ai-antipattern-reviewer: ../personas/ai-antipattern-reviewer.md
+  supervisor: ../personas/supervisor.md
+
 initial_movement: implement
 
 movements:
   - name: implement
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     report:
       - Scope: 01-coder-scope.md
       - Decisions: 02-coder-decisions.md
@@ -91,7 +96,7 @@ movements:
     parallel:
       - name: ai_review
         edit: false
-        agent: ../agents/default/ai-antipattern-reviewer.md
+        persona: ai-antipattern-reviewer
         report:
           name: 03-ai-review.md
           format: |
@@ -139,7 +144,7 @@ movements:
 
       - name: supervise
         edit: false
-        agent: ../agents/default/supervisor.md
+        persona: supervisor
         report:
           - Validation: 05-supervisor-validation.md
           - Summary: summary.md
@@ -231,7 +236,7 @@ movements:
     parallel:
       - name: ai_fix_parallel
         edit: true
-        agent: ../agents/default/coder.md
+        persona: coder
         allowed_tools:
           - Read
           - Glob
@@ -290,7 +295,7 @@ movements:
 
       - name: supervise_fix_parallel
         edit: true
-        agent: ../agents/default/coder.md
+        persona: coder
         allowed_tools:
           - Read
           - Glob
@@ -328,7 +333,7 @@ movements:
 
   - name: ai_fix
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     allowed_tools:
       - Read
       - Glob
@@ -390,7 +395,7 @@ movements:
 
   - name: supervise_fix
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     allowed_tools:
       - Read
       - Glob

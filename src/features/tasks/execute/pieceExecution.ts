@@ -11,8 +11,8 @@ import { callAiJudge, detectRuleIndex, interruptAllQueries } from '../../../infr
 export type { PieceExecutionResult, PieceExecutionOptions };
 
 import {
-  loadAgentSessions,
-  updateAgentSession,
+  loadPersonaSessions,
+  updatePersonaSession,
   loadWorktreeSessions,
   updateWorktreeSession,
   loadGlobalConfig,
@@ -150,16 +150,16 @@ export async function executePiece(
   }
   const savedSessions = isWorktree
     ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
-    : loadAgentSessions(projectCwd, currentProvider);
+    : loadPersonaSessions(projectCwd, currentProvider);
 
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
   const sessionUpdateHandler = isWorktree
-    ? (agentName: string, agentSessionId: string): void => {
-        updateWorktreeSession(projectCwd, cwd, agentName, agentSessionId, currentProvider);
+    ? (personaName: string, personaSessionId: string): void => {
+        updateWorktreeSession(projectCwd, cwd, personaName, personaSessionId, currentProvider);
       }
-    : (agentName: string, agentSessionId: string): void => {
-        updateAgentSession(projectCwd, agentName, agentSessionId, currentProvider);
+    : (persona: string, personaSessionId: string): void => {
+        updatePersonaSession(projectCwd, persona, personaSessionId, currentProvider);
       };
 
   const iterationLimitHandler = async (
@@ -271,8 +271,8 @@ export async function executePiece(
   });
 
   engine.on('movement:start', (step, iteration, instruction) => {
-    log.debug('Movement starting', { step: step.name, agent: step.agentDisplayName, iteration });
-    info(`[${iteration}/${pieceConfig.maxIterations}] ${step.name} (${step.agentDisplayName})`);
+    log.debug('Movement starting', { step: step.name, persona: step.personaDisplayName, iteration });
+    info(`[${iteration}/${pieceConfig.maxIterations}] ${step.name} (${step.personaDisplayName})`);
 
     // Log prompt content for debugging
     if (instruction) {
@@ -284,7 +284,7 @@ export async function executePiece(
     const totalMovements = pieceConfig.movements.length;
 
     // Use quiet mode from CLI (already resolved CLI flag + config in preAction)
-    displayRef.current = new StreamDisplay(step.agentDisplayName, isQuietMode(), {
+    displayRef.current = new StreamDisplay(step.personaDisplayName, isQuietMode(), {
       iteration,
       maxIterations: pieceConfig.maxIterations,
       movementIndex: movementIndex >= 0 ? movementIndex : 0,
@@ -295,7 +295,7 @@ export async function executePiece(
     const record: NdjsonStepStart = {
       type: 'step_start',
       step: step.name,
-      agent: step.agentDisplayName,
+      persona: step.personaDisplayName,
       iteration,
       timestamp: new Date().toISOString(),
       ...(instruction ? { instruction } : {}),
@@ -348,7 +348,7 @@ export async function executePiece(
     const record: NdjsonStepComplete = {
       type: 'step_complete',
       step: step.name,
-      agent: response.agent,
+      persona: response.persona,
       status: response.status,
       content: response.content,
       instruction,

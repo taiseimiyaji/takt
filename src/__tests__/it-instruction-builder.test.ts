@@ -41,8 +41,8 @@ function makeRule(condition: string, next: string, extra?: Partial<PieceRule>): 
 function makeMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'test-step',
-    agent: 'test-agent',
-    agentDisplayName: 'test-step',
+    persona: 'test-agent',
+    personaDisplayName: 'test-step',
     instructionTemplate: 'Do the work.',
     passPreviousResponse: false,
     rules: [
@@ -99,7 +99,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: 'Continue the work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'previous-agent',
+      persona: 'previous-agent',
       status: 'done',
       content: 'Previous agent completed step A.',
       timestamp: new Date(),
@@ -118,7 +118,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: 'Do fresh work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'previous-agent',
+      persona: 'previous-agent',
       status: 'done',
       content: 'Previous output.',
       timestamp: new Date(),
@@ -137,7 +137,7 @@ describe('Instruction Builder IT: previous_response auto-injection', () => {
       instructionTemplate: '## Context\n{previous_response}\n\nDo work.',
     });
     const previousOutput: AgentResponse = {
-      agent: 'prev', status: 'done', content: 'Prior work done.', timestamp: new Date(),
+      persona: 'prev', status: 'done', content: 'Prior work done.', timestamp: new Date(),
     };
     const ctx = makeContext({ previousOutput });
 
@@ -357,7 +357,7 @@ describe('Instruction Builder IT: template injection prevention', () => {
     });
     const ctx = makeContext({
       previousOutput: {
-        agent: 'prev', status: 'done',
+        persona: 'prev', status: 'done',
         content: 'Use {template} syntax', timestamp: new Date(),
       },
     });

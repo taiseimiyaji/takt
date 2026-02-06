@@ -197,7 +197,7 @@ export class AgentConsultStrategy implements JudgmentStrategy {
     try {
       const question = this.buildQuestion(context);
 
-      const response = await runAgent(context.step.agent ?? context.step.name, question, {
+      const response = await runAgent(context.step.persona ?? context.step.name, question, {
         cwd: context.cwd,
         sessionId: context.sessionId,
         maxTurns: 3,

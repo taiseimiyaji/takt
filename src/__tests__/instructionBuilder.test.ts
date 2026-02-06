@@ -30,8 +30,8 @@ import type { PieceMovement, PieceRule } from '../core/models/index.js';
 function createMinimalStep(template: string): PieceMovement {
   return {
     name: 'test-step',
-    agent: 'test-agent',
-    agentDisplayName: 'Test Agent',
+    persona: 'test-agent',
+    personaDisplayName: 'Test Agent',
     instructionTemplate: template,
     passPreviousResponse: false,
   };

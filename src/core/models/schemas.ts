@@ -116,11 +116,9 @@ export const PieceRuleSchema = z.object({
 /** Sub-movement schema for parallel execution */
 export const ParallelSubMovementRawSchema = z.object({
   name: z.string().min(1),
-  agent: z.string().optional(),
-  agent_name: z.string().optional(),
-  /** Alias for agent (persona-first naming) */
+  /** Persona reference — key name from piece-level personas map, or file path */
   persona: z.string().optional(),
-  /** Alias for agent_name (persona-first naming) */
+  /** Display name for the persona (shown in output) */
   persona_name: z.string().optional(),
   /** Stance reference(s) — key name(s) from piece-level stances map */
   stance: z.union([z.string(), z.array(z.string())]).optional(),
@@ -140,15 +138,11 @@ export const ParallelSubMovementRawSchema = z.object({
 export const PieceMovementRawSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  /** Agent is required for normal movements, optional for parallel container movements */
-  agent: z.string().optional(),
   /** Session handling for this movement */
   session: z.enum(['continue', 'refresh']).optional(),
-  /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
-  agent_name: z.string().optional(),
-  /** Alias for agent (persona-first naming) */
+  /** Persona reference — key name from piece-level personas map, or file path */
   persona: z.string().optional(),
-  /** Alias for agent_name (persona-first naming) */
+  /** Display name for the persona (shown in output) */
   persona_name: z.string().optional(),
   /** Stance reference(s) — key name(s) from piece-level stances map */
   stance: z.union([z.string(), z.array(z.string())]).optional(),
@@ -180,8 +174,8 @@ export const LoopMonitorRuleSchema = z.object({
 
 /** Loop monitor judge schema */
 export const LoopMonitorJudgeSchema = z.object({
-  /** Agent path, inline prompt, or omitted (uses default) */
-  agent: z.string().optional(),
+  /** Persona reference — key name from piece-level personas map, or file path */
+  persona: z.string().optional(),
   /** Custom instruction template for the judge */
   instruction_template: z.string().optional(),
   /** Rules for the judge's decision */

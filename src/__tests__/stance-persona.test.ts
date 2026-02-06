@@ -63,7 +63,7 @@ describe('persona alias', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agent).toBe('inline-prompt-text');
+    expect(config.movements[0]!.persona).toBe('inline-prompt-text');
   });
 
   it('should prefer persona over agent when both specified', () => {
@@ -72,7 +72,6 @@ describe('persona alias', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'old-agent',
           persona: 'new-persona',
           instruction: '{task}',
         },
@@ -80,26 +79,25 @@ describe('persona alias', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agent).toBe('new-persona');
+    expect(config.movements[0]!.persona).toBe('new-persona');
   });
 
-  it('should fall back to agent when persona not specified', () => {
+  it('should have undefined persona when persona not specified', () => {
     const raw = {
       name: 'test-piece',
       movements: [
         {
           name: 'step1',
-          agent: 'regular-agent',
           instruction: '{task}',
         },
       ],
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agent).toBe('regular-agent');
+    expect(config.movements[0]!.persona).toBeUndefined();
   });
 
-  it('should treat persona_name as alias for agent_name', () => {
+  it('should treat persona_name as display name', () => {
     const raw = {
       name: 'test-piece',
       movements: [
@@ -113,17 +111,16 @@ describe('persona alias', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agentDisplayName).toBe('My Persona');
+    expect(config.movements[0]!.personaDisplayName).toBe('My Persona');
   });
 
-  it('should prefer persona_name over agent_name', () => {
+  it('should use persona_name as display name', () => {
     const raw = {
       name: 'test-piece',
       movements: [
         {
           name: 'step1',
-          agent: 'some-agent',
-          agent_name: 'Old Name',
+          persona: 'some-persona',
           persona_name: 'New Name',
           instruction: '{task}',
         },
@@ -131,7 +128,7 @@ describe('persona alias', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agentDisplayName).toBe('New Name');
+    expect(config.movements[0]!.personaDisplayName).toBe('New Name');
   });
 
   it('should resolve persona .md file path like agent', () => {
@@ -150,8 +147,8 @@ describe('persona alias', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agent).toBe('./my-persona.md');
-    expect(config.movements[0]!.agentPath).toBe(agentFile);
+    expect(config.movements[0]!.persona).toBe('./my-persona.md');
+    expect(config.movements[0]!.personaPath).toBe(agentFile);
   });
 
   it('should work with persona in parallel sub-movements', () => {
@@ -180,9 +177,9 @@ describe('persona alias', () => {
 
     const config = normalizePieceConfig(raw, testDir);
     const parallel = config.movements[0]!.parallel!;
-    expect(parallel[0]!.agent).toBe('sub-persona-1');
-    expect(parallel[1]!.agent).toBe('sub-persona-2');
-    expect(parallel[1]!.agentDisplayName).toBe('Sub Persona 2');
+    expect(parallel[0]!.persona).toBe('sub-persona-1');
+    expect(parallel[1]!.persona).toBe('sub-persona-2');
+    expect(parallel[1]!.personaDisplayName).toBe('Sub Persona 2');
   });
 });
 
@@ -209,7 +206,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           stance: 'coding',
           instruction: '{task}',
         },
@@ -239,7 +236,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           stance: 'coding',
           instruction: '{task}',
         },
@@ -262,7 +259,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           stance: ['coding', 'testing'],
           instruction: '{task}',
         },
@@ -285,7 +282,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           instruction: '{task}',
         },
       ],
@@ -304,7 +301,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           stance: 'nonexistent',
           instruction: '{task}',
         },
@@ -328,13 +325,13 @@ describe('stances', () => {
           parallel: [
             {
               name: 'arch-review',
-              agent: 'reviewer',
+              persona: 'reviewer',
               stance: 'review',
               instruction: '{task}',
             },
             {
               name: 'code-fix',
-              agent: 'coder',
+              persona: 'coder',
               stance: ['coding', 'review'],
               instruction: '{task}',
             },
@@ -356,7 +353,7 @@ describe('stances', () => {
       movements: [
         {
           name: 'step1',
-          agent: 'coder',
+          persona: 'coder',
           instruction: '{task}',
         },
       ],
@@ -373,7 +370,7 @@ describe('InstructionBuilder stance injection', () => {
   it('should inject stance content into instruction (JA)', () => {
     const step = {
       name: 'test-step',
-      agentDisplayName: 'coder',
+      personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
       stanceContents: ['# Coding Stance\n\nWrite clean code.'],
@@ -392,7 +389,7 @@ describe('InstructionBuilder stance injection', () => {
   it('should inject stance content into instruction (EN)', () => {
     const step = {
       name: 'test-step',
-      agentDisplayName: 'coder',
+      personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
       stanceContents: ['# Coding Stance\n\nWrite clean code.'],
@@ -410,7 +407,7 @@ describe('InstructionBuilder stance injection', () => {
   it('should not inject stance section when no stanceContents', () => {
     const step = {
       name: 'test-step',
-      agentDisplayName: 'coder',
+      personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
     };
@@ -426,7 +423,7 @@ describe('InstructionBuilder stance injection', () => {
   it('should join multiple stances with separator', () => {
     const step = {
       name: 'test-step',
-      agentDisplayName: 'coder',
+      personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
       stanceContents: ['Stance A content.', 'Stance B content.'],
@@ -444,7 +441,7 @@ describe('InstructionBuilder stance injection', () => {
   it('should prefer context stanceContents over step stanceContents', () => {
     const step = {
       name: 'test-step',
-      agentDisplayName: 'coder',
+      personaDisplayName: 'coder',
       instructionTemplate: 'Do the thing.',
       passPreviousResponse: false,
       stanceContents: ['Step stance.'],
@@ -498,8 +495,8 @@ describe('section reference resolution', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    expect(config.movements[0]!.agent).toBe('./personas/coder.md');
-    expect(config.movements[0]!.agentPath).toBe(join(testDir, 'personas', 'coder.md'));
+    expect(config.movements[0]!.persona).toBe('./personas/coder.md');
+    expect(config.movements[0]!.personaPath).toBe(join(testDir, 'personas', 'coder.md'));
   });
 
   it('should resolve stance from stances section by name', () => {
@@ -508,7 +505,7 @@ describe('section reference resolution', () => {
       stances: { coding: './stances/coding.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         stance: 'coding',
         instruction: '{task}',
       }],
@@ -524,7 +521,7 @@ describe('section reference resolution', () => {
       stances: { coding: './stances/coding.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         stance: ['coding', './stances/testing.md'],
         instruction: '{task}',
       }],
@@ -543,7 +540,7 @@ describe('section reference resolution', () => {
       instructions: { implement: './instructions/implement.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         instruction: 'implement',
       }],
     };
@@ -558,7 +555,7 @@ describe('section reference resolution', () => {
       report_formats: { plan: './report-formats/plan.md' },
       movements: [{
         name: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         instruction: '{task}',
         report: {
           name: '00-plan.md',
@@ -583,8 +580,8 @@ describe('section reference resolution', () => {
     };
 
     const config = normalizePieceConfig(raw, testDir);
-    // No matching section key → treated as inline agent spec
-    expect(config.movements[0]!.agent).toBe('nonexistent');
+    // No matching section key → treated as inline persona spec
+    expect(config.movements[0]!.persona).toBe('nonexistent');
   });
 
   it('should prefer instruction_template over instruction section reference', () => {
@@ -593,7 +590,7 @@ describe('section reference resolution', () => {
       instructions: { implement: './instructions/implement.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         instruction: 'implement',
         instruction_template: 'Inline template takes priority.',
       }],
@@ -612,7 +609,7 @@ describe('section reference resolution', () => {
       report_formats: { plan: './report-formats/plan.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         instruction: '{task}',
       }],
     };
@@ -652,7 +649,7 @@ describe('section reference resolution', () => {
 
     const config = normalizePieceConfig(raw, testDir);
     const parallel = config.movements[0]!.parallel!;
-    expect(parallel[0]!.agent).toBe('./personas/coder.md');
+    expect(parallel[0]!.persona).toBe('./personas/coder.md');
     expect(parallel[0]!.stanceContents).toEqual(['# Coding Stance\nWrite clean code.']);
     expect(parallel[0]!.instructionTemplate).toBe('Implement the feature.');
     expect(parallel[1]!.stanceContents).toEqual([
@@ -667,7 +664,7 @@ describe('section reference resolution', () => {
       stances: { coding: './stances/coding.md' },
       movements: [{
         name: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         stance: 'coding',
         instruction: '{task}',
       }],

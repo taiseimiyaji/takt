@@ -92,7 +92,7 @@ initial_movement: start
 
 movements:
   - name: start
-    agent: ./agents/custom.md
+    persona: ./agents/custom.md
     rules:
       - condition: Done
         next: COMPLETE
@@ -124,17 +124,17 @@ describe('Piece Loader IT: agent path resolution', () => {
     expect(config).not.toBeNull();
 
     for (const movement of config!.movements) {
-      if (movement.agentPath) {
+      if (movement.personaPath) {
         // Agent paths should be resolved to absolute paths
-        expect(movement.agentPath).toMatch(/^\//);
+        expect(movement.personaPath).toMatch(/^\//);
         // Agent files should exist
-        expect(existsSync(movement.agentPath)).toBe(true);
+        expect(existsSync(movement.personaPath)).toBe(true);
       }
       if (movement.parallel) {
         for (const sub of movement.parallel) {
-          if (sub.agentPath) {
-            expect(sub.agentPath).toMatch(/^\//);
-            expect(existsSync(sub.agentPath)).toBe(true);
+          if (sub.personaPath) {
+            expect(sub.personaPath).toMatch(/^\//);
+            expect(existsSync(sub.personaPath)).toBe(true);
           }
         }
       }
@@ -287,7 +287,7 @@ describe('Piece Loader IT: parallel movement loading', () => {
     // Each sub-movement should have required fields
     for (const sub of parallelStep!.parallel!) {
       expect(sub.name).toBeDefined();
-      expect(sub.agent).toBeDefined();
+      expect(sub.persona).toBeDefined();
       expect(sub.rules).toBeDefined();
     }
   });

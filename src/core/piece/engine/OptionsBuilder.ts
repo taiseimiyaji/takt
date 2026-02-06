@@ -16,7 +16,7 @@ export class OptionsBuilder {
     private readonly engineOptions: PieceEngineOptions,
     private readonly getCwd: () => string,
     private readonly getProjectCwd: () => string,
-    private readonly getSessionId: (agent: string) => string | undefined,
+    private readonly getSessionId: (persona: string) => string | undefined,
     private readonly getReportDir: () => string,
     private readonly getLanguage: () => Language | undefined,
     private readonly getPieceMovements: () => ReadonlyArray<{ name: string; description?: string }>,
@@ -32,7 +32,7 @@ export class OptionsBuilder {
 
     return {
       cwd: this.getCwd(),
-      agentPath: step.agentPath,
+      personaPath: step.personaPath,
       provider: step.provider ?? this.engineOptions.provider,
       model: step.model ?? this.engineOptions.model,
       permissionMode: step.permissionMode,
@@ -65,7 +65,7 @@ export class OptionsBuilder {
 
     return {
       ...this.buildBaseOptions(step),
-      sessionId: shouldResumeSession ? this.getSessionId(step.agent ?? step.name) : undefined,
+      sessionId: shouldResumeSession ? this.getSessionId(step.persona ?? step.name) : undefined,
       allowedTools,
     };
   }
@@ -90,7 +90,7 @@ export class OptionsBuilder {
   buildPhaseRunnerContext(
     state: PieceState,
     lastResponse: string | undefined,
-    updateAgentSession: (agent: string, sessionId: string | undefined) => void,
+    updatePersonaSession: (persona: string, sessionId: string | undefined) => void,
     onPhaseStart?: (step: PieceMovement, phase: 1 | 2 | 3, phaseName: PhaseName, instruction: string) => void,
     onPhaseComplete?: (step: PieceMovement, phase: 1 | 2 | 3, phaseName: PhaseName, content: string, status: string, error?: string) => void,
   ): PhaseRunnerContext {
@@ -100,9 +100,9 @@ export class OptionsBuilder {
       language: this.getLanguage(),
       interactive: this.engineOptions.interactive,
       lastResponse,
-      getSessionId: (agent: string) => state.agentSessions.get(agent),
+      getSessionId: (persona: string) => state.personaSessions.get(persona),
       buildResumeOptions: this.buildResumeOptions.bind(this),
-      updateAgentSession,
+      updatePersonaSession,
       onPhaseStart,
       onPhaseComplete,
     };

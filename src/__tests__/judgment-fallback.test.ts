@@ -21,7 +21,7 @@ vi.mock('../agents/runner.js', () => ({
 describe('JudgmentStrategies', () => {
   const mockStep: PieceMovement = {
     name: 'test-movement',
-    agent: 'test-agent',
+    persona: 'test-agent',
     rules: [
       { description: 'Rule 1', condition: 'approved' },
       { description: 'Rule 2', condition: 'rejected' },

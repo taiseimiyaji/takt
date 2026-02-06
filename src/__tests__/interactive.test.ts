@@ -28,8 +28,8 @@ vi.mock('../shared/context.js', () => ({
 
 vi.mock('../infra/config/paths.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  loadAgentSessions: vi.fn(() => ({})),
-  updateAgentSession: vi.fn(),
+  loadPersonaSessions: vi.fn(() => ({})),
+  updatePersonaSession: vi.fn(),
   getProjectConfigDir: vi.fn(() => '/tmp'),
   loadSessionState: vi.fn(() => null),
   clearSessionState: vi.fn(),
@@ -110,7 +110,7 @@ function setupMockProvider(responses: string[]): void {
       const content = callIndex < responses.length ? responses[callIndex] : 'AI response';
       callIndex++;
       return {
-        agent: 'interactive',
+        persona: 'interactive',
         status: 'done' as const,
         content: content!,
         timestamp: new Date(),

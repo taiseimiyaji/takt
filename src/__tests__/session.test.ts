@@ -181,7 +181,7 @@ describe('NDJSON log', () => {
       const stepStart: NdjsonRecord = {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: new Date().toISOString(),
       };
@@ -190,7 +190,7 @@ describe('NDJSON log', () => {
       const stepComplete: NdjsonStepComplete = {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan completed',
         instruction: 'Create a plan',
@@ -209,7 +209,7 @@ describe('NDJSON log', () => {
       expect(parsed1.type).toBe('step_start');
       if (parsed1.type === 'step_start') {
         expect(parsed1.step).toBe('plan');
-        expect(parsed1.agent).toBe('planner');
+        expect(parsed1.persona).toBe('planner');
         expect(parsed1.iteration).toBe(1);
       }
 
@@ -230,7 +230,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -238,7 +238,7 @@ describe('NDJSON log', () => {
       const stepComplete: NdjsonStepComplete = {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan completed',
         instruction: 'Create a plan',
@@ -275,7 +275,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -283,7 +283,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'impl',
-        agent: 'coder',
+        persona: 'coder',
         status: 'error',
         content: 'Failed',
         instruction: 'Do the thing',
@@ -327,7 +327,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -335,7 +335,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Done',
         instruction: 'Plan it',
@@ -363,7 +363,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan done',
         instruction: 'Plan',
@@ -416,7 +416,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -434,7 +434,7 @@ describe('NDJSON log', () => {
         appendNdjsonLine(filepath, {
           type: 'step_start',
           step: `step-${i}`,
-          agent: 'planner',
+          persona: 'planner',
           iteration: i + 1,
           timestamp: new Date().toISOString(),
         });
@@ -560,7 +560,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan completed',
         instruction: 'Plan it',
@@ -653,7 +653,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -662,7 +662,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan done',
         instruction: 'Plan it',
@@ -673,7 +673,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'implement',
-        agent: 'coder',
+        persona: 'coder',
         iteration: 2,
         timestamp: '2025-01-01T00:00:03.000Z',
       });
@@ -701,7 +701,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });
@@ -709,7 +709,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_complete',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         status: 'done',
         content: 'Plan done',
         instruction: 'Plan it',
@@ -736,7 +736,7 @@ describe('NDJSON log', () => {
       appendNdjsonLine(filepath, {
         type: 'step_start',
         step: 'plan',
-        agent: 'planner',
+        persona: 'planner',
         iteration: 1,
         timestamp: '2025-01-01T00:00:01.000Z',
       });

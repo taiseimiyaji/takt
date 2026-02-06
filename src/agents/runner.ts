@@ -63,27 +63,27 @@ export class AgentRunner {
     return undefined;
   }
 
-  /** Load agent prompt from file path */
-  private static loadAgentPromptFromPath(agentPath: string): string {
-    if (!existsSync(agentPath)) {
-      throw new Error(`Agent file not found: ${agentPath}`);
+  /** Load persona prompt from file path */
+  private static loadPersonaPromptFromPath(personaPath: string): string {
+    if (!existsSync(personaPath)) {
+      throw new Error(`Persona file not found: ${personaPath}`);
     }
-    return readFileSync(agentPath, 'utf-8');
+    return readFileSync(personaPath, 'utf-8');
   }
 
   /**
-   * Get agent name from path or spec.
-   * For agents in subdirectories, includes parent dir for pattern matching.
+   * Get persona name from path or spec.
+   * For personas in subdirectories, includes parent dir for pattern matching.
    */
-  private static extractAgentName(agentSpec: string): string {
-    if (!agentSpec.endsWith('.md')) {
-      return agentSpec;
+  private static extractPersonaName(personaSpec: string): string {
+    if (!personaSpec.endsWith('.md')) {
+      return personaSpec;
     }
 
-    const name = basename(agentSpec, '.md');
-    const dir = basename(dirname(agentSpec));
+    const name = basename(personaSpec, '.md');
+    const dir = basename(dirname(personaSpec));
 
-    if (dir === 'default' || dir === 'agents' || dir === '.') {
+    if (dir === 'personas' || dir === '.') {
       return name;
     }
 
@@ -176,25 +176,25 @@ export class AgentRunner {
 
   /** Run an agent by name, path, inline prompt string, or no agent at all */
   async run(
-    agentSpec: string | undefined,
+    personaSpec: string | undefined,
     task: string,
     options: RunAgentOptions,
   ): Promise<AgentResponse> {
-    const agentName = agentSpec ? AgentRunner.extractAgentName(agentSpec) : 'default';
+    const personaName = personaSpec ? AgentRunner.extractPersonaName(personaSpec) : 'default';
     log.debug('Running agent', {
-      agentSpec: agentSpec ?? '(none)',
-      agentName,
+      personaSpec: personaSpec ?? '(none)',
+      personaName,
       provider: options.provider,
       model: options.model,
-      hasAgentPath: !!options.agentPath,
+      hasPersonaPath: !!options.personaPath,
       hasSession: !!options.sessionId,
       permissionMode: options.permissionMode,
     });
 
-    // 1. If agentPath is provided (resolved file exists), load prompt from file
+    // 1. If personaPath is provided (resolved file exists), load prompt from file
     //    and wrap it through the perform_agent_system_prompt template
-    if (options.agentPath) {
-      const agentDefinition = AgentRunner.loadAgentPromptFromPath(options.agentPath);
+    if (options.personaPath) {
+      const agentDefinition = AgentRunner.loadPersonaPromptFromPath(options.personaPath);
       const language = options.language ?? 'en';
       const templateVars: Record<string, string> = { agentDefinition };
 
@@ -212,28 +212,28 @@ export class AgentRunner {
       const systemPrompt = loadTemplate('perform_agent_system_prompt', language, templateVars);
       const providerType = AgentRunner.resolveProvider(options.cwd, options);
       const provider = getProvider(providerType);
-      return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options, systemPrompt));
+      return provider.call(personaName, task, AgentRunner.buildProviderCallOptions(options, systemPrompt));
     }
 
-    // 2. If agentSpec is provided but no agentPath (file not found), try custom agent first,
+    // 2. If personaSpec is provided but no personaPath (file not found), try custom agent first,
     //    then use the string as inline system prompt
-    if (agentSpec) {
+    if (personaSpec) {
       const customAgents = loadCustomAgents();
-      const agentConfig = customAgents.get(agentName);
+      const agentConfig = customAgents.get(personaName);
       if (agentConfig) {
         return this.runCustom(agentConfig, task, options);
       }
 
-      // Use agentSpec string as inline system prompt
+      // Use personaSpec string as inline system prompt
       const providerType = AgentRunner.resolveProvider(options.cwd, options);
       const provider = getProvider(providerType);
-      return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options, agentSpec));
+      return provider.call(personaName, task, AgentRunner.buildProviderCallOptions(options, personaSpec));
     }
 
-    // 3. No agent specified — run with instruction_template only (no system prompt)
+    // 3. No persona specified — run with instruction_template only (no system prompt)
     const providerType = AgentRunner.resolveProvider(options.cwd, options);
     const provider = getProvider(providerType);
-    return provider.call(agentName, task, AgentRunner.buildProviderCallOptions(options));
+    return provider.call(personaName, task, AgentRunner.buildProviderCallOptions(options));
   }
 }
 
@@ -242,9 +242,9 @@ export class AgentRunner {
 const defaultRunner = new AgentRunner();
 
 export async function runAgent(
-  agentSpec: string | undefined,
+  personaSpec: string | undefined,
   task: string,
   options: RunAgentOptions,
 ): Promise<AgentResponse> {
-  return defaultRunner.run(agentSpec, task, options);
+  return defaultRunner.run(personaSpec, task, options);
 }

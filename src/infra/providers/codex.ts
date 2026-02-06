@@ -29,7 +29,7 @@ export class CodexProvider implements Provider {
   async call(agentName: string, prompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
     if (!isInsideGitRepo(options.cwd)) {
       return {
-        agent: agentName,
+        persona: agentName,
         status: 'blocked',
         content: NOT_GIT_REPO_MESSAGE,
         timestamp: new Date(),
@@ -52,7 +52,7 @@ export class CodexProvider implements Provider {
   async callCustom(agentName: string, prompt: string, systemPrompt: string, options: ProviderCallOptions): Promise<AgentResponse> {
     if (!isInsideGitRepo(options.cwd)) {
       return {
-        agent: agentName,
+        persona: agentName,
         status: 'blocked',
         content: NOT_GIT_REPO_MESSAGE,
         timestamp: new Date(),

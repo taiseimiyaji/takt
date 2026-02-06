@@ -52,7 +52,7 @@ describe('summarizeTaskName', () => {
   it('should return AI-generated slug for task name', async () => {
     // Given: AI returns a slug for input
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'add-auth',
       timestamp: new Date(),
@@ -77,7 +77,7 @@ describe('summarizeTaskName', () => {
   it('should return AI-generated slug for English task name', async () => {
     // Given
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'fix-login-bug',
       timestamp: new Date(),
@@ -93,7 +93,7 @@ describe('summarizeTaskName', () => {
   it('should clean up AI response with extra characters', async () => {
     // Given: AI response has extra whitespace or formatting
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '  Add-User-Auth!  \n',
       timestamp: new Date(),
@@ -109,7 +109,7 @@ describe('summarizeTaskName', () => {
   it('should truncate long slugs to 30 characters without trailing hyphen', async () => {
     // Given: AI returns a long slug
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'this-is-a-very-long-slug-that-exceeds-thirty-characters',
       timestamp: new Date(),
@@ -127,7 +127,7 @@ describe('summarizeTaskName', () => {
   it('should return "task" as fallback for empty AI response', async () => {
     // Given: AI returns empty string
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '',
       timestamp: new Date(),
@@ -143,7 +143,7 @@ describe('summarizeTaskName', () => {
   it('should use custom model if specified in options', async () => {
     // Given
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'custom-task',
       timestamp: new Date(),
@@ -173,7 +173,7 @@ describe('summarizeTaskName', () => {
       branchNameStrategy: 'ai',
     });
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'codex-task',
       timestamp: new Date(),
@@ -196,7 +196,7 @@ describe('summarizeTaskName', () => {
   it('should remove consecutive hyphens', async () => {
     // Given: AI response has consecutive hyphens
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'fix---multiple---hyphens',
       timestamp: new Date(),
@@ -212,7 +212,7 @@ describe('summarizeTaskName', () => {
   it('should remove leading and trailing hyphens', async () => {
     // Given: AI response has leading/trailing hyphens
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: '-leading-trailing-',
       timestamp: new Date(),
@@ -284,7 +284,7 @@ describe('summarizeTaskName', () => {
       branchNameStrategy: 'ai',
     });
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'ai-generated-slug',
       timestamp: new Date(),
@@ -328,7 +328,7 @@ describe('summarizeTaskName', () => {
       branchNameStrategy: 'romaji',
     });
     mockProviderCall.mockResolvedValue({
-      agent: 'summarizer',
+      persona: 'summarizer',
       status: 'done',
       content: 'explicit-ai-slug',
       timestamp: new Date(),

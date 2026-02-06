@@ -109,7 +109,7 @@ export class SessionManager {
           if (sessionLog) {
             sessionLog.history.push({
               step: record.step,
-              agent: record.agent,
+              persona: record.persona,
               instruction: record.instruction,
               status: record.status,
               timestamp: record.timestamp,

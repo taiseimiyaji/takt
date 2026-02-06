@@ -16,9 +16,16 @@ description: MAGI Deliberation System - Analyze from 3 perspectives and decide b
 
 max_iterations: 5
 
+personas:
+  melchior: ../personas/melchior.md
+  balthasar: ../personas/balthasar.md
+  casper: ../personas/casper.md
+
+initial_movement: melchior
+
 movements:
   - name: melchior
-    agent: ../agents/magi/melchior.md
+    persona: melchior
     allowed_tools:
       - Read
       - Glob
@@ -55,7 +62,7 @@ movements:
         next: balthasar
 
   - name: balthasar
-    agent: ../agents/magi/balthasar.md
+    persona: balthasar
     allowed_tools:
       - Read
       - Glob
@@ -96,7 +103,7 @@ movements:
         next: casper
 
   - name: casper
-    agent: ../agents/magi/casper.md
+    persona: casper
     allowed_tools:
       - Read
       - Glob

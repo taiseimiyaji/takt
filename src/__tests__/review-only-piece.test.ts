@@ -103,19 +103,19 @@ describe('review-only piece (EN)', () => {
     expect(prComment.allowed_tools).toContain('Bash');
   });
 
-  it('should have pr-comment movement using pr-commenter agent', () => {
+  it('should have pr-comment movement using pr-commenter persona', () => {
     const prComment = raw.movements.find((s: { name: string }) => s.name === 'pr-comment');
-    expect(prComment.agent).toContain('review/pr-commenter.md');
+    expect(prComment.persona).toBe('pr-commenter');
   });
 
-  it('should have plan movement reusing default planner agent', () => {
+  it('should have plan movement reusing planner persona', () => {
     const plan = raw.movements.find((s: { name: string }) => s.name === 'plan');
-    expect(plan.agent).toContain('default/planner.md');
+    expect(plan.persona).toBe('planner');
   });
 
-  it('should have supervise movement reusing default supervisor agent', () => {
+  it('should have supervise movement reusing supervisor persona', () => {
     const supervise = raw.movements.find((s: { name: string }) => s.name === 'supervise');
-    expect(supervise.agent).toContain('default/supervisor.md');
+    expect(supervise.persona).toBe('supervisor');
   });
 
   it('should not have any movement with edit: true', () => {

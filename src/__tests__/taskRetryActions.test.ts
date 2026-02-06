@@ -60,9 +60,9 @@ const defaultPieceConfig: PieceConfig = {
   initialMovement: 'plan',
   maxIterations: 30,
   movements: [
-    { name: 'plan', agent: 'planner', instruction: '' },
-    { name: 'implement', agent: 'coder', instruction: '' },
-    { name: 'review', agent: 'reviewer', instruction: '' },
+    { name: 'plan', persona: 'planner', instruction: '' },
+    { name: 'implement', persona: 'coder', instruction: '' },
+    { name: 'review', persona: 'reviewer', instruction: '' },
   ],
 };
 
@@ -72,8 +72,8 @@ const customPieceConfig: PieceConfig = {
   initialMovement: 'step1',
   maxIterations: 10,
   movements: [
-    { name: 'step1', agent: 'coder', instruction: '' },
-    { name: 'step2', agent: 'reviewer', instruction: '' },
+    { name: 'step1', persona: 'coder', instruction: '' },
+    { name: 'step2', persona: 'reviewer', instruction: '' },
   ],
 };
 

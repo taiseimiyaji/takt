@@ -105,7 +105,7 @@ describe('PieceEngine: worktree reportDir resolution', () => {
     });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'review', content: 'Review done' }),
+      makeResponse({ persona: 'review', content: 'Review done' }),
     ]);
     mockDetectMatchedRuleSequence([
       { index: 0, method: 'tag' as const },
@@ -151,7 +151,7 @@ describe('PieceEngine: worktree reportDir resolution', () => {
 
     const { runAgent } = await import('../agents/runner.js');
     mockRunAgentSequence([
-      makeResponse({ agent: 'review', content: 'Review done' }),
+      makeResponse({ persona: 'review', content: 'Review done' }),
     ]);
     mockDetectMatchedRuleSequence([
       { index: 0, method: 'tag' as const },
@@ -181,7 +181,7 @@ describe('PieceEngine: worktree reportDir resolution', () => {
     });
 
     mockRunAgentSequence([
-      makeResponse({ agent: 'review', content: 'Review done' }),
+      makeResponse({ persona: 'review', content: 'Review done' }),
     ]);
     mockDetectMatchedRuleSequence([
       { index: 0, method: 'tag' as const },

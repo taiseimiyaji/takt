@@ -53,7 +53,7 @@ export class ParallelRunner {
     state: PieceState,
     task: string,
     maxIterations: number,
-    updateAgentSession: (agent: string, sessionId: string | undefined) => void,
+    updatePersonaSession: (persona: string, sessionId: string | undefined) => void,
   ): Promise<{ response: AgentResponse; instruction: string }> {
     if (!step.parallel) {
       throw new Error(`Movement "${step.name}" has no parallel sub-movements`);
@@ -100,14 +100,14 @@ export class ParallelRunner {
           ? { ...baseOptions, onStream: parallelLogger.createStreamHandler(subMovement.name, index) }
           : baseOptions;
 
-        const subSessionKey = subMovement.agent ?? subMovement.name;
+        const subSessionKey = subMovement.persona ?? subMovement.name;
         this.deps.onPhaseStart?.(subMovement, 1, 'execute', subInstruction);
-        const subResponse = await runAgent(subMovement.agent, subInstruction, agentOptions);
-        updateAgentSession(subSessionKey, subResponse.sessionId);
+        const subResponse = await runAgent(subMovement.persona, subInstruction, agentOptions);
+        updatePersonaSession(subSessionKey, subResponse.sessionId);
         this.deps.onPhaseComplete?.(subMovement, 1, 'execute', subResponse.content, subResponse.status, subResponse.error);
 
         // Build phase context for this sub-movement with its lastResponse
-        const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, subResponse.content, updateAgentSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
+        const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, subResponse.content, updatePersonaSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
 
         // Phase 2: report output for sub-movement
         if (subMovement.report) {
@@ -158,7 +158,7 @@ export class ParallelRunner {
     const match = await detectMatchedRule(step, aggregatedContent, '', ruleCtx);
 
     const aggregatedResponse: AgentResponse = {
-      agent: step.name,
+      persona: step.name,
       status: 'done',
       content: aggregatedContent,
       timestamp: new Date(),

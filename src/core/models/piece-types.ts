@@ -55,16 +55,16 @@ export interface PieceMovement {
   name: string;
   /** Brief description of this movement's role in the piece */
   description?: string;
-  /** Agent name, path, or inline prompt as specified in piece YAML. Undefined when movement runs without an agent. */
-  agent?: string;
+  /** Resolved persona spec (file path or inline prompt). Set from persona field in YAML. */
+  persona?: string;
   /** Session handling for this movement */
   session?: 'continue' | 'refresh';
-  /** Display name for the agent (shown in output). Falls back to agent basename if not specified */
-  agentDisplayName: string;
+  /** Display name for the persona (shown in output). Falls back to persona basename if not specified */
+  personaDisplayName: string;
   /** Allowed tools for this movement (optional, passed to agent execution) */
   allowedTools?: string[];
-  /** Resolved absolute path to agent prompt file (set by loader) */
-  agentPath?: string;
+  /** Resolved absolute path to persona prompt file (set by loader) */
+  personaPath?: string;
   /** Provider override for this movement */
   provider?: 'claude' | 'codex' | 'mock';
   /** Model override for this movement */
@@ -103,10 +103,10 @@ export interface LoopMonitorRule {
 
 /** Judge configuration for loop monitor */
 export interface LoopMonitorJudge {
-  /** Agent path, inline prompt, or undefined (uses default) */
-  agent?: string;
-  /** Resolved absolute path to agent prompt file (set by loader) */
-  agentPath?: string;
+  /** Persona spec (file path or inline prompt), resolved from persona field */
+  persona?: string;
+  /** Resolved absolute path to persona prompt file (set by loader) */
+  personaPath?: string;
   /** Custom instruction template for the judge (uses default if omitted) */
   instructionTemplate?: string;
   /** Rules for the judge's decision */
@@ -159,7 +159,7 @@ export interface PieceState {
   /** Most recent movement output (used for Previous Response injection) */
   lastOutput?: AgentResponse;
   userInputs: string[];
-  agentSessions: Map<string, string>;
+  personaSessions: Map<string, string>;
   /** Per-movement iteration counters (how many times each movement has been executed) */
   movementIterations: Map<string, number>;
   status: 'running' | 'completed' | 'aborted';

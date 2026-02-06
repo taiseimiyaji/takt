@@ -142,8 +142,8 @@ export interface IterationLimitRequest {
   currentMovement: string;
 }
 
-/** Callback for session updates (when agent session IDs change) */
-export type SessionUpdateCallback = (agentName: string, sessionId: string) => void;
+/** Callback for session updates (when persona session IDs change) */
+export type SessionUpdateCallback = (persona: string, sessionId: string) => void;
 
 /**
  * Callback for iteration limit reached.

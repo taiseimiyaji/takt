@@ -15,8 +15,8 @@ import chalk from 'chalk';
 import type { Language } from '../../core/models/index.js';
 import {
   loadGlobalConfig,
-  loadAgentSessions,
-  updateAgentSession,
+  loadPersonaSessions,
+  updatePersonaSession,
   loadSessionState,
   clearSessionState,
   type SessionState,
@@ -278,9 +278,9 @@ export async function interactiveMode(
   const model = (globalConfig.model as string | undefined);
 
   const history: ConversationMessage[] = [];
-  const agentName = 'interactive';
-  const savedSessions = loadAgentSessions(cwd, providerType);
-  let sessionId: string | undefined = savedSessions[agentName];
+  const personaName = 'interactive';
+  const savedSessions = loadPersonaSessions(cwd, providerType);
+  let sessionId: string | undefined = savedSessions[personaName];
 
   // Load and display previous task state
   const sessionState = loadSessionState(cwd);
@@ -326,13 +326,13 @@ export async function interactiveMode(
         );
         if (retry.sessionId) {
           sessionId = retry.sessionId;
-          updateAgentSession(cwd, agentName, sessionId, providerType);
+          updatePersonaSession(cwd, personaName, sessionId, providerType);
         }
         return retry;
       }
       if (result.sessionId) {
         sessionId = result.sessionId;
-        updateAgentSession(cwd, agentName, sessionId, providerType);
+        updatePersonaSession(cwd, personaName, sessionId, providerType);
       }
       return result;
     } catch (e) {

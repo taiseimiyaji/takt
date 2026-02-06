@@ -94,18 +94,18 @@ export function loadAgentPrompt(agent: CustomAgentConfig): string {
 }
 
 /**
- * Load agent prompt from a resolved path.
- * Used by piece engine when agentPath is already resolved.
+ * Load persona prompt from a resolved path.
+ * Used by piece engine when personaPath is already resolved.
  */
-export function loadAgentPromptFromPath(agentPath: string): string {
-  const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, agentPath));
+export function loadPersonaPromptFromPath(personaPath: string): string {
+  const isValid = getAllowedAgentBases().some((base) => isPathSafe(base, personaPath));
   if (!isValid) {
-    throw new Error(`Agent prompt file path is not allowed: ${agentPath}`);
+    throw new Error(`Persona prompt file path is not allowed: ${personaPath}`);
   }
 
-  if (!existsSync(agentPath)) {
-    throw new Error(`Agent prompt file not found: ${agentPath}`);
+  if (!existsSync(personaPath)) {
+    throw new Error(`Persona prompt file not found: ${personaPath}`);
   }
 
-  return readFileSync(agentPath, 'utf-8');
+  return readFileSync(personaPath, 'utf-8');
 }

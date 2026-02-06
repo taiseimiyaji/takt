@@ -24,13 +24,22 @@ description: Standard development piece with planning and specialized reviews
 
 max_iterations: 30
 
+personas:
+  planner: ../personas/planner.md
+  architect: ../personas/architect-planner.md
+  coder: ../personas/coder.md
+  ai-antipattern-reviewer: ../personas/ai-antipattern-reviewer.md
+  architecture-reviewer: ../personas/architecture-reviewer.md
+  qa-reviewer: ../personas/qa-reviewer.md
+  supervisor: ../personas/supervisor.md
+
 initial_movement: plan
 
 loop_monitors:
   - cycle: [ai_review, ai_fix]
     threshold: 3
     judge:
-      agent: ../agents/default/supervisor.md
+      persona: supervisor
       instruction_template: |
         The ai_review ↔ ai_fix loop has repeated {cycle_count} times.
 
@@ -53,7 +62,7 @@ loop_monitors:
 movements:
   - name: plan
     edit: false
-    agent: ../agents/default/planner.md
+    persona: planner
     report:
       name: 00-plan.md
       format: |
@@ -108,7 +117,7 @@ movements:
 
   - name: architect
     edit: false
-    agent: ../agents/default/architect.md
+    persona: architect
     report:
       name: 01-architecture.md
       format: |
@@ -172,7 +181,7 @@ movements:
 
   - name: implement
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     session: refresh
     report:
       - Scope: 02-coder-scope.md
@@ -252,7 +261,7 @@ movements:
 
   - name: ai_review
     edit: false
-    agent: ../agents/default/ai-antipattern-reviewer.md
+    persona: ai-antipattern-reviewer
     report:
       name: 04-ai-review.md
       format: |
@@ -306,7 +315,7 @@ movements:
 
   - name: ai_fix
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     session: refresh
     allowed_tools:
       - Read
@@ -369,7 +378,7 @@ movements:
 
   - name: ai_no_fix
     edit: false
-    agent: ../agents/default/architecture-reviewer.md
+    persona: architecture-reviewer
     allowed_tools:
       - Read
       - Glob
@@ -399,7 +408,7 @@ movements:
     parallel:
       - name: arch-review
         edit: false
-        agent: ../agents/default/architecture-reviewer.md
+        persona: architecture-reviewer
         report:
           name: 05-architect-review.md
           format: |
@@ -459,7 +468,7 @@ movements:
 
       - name: qa-review
         edit: false
-        agent: ../agents/default/qa-reviewer.md
+        persona: qa-reviewer
         report:
           name: 06-qa-review.md
           format: |
@@ -511,7 +520,7 @@ movements:
 
   - name: fix
     edit: true
-    agent: ../agents/default/coder.md
+    persona: coder
     allowed_tools:
       - Read
       - Glob
@@ -545,7 +554,7 @@ movements:
 
   - name: supervise
     edit: false
-    agent: ../agents/default/supervisor.md
+    persona: supervisor
     report:
       - Validation: 07-supervisor-validation.md
       - Summary: summary.md

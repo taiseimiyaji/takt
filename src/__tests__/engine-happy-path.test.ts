@@ -81,12 +81,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan complete' }),
-        makeResponse({ agent: 'implement', content: 'Implementation done' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
-        makeResponse({ agent: 'arch-review', content: 'Architecture OK' }),
-        makeResponse({ agent: 'security-review', content: 'Security OK' }),
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'plan', content: 'Plan complete' }),
+        makeResponse({ persona: 'implement', content: 'Implementation done' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'arch-review', content: 'Architecture OK' }),
+        makeResponse({ persona: 'security-review', content: 'Security OK' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -120,19 +120,19 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
         // Round 1 reviewers: arch approved, security needs fix
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'Vulnerability found' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'Vulnerability found' }),
         // fix step
-        makeResponse({ agent: 'fix', content: 'Fixed security issue' }),
+        makeResponse({ persona: 'fix', content: 'Fixed security issue' }),
         // Round 2 reviewers: both approved
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'Security OK now' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'Security OK now' }),
         // supervise
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -161,24 +161,24 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
         // Round 1 reviewers
-        makeResponse({ agent: 'arch-review', content: 'Arch R1 OK' }),
-        makeResponse({ agent: 'security-review', content: 'Sec R1 needs fix' }),
+        makeResponse({ persona: 'arch-review', content: 'Arch R1 OK' }),
+        makeResponse({ persona: 'security-review', content: 'Sec R1 needs fix' }),
         // fix round 1
-        makeResponse({ agent: 'fix', content: 'Fix R1' }),
+        makeResponse({ persona: 'fix', content: 'Fix R1' }),
         // Round 2 reviewers
-        makeResponse({ agent: 'arch-review', content: 'Arch R2 OK' }),
-        makeResponse({ agent: 'security-review', content: 'Sec R2 still failing' }),
+        makeResponse({ persona: 'arch-review', content: 'Arch R2 OK' }),
+        makeResponse({ persona: 'security-review', content: 'Sec R2 still failing' }),
         // fix round 2
-        makeResponse({ agent: 'fix', content: 'Fix R2' }),
+        makeResponse({ persona: 'fix', content: 'Fix R2' }),
         // Round 3 reviewers (approved)
-        makeResponse({ agent: 'arch-review', content: 'Arch R3 OK' }),
-        makeResponse({ agent: 'security-review', content: 'Sec R3 OK' }),
+        makeResponse({ persona: 'arch-review', content: 'Arch R3 OK' }),
+        makeResponse({ persona: 'security-review', content: 'Sec R3 OK' }),
         // supervise
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -230,16 +230,16 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
-        makeResponse({ agent: 'ai_review', content: 'AI issues found' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'ai_review', content: 'AI issues found' }),
         // ai_fix (should see ai_review output)
-        makeResponse({ agent: 'ai_fix', content: 'AI issues fixed' }),
+        makeResponse({ persona: 'ai_fix', content: 'AI issues fixed' }),
         // reviewers (approved)
-        makeResponse({ agent: 'arch-review', content: 'Arch OK' }),
-        makeResponse({ agent: 'security-review', content: 'Sec OK' }),
+        makeResponse({ persona: 'arch-review', content: 'Arch OK' }),
+        makeResponse({ persona: 'security-review', content: 'Sec OK' }),
         // supervise (should see reviewers aggregate output)
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -288,13 +288,13 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
-        makeResponse({ agent: 'implement', content: 'Impl done' }),
-        makeResponse({ agent: 'ai_review', content: 'AI issues found' }),
-        makeResponse({ agent: 'ai_fix', content: 'Issues fixed' }),
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'OK' }),
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'implement', content: 'Impl done' }),
+        makeResponse({ persona: 'ai_review', content: 'AI issues found' }),
+        makeResponse({ persona: 'ai_fix', content: 'Issues fixed' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'OK' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -325,7 +325,7 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Requirements unclear' }),
+        makeResponse({ persona: 'plan', content: 'Requirements unclear' }),
       ]);
 
       // plan rule index 1 → ABORT
@@ -352,12 +352,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan' }),
-        makeResponse({ agent: 'implement', content: 'Impl' }),
-        makeResponse({ agent: 'ai_review', content: 'OK' }),
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'OK' }),
-        makeResponse({ agent: 'supervise', content: 'Pass' }),
+        makeResponse({ persona: 'plan', content: 'Plan' }),
+        makeResponse({ persona: 'implement', content: 'Impl' }),
+        makeResponse({ persona: 'ai_review', content: 'OK' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'OK' }),
+        makeResponse({ persona: 'supervise', content: 'Pass' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -399,7 +399,7 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(simpleConfig, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
       ]);
       mockDetectMatchedRuleSequence([
         { index: 0, method: 'phase1_tag' },
@@ -422,12 +422,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan' }),
-        makeResponse({ agent: 'implement', content: 'Impl' }),
-        makeResponse({ agent: 'ai_review', content: 'OK' }),
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'OK' }),
-        makeResponse({ agent: 'supervise', content: 'Pass' }),
+        makeResponse({ persona: 'plan', content: 'Plan' }),
+        makeResponse({ persona: 'implement', content: 'Impl' }),
+        makeResponse({ persona: 'ai_review', content: 'OK' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'OK' }),
+        makeResponse({ persona: 'supervise', content: 'Pass' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -460,7 +460,7 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan' }),
+        makeResponse({ persona: 'plan', content: 'Plan' }),
       ]);
       mockDetectMatchedRuleSequence([
         { index: 0, method: 'phase1_tag' },
@@ -484,12 +484,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan output' }),
-        makeResponse({ agent: 'implement', content: 'Implement output' }),
-        makeResponse({ agent: 'ai_review', content: 'AI review output' }),
-        makeResponse({ agent: 'arch-review', content: 'Arch output' }),
-        makeResponse({ agent: 'security-review', content: 'Sec output' }),
-        makeResponse({ agent: 'supervise', content: 'Supervise output' }),
+        makeResponse({ persona: 'plan', content: 'Plan output' }),
+        makeResponse({ persona: 'implement', content: 'Implement output' }),
+        makeResponse({ persona: 'ai_review', content: 'AI review output' }),
+        makeResponse({ persona: 'arch-review', content: 'Arch output' }),
+        makeResponse({ persona: 'security-review', content: 'Sec output' }),
+        makeResponse({ persona: 'supervise', content: 'Supervise output' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -529,7 +529,7 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(simpleConfig, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan done' }),
+        makeResponse({ persona: 'plan', content: 'Plan done' }),
       ]);
       mockDetectMatchedRuleSequence([
         { index: 0, method: 'phase1_tag' },
@@ -557,12 +557,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan' }),
-        makeResponse({ agent: 'implement', content: 'Impl' }),
-        makeResponse({ agent: 'ai_review', content: 'OK' }),
-        makeResponse({ agent: 'arch-review', content: 'OK' }),
-        makeResponse({ agent: 'security-review', content: 'OK' }),
-        makeResponse({ agent: 'supervise', content: 'Pass' }),
+        makeResponse({ persona: 'plan', content: 'Plan' }),
+        makeResponse({ persona: 'implement', content: 'Impl' }),
+        makeResponse({ persona: 'ai_review', content: 'OK' }),
+        makeResponse({ persona: 'arch-review', content: 'OK' }),
+        makeResponse({ persona: 'security-review', content: 'OK' }),
+        makeResponse({ persona: 'supervise', content: 'Pass' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -648,10 +648,10 @@ describe('PieceEngine Integration: Happy Path', () => {
       });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
-        makeResponse({ agent: 'arch-review', content: 'Architecture OK' }),
-        makeResponse({ agent: 'security-review', content: 'Security OK' }),
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'arch-review', content: 'Architecture OK' }),
+        makeResponse({ persona: 'security-review', content: 'Security OK' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([
@@ -683,12 +683,12 @@ describe('PieceEngine Integration: Happy Path', () => {
       engine = new PieceEngine(config, tmpDir, 'test task', { projectCwd: tmpDir });
 
       mockRunAgentSequence([
-        makeResponse({ agent: 'plan', content: 'Plan complete' }),
-        makeResponse({ agent: 'implement', content: 'Implementation done' }),
-        makeResponse({ agent: 'ai_review', content: 'No issues' }),
-        makeResponse({ agent: 'arch-review', content: 'Architecture OK' }),
-        makeResponse({ agent: 'security-review', content: 'Security OK' }),
-        makeResponse({ agent: 'supervise', content: 'All passed' }),
+        makeResponse({ persona: 'plan', content: 'Plan complete' }),
+        makeResponse({ persona: 'implement', content: 'Implementation done' }),
+        makeResponse({ persona: 'ai_review', content: 'No issues' }),
+        makeResponse({ persona: 'arch-review', content: 'Architecture OK' }),
+        makeResponse({ persona: 'security-review', content: 'Security OK' }),
+        makeResponse({ persona: 'supervise', content: 'All passed' }),
       ]);
 
       mockDetectMatchedRuleSequence([

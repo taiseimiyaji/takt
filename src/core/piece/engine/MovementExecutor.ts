@@ -92,30 +92,30 @@ export class MovementExecutor {
     state: PieceState,
     task: string,
     maxIterations: number,
-    updateAgentSession: (agent: string, sessionId: string | undefined) => void,
+    updatePersonaSession: (persona: string, sessionId: string | undefined) => void,
     prebuiltInstruction?: string,
   ): Promise<{ response: AgentResponse; instruction: string }> {
     const movementIteration = prebuiltInstruction
       ? state.movementIterations.get(step.name) ?? 1
       : incrementMovementIteration(state, step.name);
     const instruction = prebuiltInstruction ?? this.buildInstruction(step, movementIteration, state, task, maxIterations);
-    const sessionKey = step.agent ?? step.name;
+    const sessionKey = step.persona ?? step.name;
     log.debug('Running movement', {
       movement: step.name,
-      agent: step.agent ?? '(none)',
+      persona: step.persona ?? '(none)',
       movementIteration,
       iteration: state.iteration,
-      sessionId: state.agentSessions.get(sessionKey) ?? 'new',
+      sessionId: state.personaSessions.get(sessionKey) ?? 'new',
     });
 
     // Phase 1: main execution (Write excluded if movement has report)
     this.deps.onPhaseStart?.(step, 1, 'execute', instruction);
     const agentOptions = this.deps.optionsBuilder.buildAgentOptions(step);
-    let response = await runAgent(step.agent, instruction, agentOptions);
-    updateAgentSession(sessionKey, response.sessionId);
+    let response = await runAgent(step.persona, instruction, agentOptions);
+    updatePersonaSession(sessionKey, response.sessionId);
     this.deps.onPhaseComplete?.(step, 1, 'execute', response.content, response.status, response.error);
 
-    const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, response.content, updateAgentSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
+    const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, response.content, updatePersonaSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
 
     // Phase 2: report output (resume same session, Write only)
     if (step.report) {

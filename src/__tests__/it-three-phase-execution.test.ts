@@ -92,9 +92,9 @@ function makeMovement(
 ): PieceMovement {
   return {
     name,
-    agent: './agents/agent.md',
-    agentDisplayName: name,
-    agentPath,
+    persona: './agents/agent.md',
+    personaDisplayName: name,
+    personaPath: agentPath,
     instructionTemplate: '{task}',
     passPreviousResponse: true,
     rules,
