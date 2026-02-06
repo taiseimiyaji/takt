@@ -14,13 +14,14 @@ import {
   loadAllPiecesWithSources,
   getPieceCategories,
   buildCategorizedPieces,
+  loadGlobalConfig,
 } from '../../../infra/config/index.js';
 import { confirm } from '../../../shared/prompt/index.js';
 import { createSharedClone, autoCommitAndPush, summarizeTaskName } from '../../../infra/task/index.js';
 import { DEFAULT_PIECE_NAME } from '../../../shared/constants.js';
 import { info, error, success } from '../../../shared/ui/index.js';
 import { createLogger } from '../../../shared/utils/index.js';
-import { createPullRequest, buildPrBody } from '../../../infra/github/index.js';
+import { createPullRequest, buildPrBody, pushBranch } from '../../../infra/github/index.js';
 import { executeTask } from './taskExecution.js';
 import type { TaskExecutionOptions, WorktreeConfirmationResult, SelectAndExecuteOptions } from './types.js';
 import {
@@ -123,6 +124,26 @@ export async function confirmAndCreateWorktree(
 }
 
 /**
+ * Resolve auto-PR setting with priority: CLI option > config > prompt.
+ * Only applicable when worktree is enabled.
+ */
+async function resolveAutoPr(optionAutoPr: boolean | undefined): Promise<boolean> {
+  // CLI option takes precedence
+  if (typeof optionAutoPr === 'boolean') {
+    return optionAutoPr;
+  }
+
+  // Check global config
+  const globalConfig = loadGlobalConfig();
+  if (typeof globalConfig.autoPr === 'boolean') {
+    return globalConfig.autoPr;
+  }
+
+  // Fall back to interactive prompt
+  return confirm('Create pull request?', false);
+}
+
+/**
  * Execute a task with piece selection, optional worktree, and auto-commit.
  * Shared by direct task execution and interactive mode.
  */
@@ -145,7 +166,13 @@ export async function selectAndExecuteTask(
     options?.createWorktree,
   );
 
-  log.info('Starting task execution', { piece: pieceIdentifier, worktree: isWorktree });
+  // Ask for PR creation BEFORE execution (only if worktree is enabled)
+  let shouldCreatePr = false;
+  if (isWorktree) {
+    shouldCreatePr = await resolveAutoPr(options?.autoPr);
+  }
+
+  log.info('Starting task execution', { piece: pieceIdentifier, worktree: isWorktree, autoPr: shouldCreatePr });
   const taskSuccess = await executeTask({
     task,
     cwd: execCwd,
@@ -164,22 +191,26 @@ export async function selectAndExecuteTask(
       error(`Auto-commit failed: ${commitResult.message}`);
     }
 
-    if (commitResult.success && commitResult.commitHash && branch) {
-      const shouldCreatePr = options?.autoPr === true || await confirm('Create pull request?', false);
-      if (shouldCreatePr) {
-        info('Creating pull request...');
-        const prBody = buildPrBody(options?.issues, `Piece \`${pieceIdentifier}\` completed successfully.`);
-        const prResult = createPullRequest(execCwd, {
-          branch,
-          title: task.length > 100 ? `${task.slice(0, 97)}...` : task,
-          body: prBody,
-          repo: options?.repo,
-        });
-        if (prResult.success) {
-          success(`PR created: ${prResult.url}`);
-        } else {
-          error(`PR creation failed: ${prResult.error}`);
-        }
+    if (commitResult.success && commitResult.commitHash && branch && shouldCreatePr) {
+      info('Creating pull request...');
+      // Push branch from project cwd to origin (clone's origin is removed after shared clone)
+      try {
+        pushBranch(cwd, branch);
+      } catch (pushError) {
+        // Branch may already be pushed by autoCommitAndPush, continue to PR creation
+        log.info('Branch push from project cwd failed (may already exist)', { error: pushError });
+      }
+      const prBody = buildPrBody(options?.issues, `Piece \`${pieceIdentifier}\` completed successfully.`);
+      const prResult = createPullRequest(cwd, {
+        branch,
+        title: task.length > 100 ? `${task.slice(0, 97)}...` : task,
+        body: prBody,
+        repo: options?.repo,
+      });
+      if (prResult.success) {
+        success(`PR created: ${prResult.url}`);
+      } else {
+        error(`PR creation failed: ${prResult.error}`);
       }
     }
   }
