@@ -59,6 +59,8 @@ export interface GlobalConfig {
   bookmarksFile?: string;
   /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
   pieceCategoriesFile?: string;
+  /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
+  branchNameStrategy?: 'romaji' | 'ai';
 }
 
 /** Project-level configuration */

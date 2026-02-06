@@ -53,7 +53,8 @@ export class TaskSummarizer {
     taskName: string,
     options: SummarizeOptions,
   ): Promise<string> {
-    const useLLM = options.useLLM ?? true;
+    const globalConfig = loadGlobalConfig();
+    const useLLM = options.useLLM ?? (globalConfig.branchNameStrategy === 'ai');
     log.info('Summarizing task name', { taskName, useLLM });
 
     if (!useLLM) {
@@ -61,8 +62,6 @@ export class TaskSummarizer {
       log.info('Task name romanized', { original: taskName, slug });
       return slug || 'task';
     }
-
-    const globalConfig = loadGlobalConfig();
     const providerType = (globalConfig.provider as ProviderType) ?? 'claude';
     const model = options.model ?? globalConfig.model;
 

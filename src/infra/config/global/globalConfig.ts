@@ -87,6 +87,7 @@ export class GlobalConfigManager {
       minimalOutput: parsed.minimal_output,
       bookmarksFile: parsed.bookmarks_file,
       pieceCategoriesFile: parsed.piece_categories_file,
+      branchNameStrategy: parsed.branch_name_strategy,
     };
     this.cachedConfig = config;
     return config;
@@ -142,6 +143,9 @@ export class GlobalConfigManager {
     }
     if (config.pieceCategoriesFile) {
       raw.piece_categories_file = config.pieceCategoriesFile;
+    }
+    if (config.branchNameStrategy) {
+      raw.branch_name_strategy = config.branchNameStrategy;
     }
     writeFileSync(configPath, stringifyYaml(raw), 'utf-8');
     this.invalidateCache();

@@ -24,6 +24,7 @@ You are the implementer. **Focus on implementation, not design decisions.**
 - Making design decisions arbitrarily → Report and ask for guidance
 - Dismissing reviewer feedback → Prohibited (your understanding is wrong)
 - **Adding backward compatibility or legacy support without being asked → Absolutely prohibited (fallbacks, old API maintenance, migration code, etc. are unnecessary unless explicitly instructed)**
+- **Layering workarounds that bypass safety mechanisms on top of a root cause fix → Prohibited (e.g., fixing path resolution AND adding `git add -f` to override `.gitignore`. If the root fix is correct, the bypass is unnecessary. Safety mechanisms exist for a reason)**
 
 ## Most Important Rule
 
