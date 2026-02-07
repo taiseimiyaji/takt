@@ -49,14 +49,16 @@ System Prompt:
 
 User Message:
   ┌──────────────────────────────────────────────────┐
-  │ Policy   — rules, prohibitions, quality standards │
   │ Knowledge — reference materials for judgment      │
   │ Instruction — step-specific procedures            │
   │ Output Contract — output structure definition     │
+  │ Policy   — rules, prohibitions, quality standards │
   └──────────────────────────────────────────────────┘
 ```
 
 Persona is the agent's **identity** — it doesn't change across tasks. Placing it in the system prompt shapes all LLM responses. The remaining four change per step and are composed into the user message.
+
+Placing Policy at the end of the user message is a deliberate design choice. LLMs are strongly influenced by what they read last (recency effect). Constraints such as prohibitions and REJECT criteria are more likely to be followed when placed immediately before output generation. The flow of Knowledge → Instruction → Policy also follows a natural cognitive order: "understand the context → understand the task → confirm the constraints."
 
 Below are typical file examples for each facet.
 
@@ -213,31 +215,9 @@ You evaluate code structure, design, and maintainability.
 **User Message:**
 
 ```markdown
-## Policy
-
-# Coding Policy
-
-## Principles
-
-| Principle | Standard |
-|-----------|----------|
-| DRY | 3+ duplications → REJECT |
-| Fail Fast | Reject invalid state early |
-| Least Privilege | Minimal scope necessary |
-
-## Prohibitions
-
-- **Unused code** — no "just in case" methods, no future-use fields
-- **Direct object mutation** — create new objects with spread operators
-- **Fallback abuse** — don't hide uncertainty with `?? 'default'`
-
----
-
 ## Knowledge
 
-# Architecture Knowledge
-
-## Layer Structure
+### Layer Structure
 
 Dependency direction: upper layers → lower layers (reverse prohibited)
 
@@ -247,7 +227,7 @@ Dependency direction: upper layers → lower layers (reverse prohibited)
 | Service | Business logic | Repository |
 | Repository | Data access | None |
 
-## File Organization
+### File Organization
 
 | Criteria | Judgment |
 |----------|----------|
@@ -302,6 +282,24 @@ Output your report in the following format.
 |---|----------|-------|-----|
 | 1 | `src/file.ts:42` | Issue description | How to fix |
 \```
+
+---
+
+## Policy
+
+### Principles
+
+| Principle | Standard |
+|-----------|----------|
+| DRY | 3+ duplications → REJECT |
+| Fail Fast | Reject invalid state early |
+| Least Privilege | Minimal scope necessary |
+
+### Prohibitions
+
+- **Unused code** — no "just in case" methods, no future-use fields
+- **Direct object mutation** — create new objects with spread operators
+- **Fallback abuse** — don't hide uncertainty with `?? 'default'`
 ```
 
 Independent files are assembled into a single prompt at runtime. Change a file's content and the prompt changes; point to different files and the combination changes.
@@ -410,7 +408,7 @@ The key distinction: existing approaches either decompose *tasks* (what to do) o
 
 **For the engine:**
 - Prompt assembly is deterministic — given the same workflow definition and files, the same prompt is built
-- Policy placement can be optimized (e.g., placed at top and bottom to counter the "Lost in the Middle" effect)
+- Policy placement can be optimized (e.g., placed at the end to leverage recency effect for better constraint adherence)
 - Concerns can be injected, omitted, or overridden per step without touching other parts
 
 ## Summary

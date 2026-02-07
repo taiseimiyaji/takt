@@ -114,6 +114,7 @@ export async function confirmAndCreateWorktree(
   info('Generating branch name...');
   const taskSlug = await summarizeTaskName(task, { cwd });
 
+  info('Creating clone...');
   const result = createSharedClone(cwd, {
     worktree: true,
     taskSlug,

@@ -240,6 +240,7 @@ export async function resolveTaskExecution(
     info('Generating branch name...');
     const taskSlug = await summarizeTaskName(task.content, { cwd: defaultCwd });
 
+    info('Creating clone...');
     const result = createSharedClone(defaultCwd, {
       worktree: data.worktree,
       branch: data.branch,
