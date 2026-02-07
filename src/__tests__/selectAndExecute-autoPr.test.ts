@@ -23,6 +23,7 @@ vi.mock('../infra/task/index.js', () => ({
   createSharedClone: vi.fn(),
   autoCommitAndPush: vi.fn(),
   summarizeTaskName: vi.fn(),
+  getCurrentBranch: vi.fn(() => 'main'),
 }));
 
 vi.mock('../shared/ui/index.js', () => ({
