@@ -20,6 +20,9 @@ stances:
   review: ../stances/review.md
   testing: ../stances/testing.md
 
+knowledge:
+  architecture: ../knowledge/architecture.md
+
 personas:
   planner: ../personas/planner.md
   architect-planner: ../personas/architect-planner.md
@@ -224,6 +227,7 @@ movements:
         edit: false
         persona: architecture-reviewer
         stance: review
+        knowledge: architecture
         report:
           name: 05-architect-review.md
           format: architecture-review

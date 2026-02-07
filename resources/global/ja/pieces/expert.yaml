@@ -28,6 +28,11 @@ stances:
   review: ../stances/review.md
   testing: ../stances/testing.md
 
+knowledge:
+  frontend: ../knowledge/frontend.md
+  security: ../knowledge/security.md
+  architecture: ../knowledge/architecture.md
+
 personas:
   planner: ../personas/planner.md
   coder: ../personas/coder.md
@@ -195,6 +200,7 @@ movements:
         edit: false
         persona: architecture-reviewer
         stance: review
+        knowledge: architecture
         report:
           name: 04-architect-review.md
           format: architecture-review
@@ -214,6 +220,7 @@ movements:
         edit: false
         persona: frontend-reviewer
         stance: review
+        knowledge: frontend
         report:
           name: 05-frontend-review.md
           format: frontend-review
@@ -233,6 +240,7 @@ movements:
         edit: false
         persona: security-reviewer
         stance: review
+        knowledge: security
         report:
           name: 06-security-review.md
           format: security-review

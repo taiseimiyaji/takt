@@ -37,6 +37,11 @@ stances:
   review: ../stances/review.md
   testing: ../stances/testing.md
 
+knowledge:
+  frontend: ../knowledge/frontend.md
+  cqrs-es: ../knowledge/cqrs-es.md
+  security: ../knowledge/security.md
+
 personas:
   planner: ../personas/planner.md
   coder: ../personas/coder.md
@@ -205,6 +210,7 @@ movements:
         edit: false
         persona: cqrs-es-reviewer
         stance: review
+        knowledge: cqrs-es
         report:
           name: 04-cqrs-es-review.md
           format: cqrs-es-review
@@ -224,6 +230,7 @@ movements:
         edit: false
         persona: frontend-reviewer
         stance: review
+        knowledge: frontend
         report:
           name: 05-frontend-review.md
           format: frontend-review
@@ -243,6 +250,7 @@ movements:
         edit: false
         persona: security-reviewer
         stance: review
+        knowledge: security
         report:
           name: 06-security-review.md
           format: security-review
