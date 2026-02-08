@@ -13,6 +13,7 @@
 
 import type { TaskRunner, TaskInfo } from '../../../infra/task/index.js';
 import { info, blankLine } from '../../../shared/ui/index.js';
+import { TaskPrefixWriter } from '../../../shared/ui/TaskPrefixWriter.js';
 import { createLogger } from '../../../shared/utils/index.js';
 import { executeAndCompleteTask } from './taskExecution.js';
 import { installSigIntHandler } from './sigintHandler.js';
@@ -102,6 +103,7 @@ export async function runWithWorkerPool(
 
   const queue = [...initialTasks];
   const active = new Map<Promise<boolean>, TaskInfo>();
+  const colorCounter = { value: 0 };
 
   try {
     while (queue.length > 0 || active.size > 0) {
@@ -109,7 +111,7 @@ export async function runWithWorkerPool(
         break;
       }
 
-      fillSlots(queue, active, concurrency, taskRunner, cwd, pieceName, options, abortController);
+      fillSlots(queue, active, concurrency, taskRunner, cwd, pieceName, options, abortController, colorCounter);
 
       if (active.size === 0) {
         break;
@@ -171,17 +173,25 @@ function fillSlots(
   pieceName: string,
   options: TaskExecutionOptions | undefined,
   abortController: AbortController,
+  colorCounter: { value: number },
 ): void {
   while (active.size < concurrency && queue.length > 0) {
     const task = queue.shift()!;
     const isParallel = concurrency > 1;
+    const colorIndex = colorCounter.value++;
 
-    blankLine();
-    info(`=== Task: ${task.name} ===`);
+    if (isParallel) {
+      const writer = new TaskPrefixWriter({ taskName: task.name, colorIndex });
+      writer.writeLine(`=== Task: ${task.name} ===`);
+    } else {
+      blankLine();
+      info(`=== Task: ${task.name} ===`);
+    }
 
     const promise = executeAndCompleteTask(task, taskRunner, cwd, pieceName, options, {
       abortSignal: isParallel ? abortController.signal : undefined,
       taskPrefix: isParallel ? task.name : undefined,
+      taskColorIndex: isParallel ? colorIndex : undefined,
     });
     active.set(promise, task);
   }
