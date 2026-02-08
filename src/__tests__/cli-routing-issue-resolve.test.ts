@@ -48,7 +48,8 @@ vi.mock('../features/interactive/index.js', () => ({
 }));
 
 vi.mock('../infra/config/index.js', () => ({
-  getPieceDescription: vi.fn(() => ({ name: 'default', description: 'test piece', pieceStructure: '' })),
+  getPieceDescription: vi.fn(() => ({ name: 'default', description: 'test piece', pieceStructure: '', movementPreviews: [] })),
+  loadGlobalConfig: vi.fn(() => ({ interactivePreviewMovements: 3 })),
 }));
 
 vi.mock('../shared/constants.js', () => ({

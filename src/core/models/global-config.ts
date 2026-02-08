@@ -67,6 +67,8 @@ export interface GlobalConfig {
   preventSleep?: boolean;
   /** Enable notification sounds (default: true when undefined) */
   notificationSound?: boolean;
+  /** Number of movement previews to inject into interactive mode (0 to disable, max 10) */
+  interactivePreviewMovements?: number;
   /** Number of tasks to run concurrently in takt run (default: 1 = sequential) */
   concurrency: number;
 }

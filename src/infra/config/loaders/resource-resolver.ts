@@ -138,7 +138,8 @@ export function resolveRefToContent(
   }
 
   if (facetType && context) {
-    return resolveFacetByName(ref, facetType, context);
+    const facetContent = resolveFacetByName(ref, facetType, context);
+    if (facetContent !== undefined) return facetContent;
   }
 
   return resolveResourceContent(ref, pieceDir);
