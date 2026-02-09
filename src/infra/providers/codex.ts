@@ -27,6 +27,7 @@ function isInsideGitRepo(cwd: string): boolean {
 function toCodexOptions(options: ProviderCallOptions): CodexCallOptions {
   return {
     cwd: options.cwd,
+    abortSignal: options.abortSignal,
     sessionId: options.sessionId,
     model: options.model,
     permissionMode: options.permissionMode,

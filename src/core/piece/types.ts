@@ -153,6 +153,7 @@ export type IterationLimitCallback = (request: IterationLimitRequest) => Promise
 
 /** Options for piece engine */
 export interface PieceEngineOptions {
+  abortSignal?: AbortSignal;
   /** Callback for streaming real-time output */
   onStream?: StreamCallback;
   /** Callback for requesting user input when an agent is blocked */

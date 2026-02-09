@@ -100,6 +100,7 @@ export class AgentRunner {
   ): ProviderCallOptions {
     return {
       cwd: options.cwd,
+      abortSignal: options.abortSignal,
       sessionId: options.sessionId,
       allowedTools: options.allowedTools ?? agentConfig?.allowedTools,
       mcpServers: options.mcpServers,

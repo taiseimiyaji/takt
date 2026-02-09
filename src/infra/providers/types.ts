@@ -20,6 +20,7 @@ export interface AgentSetup {
 /** Runtime options passed at call time */
 export interface ProviderCallOptions {
   cwd: string;
+  abortSignal?: AbortSignal;
   sessionId?: string;
   model?: string;
   allowedTools?: string[];

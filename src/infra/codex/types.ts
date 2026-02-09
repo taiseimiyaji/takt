@@ -21,6 +21,7 @@ export function mapToCodexSandboxMode(mode: PermissionMode): CodexSandboxMode {
 /** Options for calling Codex */
 export interface CodexCallOptions {
   cwd: string;
+  abortSignal?: AbortSignal;
   sessionId?: string;
   model?: string;
   systemPrompt?: string;

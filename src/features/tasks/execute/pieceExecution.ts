@@ -331,6 +331,7 @@ export async function executePiece(
     : undefined;
 
   const engine = new PieceEngine(pieceConfig, cwd, task, {
+    abortSignal: options.abortSignal,
     onStream: streamHandler,
     onUserInput,
     initialSessions: savedSessions,
