@@ -24,6 +24,7 @@ export type { CodexCallOptions } from './types.js';
 
 const log = createLogger('codex-sdk');
 const CODEX_STREAM_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+const CODEX_STREAM_ABORTED_MESSAGE = 'Codex execution aborted';
 
 /**
  * Client for Codex SDK agent interactions.
@@ -58,18 +59,21 @@ export class CodexClient {
 
     let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
     const streamAbortController = new AbortController();
-    const abortMessage = `Codex stream timed out after ${Math.floor(CODEX_STREAM_IDLE_TIMEOUT_MS / 60000)} minutes of inactivity`;
+    const timeoutMessage = `Codex stream timed out after ${Math.floor(CODEX_STREAM_IDLE_TIMEOUT_MS / 60000)} minutes of inactivity`;
+    let abortCause: 'timeout' | 'external' | undefined;
 
     const resetIdleTimeout = (): void => {
       if (idleTimeoutId !== undefined) {
         clearTimeout(idleTimeoutId);
       }
       idleTimeoutId = setTimeout(() => {
+        abortCause = 'timeout';
         streamAbortController.abort();
       }, CODEX_STREAM_IDLE_TIMEOUT_MS);
     };
 
     const onExternalAbort = (): void => {
+      abortCause = 'external';
       streamAbortController.abort();
     };
 
@@ -202,7 +206,11 @@ export class CodexClient {
       };
     } catch (error) {
       const message = getErrorMessage(error);
-      const errorMessage = streamAbortController.signal.aborted ? abortMessage : message;
+      const errorMessage = streamAbortController.signal.aborted
+        ? abortCause === 'timeout'
+          ? timeoutMessage
+          : CODEX_STREAM_ABORTED_MESSAGE
+        : message;
       emitResult(options.onStream, false, errorMessage, threadId);
 
       return {
