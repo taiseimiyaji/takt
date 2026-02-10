@@ -11,19 +11,32 @@ import { GlobalConfigSchema } from '../../../core/models/index.js';
 import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/index.js';
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
 import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
+import { parseProviderModel } from '../../../shared/utils/providerModel.js';
 
 /** Claude-specific model aliases that are not valid for other providers */
 const CLAUDE_MODEL_ALIASES = new Set(['opus', 'sonnet', 'haiku']);
 
 /** Validate that provider and model are compatible */
 function validateProviderModelCompatibility(provider: string | undefined, model: string | undefined): void {
-  if (!provider || !model) return;
+  if (!provider) return;
+
+  if (provider === 'opencode' && !model) {
+    throw new Error(
+      "Configuration error: provider 'opencode' requires model in 'provider/model' format (e.g. 'opencode/big-pickle')."
+    );
+  }
+
+  if (!model) return;
 
   if ((provider === 'codex' || provider === 'opencode') && CLAUDE_MODEL_ALIASES.has(model)) {
     throw new Error(
       `Configuration error: model '${model}' is a Claude model alias but provider is '${provider}'. ` +
       `Either change the provider to 'claude' or specify a ${provider}-compatible model.`
     );
+  }
+
+  if (provider === 'opencode') {
+    parseProviderModel(model, "Configuration error: model");
   }
 }
 

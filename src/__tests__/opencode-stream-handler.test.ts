@@ -32,28 +32,17 @@ describe('emitInit', () => {
   it('should emit init event with model and sessionId', () => {
     const onStream = vi.fn();
 
-    emitInit(onStream, 'gpt-4', 'session-123');
+    emitInit(onStream, 'opencode/big-pickle', 'session-123');
 
     expect(onStream).toHaveBeenCalledOnce();
     expect(onStream).toHaveBeenCalledWith({
       type: 'init',
-      data: { model: 'gpt-4', sessionId: 'session-123' },
-    });
-  });
-
-  it('should use default model name when model is undefined', () => {
-    const onStream = vi.fn();
-
-    emitInit(onStream, undefined, 'session-abc');
-
-    expect(onStream).toHaveBeenCalledWith({
-      type: 'init',
-      data: { model: 'opencode', sessionId: 'session-abc' },
+      data: { model: 'opencode/big-pickle', sessionId: 'session-123' },
     });
   });
 
   it('should not emit when onStream is undefined', () => {
-    emitInit(undefined, 'gpt-4', 'session-123');
+    emitInit(undefined, 'opencode/big-pickle', 'session-123');
   });
 });
 

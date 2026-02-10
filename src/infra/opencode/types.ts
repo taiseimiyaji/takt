@@ -23,7 +23,7 @@ export interface OpenCodeCallOptions {
   cwd: string;
   abortSignal?: AbortSignal;
   sessionId?: string;
-  model?: string;
+  model: string;
   systemPrompt?: string;
   /** Permission mode for automatic permission handling */
   permissionMode?: PermissionMode;

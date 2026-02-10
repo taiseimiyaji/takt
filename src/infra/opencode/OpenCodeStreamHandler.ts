@@ -93,14 +93,14 @@ export function createStreamTrackingState(): StreamTrackingState {
 
 export function emitInit(
   onStream: StreamCallback | undefined,
-  model: string | undefined,
+  model: string,
   sessionId: string,
 ): void {
   if (!onStream) return;
   onStream({
     type: 'init',
     data: {
-      model: model || 'opencode',
+      model,
       sessionId,
     },
   });

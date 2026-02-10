@@ -9,6 +9,7 @@ import { createOpencode } from '@opencode-ai/sdk/v2';
 import { createServer } from 'node:net';
 import type { AgentResponse } from '../../core/models/index.js';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
+import { parseProviderModel } from '../../shared/utils/providerModel.js';
 import { mapToOpenCodePermissionReply, type OpenCodeCallOptions } from './types.js';
 import {
   type OpenCodeStreamEvent,
@@ -154,13 +155,20 @@ export class OpenCodeClient {
           attempt,
         });
 
+        const parsedModel = parseProviderModel(options.model, 'OpenCode model');
+        const fullModel = `${parsedModel.providerID}/${parsedModel.modelID}`;
         const port = await getFreePort();
+        const config = {
+          model: fullModel,
+          small_model: fullModel,
+          ...(options.opencodeApiKey
+            ? { provider: { opencode: { options: { apiKey: options.opencodeApiKey } } } }
+            : {}),
+        };
         const { client, server } = await createOpencode({
           port,
           signal: streamAbortController.signal,
-          ...(options.opencodeApiKey
-            ? { config: { provider: { opencode: { options: { apiKey: options.opencodeApiKey } } } } }
-            : {}),
+          config,
         });
         serverClose = server.close;
 
@@ -179,7 +187,7 @@ export class OpenCodeClient {
         await client.session.promptAsync({
           sessionID: sessionId,
           directory: options.cwd,
-          ...(options.model ? { model: { providerID: 'opencode', modelID: options.model } } : {}),
+          model: parsedModel,
           parts: [{ type: 'text' as const, text: fullPrompt }],
         });
 

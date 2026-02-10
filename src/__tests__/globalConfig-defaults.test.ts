@@ -560,14 +560,14 @@ describe('loadGlobalConfig', () => {
       mkdirSync(taktDir, { recursive: true });
       writeFileSync(
         getGlobalConfigPath(),
-        'provider: opencode\nmodel: gpt-4o\n',
+        'provider: opencode\nmodel: opencode/big-pickle\n',
         'utf-8',
       );
 
       expect(() => loadGlobalConfig()).not.toThrow();
     });
 
-    it('should not throw when provider is opencode without a model', () => {
+    it('should throw when provider is opencode without a model', () => {
       const taktDir = join(testHomeDir, '.takt');
       mkdirSync(taktDir, { recursive: true });
       writeFileSync(
@@ -576,7 +576,19 @@ describe('loadGlobalConfig', () => {
         'utf-8',
       );
 
-      expect(() => loadGlobalConfig()).not.toThrow();
+      expect(() => loadGlobalConfig()).toThrow(/provider 'opencode' requires model in 'provider\/model' format/i);
+    });
+
+    it('should throw when provider is opencode and model is not provider/model format', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: big-pickle\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/must be in 'provider\/model' format/i);
     });
   });
 });
