@@ -30,6 +30,11 @@ vi.mock('../shared/ui/index.js', () => ({
   info: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
+  withProgress: async <T>(
+    _startMessage: string,
+    _completionMessage: string | ((result: T) => string),
+    operation: () => Promise<T>,
+  ): Promise<T> => operation(),
 }));
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
