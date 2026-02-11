@@ -40,6 +40,7 @@ interactive:
     prompt: "直近のセッションを引き継ぎますか？"
     newSession: "新しいセッション"
     newSessionDescription: "新しい会話を始める"
+    noSessions: "引き継げるセッションが見つかりませんでした。新しいセッションで開始します。"
     lastResponse: "最後: {response}"
     messages: "{count}メッセージ"
   previousTask:

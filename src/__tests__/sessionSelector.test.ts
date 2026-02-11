@@ -19,10 +19,17 @@ vi.mock('../shared/prompt/index.js', () => ({
   selectOption: (...args: [string, unknown[]]) => mockSelectOption(...args),
 }));
 
+const mockInfo = vi.fn<(message: string) => void>();
+
+vi.mock('../shared/ui/index.js', () => ({
+  info: (...args: [string]) => mockInfo(...args),
+}));
+
 vi.mock('../shared/i18n/index.js', () => ({
   getLabel: (key: string, _lang: string, params?: Record<string, string>) => {
     if (key === 'interactive.sessionSelector.newSession') return 'New session';
     if (key === 'interactive.sessionSelector.newSessionDescription') return 'Start a new conversation';
+    if (key === 'interactive.sessionSelector.noSessions') return 'No sessions found';
     if (key === 'interactive.sessionSelector.messages') return `${params?.count} messages`;
     if (key === 'interactive.sessionSelector.lastResponse') return `Last: ${params?.response}`;
     if (key === 'interactive.sessionSelector.prompt') return 'Select a session';
@@ -44,6 +51,7 @@ describe('selectRecentSession', () => {
 
     expect(result).toBeNull();
     expect(mockSelectOption).not.toHaveBeenCalled();
+    expect(mockInfo).toHaveBeenCalledWith('No sessions found');
   });
 
   it('should return null when user selects __new__', async () => {

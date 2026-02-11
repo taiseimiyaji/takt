@@ -8,6 +8,7 @@
 import { loadSessionIndex, extractLastAssistantResponse } from '../../infra/claude/session-reader.js';
 import { selectOption, type SelectOptionItem } from '../../shared/prompt/index.js';
 import { getLabel } from '../../shared/i18n/index.js';
+import { info } from '../../shared/ui/index.js';
 
 /** Maximum number of sessions to display */
 const MAX_DISPLAY_SESSIONS = 10;
@@ -53,6 +54,7 @@ export async function selectRecentSession(
   const sessions = loadSessionIndex(cwd);
 
   if (sessions.length === 0) {
+    info(getLabel('interactive.sessionSelector.noSessions', lang));
     return null;
   }
 
