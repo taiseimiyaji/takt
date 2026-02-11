@@ -80,17 +80,6 @@ describe('copyProjectResourcesToDir', () => {
     expect(existsSync(join(testProjectDir, '.gitignore'))).toBe(true);
     expect(existsSync(join(testProjectDir, 'dotgitignore'))).toBe(false);
   });
-
-  it('should copy tasks/TASK-FORMAT to target directory', () => {
-    const resourcesDir = getProjectResourcesDir();
-    if (!existsSync(join(resourcesDir, 'tasks', 'TASK-FORMAT'))) {
-      return; // Skip if resource file doesn't exist
-    }
-
-    copyProjectResourcesToDir(testProjectDir);
-
-    expect(existsSync(join(testProjectDir, 'tasks', 'TASK-FORMAT'))).toBe(true);
-  });
 });
 
 describe('getLanguageResourcesDir', () => {

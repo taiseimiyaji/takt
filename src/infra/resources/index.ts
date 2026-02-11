@@ -53,6 +53,7 @@ export function copyProjectResourcesToDir(targetDir: string): void {
     return;
   }
   copyDirRecursive(resourcesDir, targetDir, {
+    skipDirs: ['tasks'],
     renameMap: { dotgitignore: '.gitignore' },
   });
 }
