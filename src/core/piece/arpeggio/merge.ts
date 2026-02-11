@@ -7,7 +7,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import type { ArpeggioMergeMovementConfig, BatchResult, MergeFn } from './types.js';
+import type { ArpeggioMergeMovementConfig, MergeFn } from './types.js';
 
 /** Create a concat merge function with the given separator */
 function createConcatMerge(separator: string): MergeFn {

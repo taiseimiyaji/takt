@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { loadGlobalConfig } from '../../../infra/config/index.js';
 import { type TaskInfo, createSharedClone, summarizeTaskName, getCurrentBranch } from '../../../infra/task/index.js';
-import { info, withProgress } from '../../../shared/ui/index.js';
+import { withProgress } from '../../../shared/ui/index.js';
 import { getTaskSlugFromTaskDir } from '../../../shared/utils/taskPaths.js';
 
 export interface ResolvedTaskExecution {
