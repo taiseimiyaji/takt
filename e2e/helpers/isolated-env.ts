@@ -95,8 +95,17 @@ export function createIsolatedEnv(): IsolatedEnv {
   // Create TAKT config directory and config.yaml
   mkdirSync(taktDir, { recursive: true });
   const baseConfig = readE2EFixtureConfig();
-  const config = process.env.TAKT_E2E_PROVIDER
-    ? { ...baseConfig, provider: process.env.TAKT_E2E_PROVIDER }
+  const provider = process.env.TAKT_E2E_PROVIDER;
+  const model = process.env.TAKT_E2E_MODEL;
+  if (provider === 'opencode' && !model) {
+    throw new Error('TAKT_E2E_PROVIDER=opencode requires TAKT_E2E_MODEL (e.g. opencode/big-pickle)');
+  }
+  const config = provider
+    ? {
+      ...baseConfig,
+      provider,
+      ...(provider === 'opencode' && model ? { model } : {}),
+    }
     : baseConfig;
   writeConfigFile(taktDir, config);
 

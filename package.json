@@ -20,8 +20,10 @@
     "test:e2e:provider": "npm run test:e2e:provider:claude && npm run test:e2e:provider:codex",
     "test:e2e:provider:claude": "TAKT_E2E_PROVIDER=claude vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
     "test:e2e:provider:codex": "TAKT_E2E_PROVIDER=codex vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
+    "test:e2e:provider:opencode": "TAKT_E2E_PROVIDER=opencode vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
     "test:e2e:claude": "npm run test:e2e:provider:claude",
     "test:e2e:codex": "npm run test:e2e:provider:codex",
+    "test:e2e:opencode": "npm run test:e2e:provider:opencode",
     "lint": "eslint src/",
     "prepublishOnly": "npm run lint && npm run build && npm run test"
   },
