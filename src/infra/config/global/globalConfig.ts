@@ -11,19 +11,32 @@ import { GlobalConfigSchema } from '../../../core/models/index.js';
 import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/index.js';
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
 import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
+import { parseProviderModel } from '../../../shared/utils/providerModel.js';
 
 /** Claude-specific model aliases that are not valid for other providers */
 const CLAUDE_MODEL_ALIASES = new Set(['opus', 'sonnet', 'haiku']);
 
 /** Validate that provider and model are compatible */
 function validateProviderModelCompatibility(provider: string | undefined, model: string | undefined): void {
-  if (!provider || !model) return;
+  if (!provider) return;
 
-  if (provider === 'codex' && CLAUDE_MODEL_ALIASES.has(model)) {
+  if (provider === 'opencode' && !model) {
+    throw new Error(
+      "Configuration error: provider 'opencode' requires model in 'provider/model' format (e.g. 'opencode/big-pickle')."
+    );
+  }
+
+  if (!model) return;
+
+  if ((provider === 'codex' || provider === 'opencode') && CLAUDE_MODEL_ALIASES.has(model)) {
     throw new Error(
       `Configuration error: model '${model}' is a Claude model alias but provider is '${provider}'. ` +
-      `Either change the provider to 'claude' or specify a Codex-compatible model.`
+      `Either change the provider to 'claude' or specify a ${provider}-compatible model.`
     );
+  }
+
+  if (provider === 'opencode') {
+    parseProviderModel(model, "Configuration error: model");
   }
 }
 
@@ -92,12 +105,16 @@ export class GlobalConfigManager {
         enabled: parsed.debug.enabled,
         logFile: parsed.debug.log_file,
       } : undefined,
+      observability: parsed.observability ? {
+        providerEvents: parsed.observability.provider_events,
+      } : undefined,
       worktreeDir: parsed.worktree_dir,
       autoPr: parsed.auto_pr,
       disabledBuiltins: parsed.disabled_builtins,
       enableBuiltinPieces: parsed.enable_builtin_pieces,
       anthropicApiKey: parsed.anthropic_api_key,
       openaiApiKey: parsed.openai_api_key,
+      opencodeApiKey: parsed.opencode_api_key,
       pipeline: parsed.pipeline ? {
         defaultBranchPrefix: parsed.pipeline.default_branch_prefix,
         commitMessageTemplate: parsed.pipeline.commit_message_template,
@@ -110,6 +127,13 @@ export class GlobalConfigManager {
       branchNameStrategy: parsed.branch_name_strategy,
       preventSleep: parsed.prevent_sleep,
       notificationSound: parsed.notification_sound,
+      notificationSoundEvents: parsed.notification_sound_events ? {
+        iterationLimit: parsed.notification_sound_events.iteration_limit,
+        pieceComplete: parsed.notification_sound_events.piece_complete,
+        pieceAbort: parsed.notification_sound_events.piece_abort,
+        runComplete: parsed.notification_sound_events.run_complete,
+        runAbort: parsed.notification_sound_events.run_abort,
+      } : undefined,
       interactivePreviewMovements: parsed.interactive_preview_movements,
       concurrency: parsed.concurrency,
       taskPollIntervalMs: parsed.task_poll_interval_ms,
@@ -137,6 +161,11 @@ export class GlobalConfigManager {
         log_file: config.debug.logFile,
       };
     }
+    if (config.observability && config.observability.providerEvents !== undefined) {
+      raw.observability = {
+        provider_events: config.observability.providerEvents,
+      };
+    }
     if (config.worktreeDir) {
       raw.worktree_dir = config.worktreeDir;
     }
@@ -154,6 +183,9 @@ export class GlobalConfigManager {
     }
     if (config.openaiApiKey) {
       raw.openai_api_key = config.openaiApiKey;
+    }
+    if (config.opencodeApiKey) {
+      raw.opencode_api_key = config.opencodeApiKey;
     }
     if (config.pipeline) {
       const pipelineRaw: Record<string, unknown> = {};
@@ -184,6 +216,27 @@ export class GlobalConfigManager {
     }
     if (config.notificationSound !== undefined) {
       raw.notification_sound = config.notificationSound;
+    }
+    if (config.notificationSoundEvents) {
+      const eventRaw: Record<string, unknown> = {};
+      if (config.notificationSoundEvents.iterationLimit !== undefined) {
+        eventRaw.iteration_limit = config.notificationSoundEvents.iterationLimit;
+      }
+      if (config.notificationSoundEvents.pieceComplete !== undefined) {
+        eventRaw.piece_complete = config.notificationSoundEvents.pieceComplete;
+      }
+      if (config.notificationSoundEvents.pieceAbort !== undefined) {
+        eventRaw.piece_abort = config.notificationSoundEvents.pieceAbort;
+      }
+      if (config.notificationSoundEvents.runComplete !== undefined) {
+        eventRaw.run_complete = config.notificationSoundEvents.runComplete;
+      }
+      if (config.notificationSoundEvents.runAbort !== undefined) {
+        eventRaw.run_abort = config.notificationSoundEvents.runAbort;
+      }
+      if (Object.keys(eventRaw).length > 0) {
+        raw.notification_sound_events = eventRaw;
+      }
     }
     if (config.interactivePreviewMovements !== undefined) {
       raw.interactive_preview_movements = config.interactivePreviewMovements;
@@ -244,7 +297,7 @@ export function setLanguage(language: Language): void {
   saveGlobalConfig(config);
 }
 
-export function setProvider(provider: 'claude' | 'codex'): void {
+export function setProvider(provider: 'claude' | 'codex' | 'opencode'): void {
   const config = loadGlobalConfig();
   config.provider = provider;
   saveGlobalConfig(config);
@@ -277,6 +330,22 @@ export function resolveOpenaiApiKey(): string | undefined {
   try {
     const config = loadGlobalConfig();
     return config.openaiApiKey;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Resolve the OpenCode API key.
+ * Priority: TAKT_OPENCODE_API_KEY env var > config.yaml > undefined
+ */
+export function resolveOpencodeApiKey(): string | undefined {
+  const envKey = process.env['TAKT_OPENCODE_API_KEY'];
+  if (envKey) return envKey;
+
+  try {
+    const config = loadGlobalConfig();
+    return config.opencodeApiKey;
   } catch {
     return undefined;
   }

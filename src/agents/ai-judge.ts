@@ -55,7 +55,7 @@ export const callAiJudge: AiJudgeCaller = async (
   const response = await runAgent(undefined, prompt, {
     cwd: options.cwd,
     maxTurns: 1,
-    allowedTools: [],
+    permissionMode: 'readonly',
   });
 
   if (response.status !== 'done') {

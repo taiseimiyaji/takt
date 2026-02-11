@@ -5,7 +5,8 @@
  * pipeline mode, or interactive mode.
  */
 
-import { info, error } from '../../shared/ui/index.js';
+import { info, error, withProgress } from '../../shared/ui/index.js';
+import { confirm } from '../../shared/prompt/index.js';
 import { getErrorMessage } from '../../shared/utils/index.js';
 import { getLabel } from '../../shared/i18n/index.js';
 import { fetchIssue, formatIssueAsTask, checkGhCli, parseIssueNumbers, type GitHubIssue } from '../../infra/github/index.js';
@@ -14,6 +15,7 @@ import { executePipeline } from '../../features/pipeline/index.js';
 import {
   interactiveMode,
   selectInteractiveMode,
+  selectRecentSession,
   passthroughMode,
   quietMode,
   personaMode,
@@ -35,22 +37,24 @@ import { resolveAgentOverrides, parseCreateWorktreeOption, isDirectTask } from '
  * Returns resolved issues and the formatted task text for interactive mode.
  * Throws on gh CLI unavailability or fetch failure.
  */
-function resolveIssueInput(
+async function resolveIssueInput(
   issueOption: number | undefined,
   task: string | undefined,
-): { issues: GitHubIssue[]; initialInput: string } | null {
+): Promise<{ issues: GitHubIssue[]; initialInput: string } | null> {
   if (issueOption) {
-    info('Fetching GitHub Issue...');
     const ghStatus = checkGhCli();
     if (!ghStatus.available) {
       throw new Error(ghStatus.error);
     }
-    const issue = fetchIssue(issueOption);
+    const issue = await withProgress(
+      'Fetching GitHub Issue...',
+      (fetchedIssue) => `GitHub Issue fetched: #${fetchedIssue.number} ${fetchedIssue.title}`,
+      async () => fetchIssue(issueOption),
+    );
     return { issues: [issue], initialInput: formatIssueAsTask(issue) };
   }
 
   if (task && isDirectTask(task)) {
-    info('Fetching GitHub Issue...');
     const ghStatus = checkGhCli();
     if (!ghStatus.available) {
       throw new Error(ghStatus.error);
@@ -60,7 +64,11 @@ function resolveIssueInput(
     if (issueNumbers.length === 0) {
       throw new Error(`Invalid issue reference: ${task}`);
     }
-    const issues = issueNumbers.map((n) => fetchIssue(n));
+    const issues = await withProgress(
+      'Fetching GitHub Issue...',
+      (fetchedIssues) => `GitHub Issues fetched: ${fetchedIssues.map((issue) => `#${issue.number}`).join(', ')}`,
+      async () => issueNumbers.map((n) => fetchIssue(n)),
+    );
     return { issues, initialInput: issues.map(formatIssueAsTask).join('\n\n---\n\n') };
   }
 
@@ -116,7 +124,7 @@ export async function executeDefaultAction(task?: string): Promise<void> {
   let initialInput: string | undefined = task;
 
   try {
-    const issueResult = resolveIssueInput(opts.issue as number | undefined, task);
+    const issueResult = await resolveIssueInput(opts.issue as number | undefined, task);
     if (issueResult) {
       selectOptions.issues = issueResult.issues;
       initialInput = issueResult.initialInput;
@@ -156,9 +164,24 @@ export async function executeDefaultAction(task?: string): Promise<void> {
   let result: InteractiveModeResult;
 
   switch (selectedMode) {
-    case 'assistant':
-      result = await interactiveMode(resolvedCwd, initialInput, pieceContext);
+    case 'assistant': {
+      let selectedSessionId: string | undefined;
+      const provider = globalConfig.provider;
+      if (provider === 'claude') {
+        const shouldSelectSession = await confirm(
+          getLabel('interactive.sessionSelector.confirm', lang),
+          false,
+        );
+        if (shouldSelectSession) {
+          const sessionId = await selectRecentSession(resolvedCwd, lang);
+          if (sessionId) {
+            selectedSessionId = sessionId;
+          }
+        }
+      }
+      result = await interactiveMode(resolvedCwd, initialInput, pieceContext, selectedSessionId);
       break;
+    }
 
     case 'passthrough':
       result = await passthroughMode(lang, initialInput);
@@ -188,7 +211,15 @@ export async function executeDefaultAction(task?: string): Promise<void> {
       break;
 
     case 'create_issue':
-      createIssueFromTask(result.task);
+      {
+        const issueNumber = createIssueFromTask(result.task);
+        if (issueNumber !== undefined) {
+          await saveTaskFromInteractive(resolvedCwd, result.task, pieceId, {
+            issue: issueNumber,
+            confirmAtEndMessage: 'Add this issue to tasks?',
+          });
+        }
+      }
       break;
 
     case 'save_task':

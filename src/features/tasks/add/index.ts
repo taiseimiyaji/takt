@@ -1,21 +1,31 @@
 /**
  * add command implementation
  *
- * Starts an AI conversation to refine task requirements,
- * then appends a task record to .takt/tasks.yaml.
+ * Appends a task record to .takt/tasks.yaml.
  */
 
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 import { promptInput, confirm } from '../../../shared/prompt/index.js';
-import { success, info, error } from '../../../shared/ui/index.js';
+import { success, info, error, withProgress } from '../../../shared/ui/index.js';
 import { TaskRunner, type TaskFileData } from '../../../infra/task/index.js';
-import { getPieceDescription, loadGlobalConfig } from '../../../infra/config/index.js';
 import { determinePiece } from '../execute/selectAndExecute.js';
-import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
+import { createLogger, getErrorMessage, generateReportDir } from '../../../shared/utils/index.js';
 import { isIssueReference, resolveIssueTask, parseIssueNumbers, createIssue } from '../../../infra/github/index.js';
-import { interactiveMode } from '../../interactive/index.js';
 
 const log = createLogger('add-task');
+
+function resolveUniqueTaskSlug(cwd: string, baseSlug: string): string {
+  let sequence = 1;
+  let slug = baseSlug;
+  let taskDir = path.join(cwd, '.takt', 'tasks', slug);
+  while (fs.existsSync(taskDir)) {
+    sequence += 1;
+    slug = `${baseSlug}-${sequence}`;
+    taskDir = path.join(cwd, '.takt', 'tasks', slug);
+  }
+  return slug;
+}
 
 /**
  * Save a task entry to .takt/tasks.yaml.
@@ -29,6 +39,12 @@ export async function saveTaskFile(
   options?: { piece?: string; issue?: number; worktree?: boolean | string; branch?: string; autoPr?: boolean },
 ): Promise<{ taskName: string; tasksFile: string }> {
   const runner = new TaskRunner(cwd);
+  const taskSlug = resolveUniqueTaskSlug(cwd, generateReportDir(taskContent));
+  const taskDir = path.join(cwd, '.takt', 'tasks', taskSlug);
+  const taskDirRelative = `.takt/tasks/${taskSlug}`;
+  const orderPath = path.join(taskDir, 'order.md');
+  fs.mkdirSync(taskDir, { recursive: true });
+  fs.writeFileSync(orderPath, taskContent, 'utf-8');
   const config: Omit<TaskFileData, 'task'> = {
     ...(options?.worktree !== undefined && { worktree: options.worktree }),
     ...(options?.branch && { branch: options.branch }),
@@ -36,7 +52,10 @@ export async function saveTaskFile(
     ...(options?.issue !== undefined && { issue: options.issue }),
     ...(options?.autoPr !== undefined && { auto_pr: options.autoPr }),
   };
-  const created = runner.addTask(taskContent, config);
+  const created = runner.addTask(taskContent, {
+    ...config,
+    task_dir: taskDirRelative,
+  });
   const tasksFile = path.join(cwd, '.takt', 'tasks.yaml');
   log.info('Task created', { taskName: created.name, tasksFile, config });
   return { taskName: created.name, tasksFile };
@@ -48,15 +67,22 @@ export async function saveTaskFile(
  * Extracts the first line as the issue title (truncated to 100 chars),
  * uses the full task as the body, and displays success/error messages.
  */
-export function createIssueFromTask(task: string): void {
+export function createIssueFromTask(task: string): number | undefined {
   info('Creating GitHub Issue...');
   const firstLine = task.split('\n')[0] || task;
   const title = firstLine.length > 100 ? `${firstLine.slice(0, 97)}...` : firstLine;
   const issueResult = createIssue({ title, body: task });
   if (issueResult.success) {
     success(`Issue created: ${issueResult.url}`);
+    const num = Number(issueResult.url!.split('/').pop());
+    if (Number.isNaN(num)) {
+      error('Failed to extract issue number from URL');
+      return undefined;
+    }
+    return num;
   } else {
     error(`Failed to create issue: ${issueResult.error}`);
+    return undefined;
   }
 }
 
@@ -64,6 +90,38 @@ interface WorktreeSettings {
   worktree?: boolean | string;
   branch?: string;
   autoPr?: boolean;
+}
+
+function displayTaskCreationResult(
+  created: { taskName: string; tasksFile: string },
+  settings: WorktreeSettings,
+  piece?: string,
+): void {
+  success(`Task created: ${created.taskName}`);
+  info(`  File: ${created.tasksFile}`);
+  if (settings.worktree) {
+    info(`  Worktree: ${typeof settings.worktree === 'string' ? settings.worktree : 'auto'}`);
+  }
+  if (settings.branch) {
+    info(`  Branch: ${settings.branch}`);
+  }
+  if (settings.autoPr) {
+    info(`  Auto-PR: yes`);
+  }
+  if (piece) info(`  Piece: ${piece}`);
+}
+
+/**
+ * Create a GitHub Issue and save the task to .takt/tasks.yaml.
+ *
+ * Combines issue creation and task saving into a single workflow.
+ * If issue creation fails, no task is saved.
+ */
+export async function createIssueAndSaveTask(cwd: string, task: string, piece?: string): Promise<void> {
+  const issueNumber = createIssueFromTask(task);
+  if (issueNumber !== undefined) {
+    await saveTaskFromInteractive(cwd, task, piece, { issue: issueNumber });
+  }
 }
 
 async function promptWorktreeSettings(): Promise<WorktreeSettings> {
@@ -91,87 +149,65 @@ export async function saveTaskFromInteractive(
   cwd: string,
   task: string,
   piece?: string,
+  options?: { issue?: number; confirmAtEndMessage?: string },
 ): Promise<void> {
   const settings = await promptWorktreeSettings();
-  const created = await saveTaskFile(cwd, task, { piece, ...settings });
-  success(`Task created: ${created.taskName}`);
-  info(`  File: ${created.tasksFile}`);
-  if (settings.worktree) {
-    info(`  Worktree: ${typeof settings.worktree === 'string' ? settings.worktree : 'auto'}`);
+  if (options?.confirmAtEndMessage) {
+    const approved = await confirm(options.confirmAtEndMessage, true);
+    if (!approved) {
+      return;
+    }
   }
-  if (settings.branch) {
-    info(`  Branch: ${settings.branch}`);
-  }
-  if (settings.autoPr) {
-    info(`  Auto-PR: yes`);
-  }
-  if (piece) info(`  Piece: ${piece}`);
+  const created = await saveTaskFile(cwd, task, { piece, issue: options?.issue, ...settings });
+  displayTaskCreationResult(created, settings, piece);
 }
 
 /**
  * add command handler
  *
  * Flow:
- *   A) Issue参照の場合: issue取得 → ピース選択 → ワークツリー設定 → YAML作成
- *   B) それ以外: ピース選択 → AI対話モード → ワークツリー設定 → YAML作成
+ *   A) 引数なし: Usage表示して終了
+ *   B) Issue参照の場合: issue取得 → ピース選択 → ワークツリー設定 → YAML作成
+ *   C) 通常入力: 引数をそのまま保存
  */
 export async function addTask(cwd: string, task?: string): Promise<void> {
-  // ピース選択とタスク内容の決定
+  const rawTask = task ?? '';
+  const trimmedTask = rawTask.trim();
+  if (!trimmedTask) {
+    info('Usage: takt add <task>');
+    return;
+  }
+
   let taskContent: string;
   let issueNumber: number | undefined;
-  let piece: string | undefined;
 
-  if (task && isIssueReference(task)) {
+  if (isIssueReference(trimmedTask)) {
     // Issue reference: fetch issue and use directly as task content
-    info('Fetching GitHub Issue...');
     try {
-      taskContent = resolveIssueTask(task);
-      const numbers = parseIssueNumbers([task]);
+      const numbers = parseIssueNumbers([trimmedTask]);
+      const primaryIssueNumber = numbers[0];
+      taskContent = await withProgress(
+        'Fetching GitHub Issue...',
+        primaryIssueNumber ? `GitHub Issue fetched: #${primaryIssueNumber}` : 'GitHub Issue fetched',
+        async () => resolveIssueTask(trimmedTask),
+      );
       if (numbers.length > 0) {
         issueNumber = numbers[0];
       }
     } catch (e) {
       const msg = getErrorMessage(e);
-      log.error('Failed to fetch GitHub Issue', { task, error: msg });
-      info(`Failed to fetch issue ${task}: ${msg}`);
+      log.error('Failed to fetch GitHub Issue', { task: trimmedTask, error: msg });
+      info(`Failed to fetch issue ${trimmedTask}: ${msg}`);
       return;
     }
-
-    // ピース選択（issue取得成功後）
-    const pieceId = await determinePiece(cwd);
-    if (pieceId === null) {
-      info('Cancelled.');
-      return;
-    }
-    piece = pieceId;
   } else {
-    // ピース選択を先に行い、結果を対話モードに渡す
-    const pieceId = await determinePiece(cwd);
-    if (pieceId === null) {
-      info('Cancelled.');
-      return;
-    }
-    piece = pieceId;
+    taskContent = rawTask;
+  }
 
-    const globalConfig = loadGlobalConfig();
-    const previewCount = globalConfig.interactivePreviewMovements;
-    const pieceContext = getPieceDescription(pieceId, cwd, previewCount);
-
-    // Interactive mode: AI conversation to refine task
-    const result = await interactiveMode(cwd, undefined, pieceContext);
-
-    if (result.action === 'create_issue') {
-      createIssueFromTask(result.task);
-      return;
-    }
-
-    if (result.action !== 'execute' && result.action !== 'save_task') {
-      info('Cancelled.');
-      return;
-    }
-
-    // interactiveMode already returns a summarized task from conversation
-    taskContent = result.task;
+  const piece = await determinePiece(cwd);
+  if (piece === null) {
+    info('Cancelled.');
+    return;
   }
 
   // 3. ワークツリー/ブランチ/PR設定
@@ -184,18 +220,5 @@ export async function addTask(cwd: string, task?: string): Promise<void> {
     ...settings,
   });
 
-  success(`Task created: ${created.taskName}`);
-  info(`  File: ${created.tasksFile}`);
-  if (settings.worktree) {
-    info(`  Worktree: ${typeof settings.worktree === 'string' ? settings.worktree : 'auto'}`);
-  }
-  if (settings.branch) {
-    info(`  Branch: ${settings.branch}`);
-  }
-  if (settings.autoPr) {
-    info(`  Auto-PR: yes`);
-  }
-  if (piece) {
-    info(`  Piece: ${piece}`);
-  }
+  displayTaskCreationResult(created, settings, piece);
 }

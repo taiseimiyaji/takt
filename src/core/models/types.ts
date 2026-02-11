@@ -31,6 +31,8 @@ export type {
   OutputContractEntry,
   McpServerConfig,
   PieceMovement,
+  ArpeggioMovementConfig,
+  ArpeggioMergeMovementConfig,
   LoopDetectionConfig,
   LoopMonitorConfig,
   LoopMonitorJudge,
@@ -43,6 +45,7 @@ export type {
 export type {
   CustomAgentConfig,
   DebugConfig,
+  ObservabilityConfig,
   Language,
   PipelineConfig,
   GlobalConfig,

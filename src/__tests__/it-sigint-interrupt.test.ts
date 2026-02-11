@@ -27,14 +27,18 @@ const { mockInterruptAllQueries, MockPieceEngine } = vi.hoisted(() => {
   class MockPieceEngine extends EE {
     private abortRequested = false;
     private runResolve: ((value: { status: string; iteration: number }) => void) | null = null;
+    static lastOptions: { abortSignal?: AbortSignal } | null = null;
 
     constructor(
       _config: unknown,
       _cwd: string,
       _task: string,
-      _options: unknown,
+      options: unknown,
     ) {
       super();
+      if (options && typeof options === 'object') {
+        MockPieceEngine.lastOptions = options as { abortSignal?: AbortSignal };
+      }
     }
 
     abort(): void {
@@ -86,6 +90,8 @@ vi.mock('../infra/config/index.js', () => ({
   updateWorktreeSession: vi.fn(),
   loadGlobalConfig: vi.fn().mockReturnValue({ provider: 'claude' }),
   saveSessionState: vi.fn(),
+  ensureDir: vi.fn(),
+  writeFileAtomic: vi.fn(),
 }));
 
 vi.mock('../shared/context.js', () => ({
@@ -117,25 +123,30 @@ vi.mock('../infra/fs/index.js', () => ({
     status: _status,
     endTime: new Date().toISOString(),
   })),
-  updateLatestPointer: vi.fn(),
   initNdjsonLog: vi.fn().mockReturnValue('/tmp/test-log.jsonl'),
   appendNdjsonLine: vi.fn(),
 }));
 
-vi.mock('../shared/utils/index.js', () => ({
-  createLogger: vi.fn().mockReturnValue({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
-  notifySuccess: vi.fn(),
-  notifyError: vi.fn(),
-  playWarningSound: vi.fn(),
-  preventSleep: vi.fn(),
-  isDebugEnabled: vi.fn().mockReturnValue(false),
-  writePromptLog: vi.fn(),
-}));
+vi.mock('../shared/utils/index.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../shared/utils/index.js')>();
+  return {
+    ...original,
+    createLogger: vi.fn().mockReturnValue({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    }),
+    notifySuccess: vi.fn(),
+    notifyError: vi.fn(),
+    playWarningSound: vi.fn(),
+    preventSleep: vi.fn(),
+    isDebugEnabled: vi.fn().mockReturnValue(false),
+    writePromptLog: vi.fn(),
+    generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
+    isValidReportDirName: vi.fn().mockImplementation((value: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)),
+  };
+});
 
 vi.mock('../shared/prompt/index.js', () => ({
   selectOption: vi.fn(),
@@ -163,6 +174,7 @@ describe('executePiece: SIGINT handler integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    MockPieceEngine.lastOptions = null;
     tmpDir = join(tmpdir(), `takt-sigint-it-${randomUUID()}`);
     mkdirSync(tmpDir, { recursive: true });
     mkdirSync(join(tmpDir, '.takt', 'reports'), { recursive: true });
@@ -189,7 +201,7 @@ describe('executePiece: SIGINT handler integration', () => {
   function makeConfig(): PieceConfig {
     return {
       name: 'test-sigint',
-      maxIterations: 10,
+      maxMovements: 10,
       initialMovement: 'step1',
       movements: [
         {
@@ -233,6 +245,30 @@ describe('executePiece: SIGINT handler integration', () => {
     expect(mockInterruptAllQueries).toHaveBeenCalledTimes(2);
 
     // Verify abort result
+    expect(result.success).toBe(false);
+  });
+
+  it('should abort provider signal on first SIGINT', async () => {
+    const config = makeConfig();
+
+    const resultPromise = executePiece(config, 'test task', tmpDir, {
+      projectCwd: tmpDir,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const signal = MockPieceEngine.lastOptions?.abortSignal;
+    expect(signal).toBeDefined();
+    expect(signal!.aborted).toBe(false);
+
+    const allListeners = process.rawListeners('SIGINT') as ((...args: unknown[]) => void)[];
+    const newListener = allListeners.find((l) => !savedSigintListeners.includes(l));
+    expect(newListener).toBeDefined();
+    newListener!();
+
+    expect(signal!.aborted).toBe(true);
+
+    const result = await resultPromise;
     expect(result.success).toBe(false);
   });
 

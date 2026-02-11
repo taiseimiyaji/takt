@@ -36,7 +36,6 @@ import {
   generateSessionId,
   createSessionLog,
   finalizeSessionLog,
-  updateLatestPointer,
   initNdjsonLog,
   appendNdjsonLine,
   type NdjsonStepStart,
@@ -56,11 +55,20 @@ import {
   playWarningSound,
   isDebugEnabled,
   writePromptLog,
+  generateReportDir,
+  isValidReportDirName,
 } from '../../../shared/utils/index.js';
 import type { PromptLogRecord } from '../../../shared/utils/index.js';
+import {
+  createProviderEventLogger,
+  isProviderEventsEnabled,
+} from '../../../shared/utils/providerEventLogger.js';
 import { selectOption, promptInput } from '../../../shared/prompt/index.js';
 import { getLabel } from '../../../shared/i18n/index.js';
 import { installSigIntHandler } from './sigintHandler.js';
+import { buildRunPaths } from '../../../core/piece/run/run-paths.js';
+import { resolveMovementProviderModel } from '../../../core/piece/provider-resolution.js';
+import { writeFileAtomic, ensureDir } from '../../../infra/config/index.js';
 
 const log = createLogger('piece');
 
@@ -77,6 +85,20 @@ interface OutputFns {
   status: (label: string, value: string, color?: 'green' | 'yellow' | 'red') => void;
   blankLine: () => void;
   logLine: (text: string) => void;
+}
+
+interface RunMeta {
+  task: string;
+  piece: string;
+  runSlug: string;
+  runRoot: string;
+  reportDirectory: string;
+  contextDirectory: string;
+  logsDirectory: string;
+  status: 'running' | 'completed' | 'aborted';
+  startTime: string;
+  endTime?: string;
+  iterations?: number;
 }
 
 function assertTaskPrefixPair(
@@ -201,17 +223,49 @@ export async function executePiece(
     : undefined;
   const out = createOutputFns(prefixWriter);
 
-  // Always continue from previous sessions (use /clear to reset)
-  log.debug('Continuing session (use /clear to reset)');
+  // Retry reuses saved sessions; normal runs start fresh
+  const isRetry = Boolean(options.startMovement || options.retryNote);
+  log.debug('Session mode', { isRetry, isWorktree: cwd !== projectCwd });
 
   out.header(`${headerPrefix} ${pieceConfig.name}`);
 
   const pieceSessionId = generateSessionId();
+  const runSlug = options.reportDirName ?? generateReportDir(task);
+  if (!isValidReportDirName(runSlug)) {
+    throw new Error(`Invalid reportDirName: ${runSlug}`);
+  }
+  const runPaths = buildRunPaths(cwd, runSlug);
+
+  const runMeta: RunMeta = {
+    task,
+    piece: pieceConfig.name,
+    runSlug: runPaths.slug,
+    runRoot: runPaths.runRootRel,
+    reportDirectory: runPaths.reportsRel,
+    contextDirectory: runPaths.contextRel,
+    logsDirectory: runPaths.logsRel,
+    status: 'running',
+    startTime: new Date().toISOString(),
+  };
+  ensureDir(runPaths.runRootAbs);
+  writeFileAtomic(runPaths.metaAbs, JSON.stringify(runMeta, null, 2));
+  let isMetaFinalized = false;
+  const finalizeRunMeta = (status: 'completed' | 'aborted', iterations?: number): void => {
+    writeFileAtomic(runPaths.metaAbs, JSON.stringify({
+      ...runMeta,
+      status,
+      endTime: new Date().toISOString(),
+      ...(iterations != null ? { iterations } : {}),
+    } satisfies RunMeta, null, 2));
+    isMetaFinalized = true;
+  };
+
   let sessionLog = createSessionLog(task, projectCwd, pieceConfig.name);
 
-  // Initialize NDJSON log file + pointer at piece start
-  const ndjsonLogPath = initNdjsonLog(pieceSessionId, task, pieceConfig.name, projectCwd);
-  updateLatestPointer(sessionLog, pieceSessionId, projectCwd, { copyToPrevious: true });
+  // Initialize NDJSON log file at run-scoped logs directory
+  const ndjsonLogPath = initNdjsonLog(pieceSessionId, task, pieceConfig.name, {
+    logsDir: runPaths.logsAbs,
+  });
 
   // Write interactive mode records if interactive mode was used before this piece
   if (options.interactiveMetadata) {
@@ -244,19 +298,33 @@ export async function executePiece(
         displayRef.current.createHandler()(event);
       };
 
-  // Load saved agent sessions for continuity (from project root or clone-specific storage)
+  // Load saved agent sessions only on retry; normal runs start with empty sessions
   const isWorktree = cwd !== projectCwd;
   const globalConfig = loadGlobalConfig();
   const shouldNotify = globalConfig.notificationSound !== false;
+  const notificationSoundEvents = globalConfig.notificationSoundEvents;
+  const shouldNotifyIterationLimit = shouldNotify && notificationSoundEvents?.iterationLimit !== false;
+  const shouldNotifyPieceComplete = shouldNotify && notificationSoundEvents?.pieceComplete !== false;
+  const shouldNotifyPieceAbort = shouldNotify && notificationSoundEvents?.pieceAbort !== false;
   const currentProvider = globalConfig.provider ?? 'claude';
+  const providerEventLogger = createProviderEventLogger({
+    logsDir: runPaths.logsAbs,
+    sessionId: pieceSessionId,
+    runId: runSlug,
+    provider: currentProvider,
+    movement: options.startMovement ?? pieceConfig.initialMovement,
+    enabled: isProviderEventsEnabled(globalConfig),
+  });
 
   // Prevent macOS idle sleep if configured
   if (globalConfig.preventSleep) {
     preventSleep();
   }
-  const savedSessions = isWorktree
-    ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
-    : loadPersonaSessions(projectCwd, currentProvider);
+  const savedSessions = isRetry
+    ? (isWorktree
+        ? loadWorktreeSessions(projectCwd, cwd, currentProvider)
+        : loadPersonaSessions(projectCwd, currentProvider))
+    : {};
 
   // Session update handler - persist session IDs when they change
   // Clone sessions are stored separately per clone path
@@ -280,12 +348,12 @@ export async function executePiece(
     out.warn(
       getLabel('piece.iterationLimit.maxReached', undefined, {
         currentIteration: String(request.currentIteration),
-        maxIterations: String(request.maxIterations),
+        maxMovements: String(request.maxMovements),
       })
     );
     out.info(getLabel('piece.iterationLimit.currentMovement', undefined, { currentMovement: request.currentMovement }));
 
-    if (shouldNotify) {
+    if (shouldNotifyIterationLimit) {
       playWarningSound();
     }
 
@@ -310,7 +378,7 @@ export async function executePiece(
 
       const additionalIterations = Number.parseInt(input, 10);
       if (Number.isInteger(additionalIterations) && additionalIterations > 0) {
-        pieceConfig.maxIterations = request.maxIterations + additionalIterations;
+        pieceConfig.maxMovements = request.maxMovements + additionalIterations;
         return additionalIterations;
       }
 
@@ -331,35 +399,42 @@ export async function executePiece(
       }
     : undefined;
 
-  const engine = new PieceEngine(pieceConfig, cwd, task, {
-    abortSignal: options.abortSignal,
-    onStream: streamHandler,
-    onUserInput,
-    initialSessions: savedSessions,
-    onSessionUpdate: sessionUpdateHandler,
-    onIterationLimit: iterationLimitHandler,
-    projectCwd,
-    language: options.language,
-    provider: options.provider,
-    model: options.model,
-    personaProviders: options.personaProviders,
-    interactive: interactiveUserInput,
-    detectRuleIndex,
-    callAiJudge,
-    startMovement: options.startMovement,
-    retryNote: options.retryNote,
-    taskPrefix: options.taskPrefix,
-    taskColorIndex: options.taskColorIndex,
-  });
-
   let abortReason: string | undefined;
   let lastMovementContent: string | undefined;
   let lastMovementName: string | undefined;
   let currentIteration = 0;
   const phasePrompts = new Map<string, string>();
   const movementIterations = new Map<string, number>();
+  let engine: PieceEngine | null = null;
+  let onAbortSignal: (() => void) | undefined;
+  let sigintCleanup: (() => void) | undefined;
+  let onEpipe: ((err: NodeJS.ErrnoException) => void) | undefined;
+  const runAbortController = new AbortController();
 
-  engine.on('phase:start', (step, phase, phaseName, instruction) => {
+  try {
+    engine = new PieceEngine(pieceConfig, cwd, task, {
+      abortSignal: runAbortController.signal,
+      onStream: providerEventLogger.wrapCallback(streamHandler),
+      onUserInput,
+      initialSessions: savedSessions,
+      onSessionUpdate: sessionUpdateHandler,
+      onIterationLimit: iterationLimitHandler,
+      projectCwd,
+      language: options.language,
+      provider: options.provider,
+      model: options.model,
+      personaProviders: options.personaProviders,
+      interactive: interactiveUserInput,
+      detectRuleIndex,
+      callAiJudge,
+      startMovement: options.startMovement,
+      retryNote: options.retryNote,
+      reportDirName: runSlug,
+      taskPrefix: options.taskPrefix,
+      taskColorIndex: options.taskColorIndex,
+    });
+
+    engine.on('phase:start', (step, phase, phaseName, instruction) => {
     log.debug('Phase starting', { step: step.name, phase, phaseName });
     const record: NdjsonPhaseStart = {
       type: 'phase_start',
@@ -376,7 +451,7 @@ export async function executePiece(
     }
   });
 
-  engine.on('phase:complete', (step, phase, phaseName, content, phaseStatus, phaseError) => {
+    engine.on('phase:complete', (step, phase, phaseName, content, phaseStatus, phaseError) => {
     log.debug('Phase completed', { step: step.name, phase, phaseName, status: phaseStatus });
     const record: NdjsonPhaseComplete = {
       type: 'phase_complete',
@@ -409,7 +484,7 @@ export async function executePiece(
     }
   });
 
-  engine.on('movement:start', (step, iteration, instruction) => {
+    engine.on('movement:start', (step, iteration, instruction) => {
     log.debug('Movement starting', { step: step.name, persona: step.personaDisplayName, iteration });
     currentIteration = iteration;
     const movementIteration = (movementIterations.get(step.name) ?? 0) + 1;
@@ -417,10 +492,22 @@ export async function executePiece(
     prefixWriter?.setMovementContext({
       movementName: step.name,
       iteration,
-      maxIterations: pieceConfig.maxIterations,
+      maxMovements: pieceConfig.maxMovements,
       movementIteration,
     });
-    out.info(`[${iteration}/${pieceConfig.maxIterations}] ${step.name} (${step.personaDisplayName})`);
+    out.info(`[${iteration}/${pieceConfig.maxMovements}] ${step.name} (${step.personaDisplayName})`);
+    const resolved = resolveMovementProviderModel({
+      step,
+      provider: options.provider,
+      model: options.model,
+      personaProviders: options.personaProviders,
+    });
+    const movementProvider = resolved.provider ?? currentProvider;
+    const movementModel = resolved.model ?? globalConfig.model ?? '(default)';
+    providerEventLogger.setMovement(step.name);
+    providerEventLogger.setProvider(movementProvider);
+    out.info(`Provider: ${movementProvider}`);
+    out.info(`Model: ${movementModel}`);
 
     // Log prompt content for debugging
     if (instruction) {
@@ -438,7 +525,7 @@ export async function executePiece(
       const agentLabel = step.personaDisplayName;
       displayRef.current = new StreamDisplay(agentLabel, quiet, {
         iteration,
-        maxIterations: pieceConfig.maxIterations,
+        maxMovements: pieceConfig.maxMovements,
         movementIndex: movementIndex >= 0 ? movementIndex : 0,
         totalMovements,
       });
@@ -457,7 +544,7 @@ export async function executePiece(
 
   });
 
-  engine.on('movement:complete', (step, response, instruction) => {
+    engine.on('movement:complete', (step, response, instruction) => {
     log.debug('Movement completed', {
       step: step.name,
       status: response.status,
@@ -516,16 +603,15 @@ export async function executePiece(
 
     // Update in-memory log for pointer metadata (immutable)
     sessionLog = { ...sessionLog, iterations: sessionLog.iterations + 1 };
-    updateLatestPointer(sessionLog, pieceSessionId, projectCwd);
   });
 
-  engine.on('movement:report', (_step, filePath, fileName) => {
+    engine.on('movement:report', (_step, filePath, fileName) => {
     const content = readFileSync(filePath, 'utf-8');
     out.logLine(`\n📄 Report: ${fileName}\n`);
     out.logLine(content);
   });
 
-  engine.on('piece:complete', (state) => {
+    engine.on('piece:complete', (state) => {
     log.info('Piece completed successfully', { iterations: state.iteration });
     sessionLog = finalizeSessionLog(sessionLog, 'completed');
 
@@ -536,7 +622,7 @@ export async function executePiece(
       endTime: new Date().toISOString(),
     };
     appendNdjsonLine(ndjsonLogPath, record);
-    updateLatestPointer(sessionLog, pieceSessionId, projectCwd);
+      finalizeRunMeta('completed', state.iteration);
 
     // Save session state for next interactive mode
     try {
@@ -560,12 +646,12 @@ export async function executePiece(
 
     out.success(`Piece completed (${state.iteration} iterations${elapsedDisplay})`);
     out.info(`Session log: ${ndjsonLogPath}`);
-    if (shouldNotify) {
+    if (shouldNotifyPieceComplete) {
       notifySuccess('TAKT', getLabel('piece.notifyComplete', undefined, { iteration: String(state.iteration) }));
     }
   });
 
-  engine.on('piece:abort', (state, reason) => {
+    engine.on('piece:abort', (state, reason) => {
     interruptAllQueries();
     log.error('Piece aborted', { reason, iterations: state.iteration });
     if (displayRef.current) {
@@ -584,7 +670,7 @@ export async function executePiece(
       endTime: new Date().toISOString(),
     };
     appendNdjsonLine(ndjsonLogPath, record);
-    updateLatestPointer(sessionLog, pieceSessionId, projectCwd);
+      finalizeRunMeta('aborted', state.iteration);
 
     // Save session state for next interactive mode
     try {
@@ -608,41 +694,46 @@ export async function executePiece(
 
     out.error(`Piece aborted after ${state.iteration} iterations${elapsedDisplay}: ${reason}`);
     out.info(`Session log: ${ndjsonLogPath}`);
-    if (shouldNotify) {
+    if (shouldNotifyPieceAbort) {
       notifyError('TAKT', getLabel('piece.notifyAbort', undefined, { reason }));
     }
   });
 
-  // Suppress EPIPE errors from SDK child process stdin after interrupt.
-  // When interruptAllQueries() kills the child process, the SDK may still
-  // try to write to the dead process's stdin pipe, causing an unhandled
-  // EPIPE error on the Socket. This handler catches it gracefully.
-  const onEpipe = (err: NodeJS.ErrnoException) => {
-    if (err.code === 'EPIPE') return;
-    throw err;
-  };
+    // Suppress EPIPE errors from SDK child process stdin after interrupt.
+    // When interruptAllQueries() kills the child process, the SDK may still
+    // try to write to the dead process's stdin pipe, causing an unhandled
+    // EPIPE error on the Socket. This handler catches it gracefully.
+    onEpipe = (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') return;
+      throw err;
+    };
 
-  const abortEngine = () => {
-    process.on('uncaughtException', onEpipe);
-    interruptAllQueries();
-    engine.abort();
-  };
+    const abortEngine = () => {
+      if (!engine || !onEpipe) {
+        throw new Error('Abort handler invoked before PieceEngine initialization');
+      }
+      if (!runAbortController.signal.aborted) {
+        runAbortController.abort();
+      }
+      process.on('uncaughtException', onEpipe);
+      interruptAllQueries();
+      engine.abort();
+    };
 
-  // SIGINT handling: when abortSignal is provided (parallel mode), delegate to caller
-  const useExternalAbort = Boolean(options.abortSignal);
+    // SIGINT handling: when abortSignal is provided (parallel mode), delegate to caller
+    const useExternalAbort = Boolean(options.abortSignal);
+    if (useExternalAbort) {
+      onAbortSignal = abortEngine;
+      if (options.abortSignal!.aborted) {
+        abortEngine();
+      } else {
+        options.abortSignal!.addEventListener('abort', onAbortSignal, { once: true });
+      }
+    } else {
+      const handler = installSigIntHandler(abortEngine);
+      sigintCleanup = handler.cleanup;
+    }
 
-  let onAbortSignal: (() => void) | undefined;
-  let sigintCleanup: (() => void) | undefined;
-
-  if (useExternalAbort) {
-    onAbortSignal = abortEngine;
-    options.abortSignal!.addEventListener('abort', onAbortSignal, { once: true });
-  } else {
-    const handler = installSigIntHandler(abortEngine);
-    sigintCleanup = handler.cleanup;
-  }
-
-  try {
     const finalState = await engine.run();
 
     return {
@@ -651,12 +742,19 @@ export async function executePiece(
       lastMovement: lastMovementName,
       lastMessage: lastMovementContent,
     };
+  } catch (error) {
+    if (!isMetaFinalized) {
+      finalizeRunMeta('aborted');
+    }
+    throw error;
   } finally {
     prefixWriter?.flush();
     sigintCleanup?.();
     if (onAbortSignal && options.abortSignal) {
       options.abortSignal.removeEventListener('abort', onAbortSignal);
     }
-    process.removeListener('uncaughtException', onEpipe);
+    if (onEpipe) {
+      process.removeListener('uncaughtException', onEpipe);
+    }
   }
 }

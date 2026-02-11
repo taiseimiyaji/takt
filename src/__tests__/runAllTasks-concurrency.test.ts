@@ -21,10 +21,25 @@ vi.mock('../infra/config/index.js', () => ({
 import { loadGlobalConfig } from '../infra/config/index.js';
 const mockLoadGlobalConfig = vi.mocked(loadGlobalConfig);
 
-const mockClaimNextTasks = vi.fn();
-const mockCompleteTask = vi.fn();
-const mockFailTask = vi.fn();
-const mockRecoverInterruptedRunningTasks = vi.fn();
+const {
+  mockClaimNextTasks,
+  mockCompleteTask,
+  mockFailTask,
+  mockRecoverInterruptedRunningTasks,
+  mockNotifySuccess,
+  mockNotifyError,
+  mockSendSlackNotification,
+  mockGetSlackWebhookUrl,
+} = vi.hoisted(() => ({
+  mockClaimNextTasks: vi.fn(),
+  mockCompleteTask: vi.fn(),
+  mockFailTask: vi.fn(),
+  mockRecoverInterruptedRunningTasks: vi.fn(),
+  mockNotifySuccess: vi.fn(),
+  mockNotifyError: vi.fn(),
+  mockSendSlackNotification: vi.fn(),
+  mockGetSlackWebhookUrl: vi.fn(),
+}));
 
 vi.mock('../infra/task/index.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -75,6 +90,10 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
     error: vi.fn(),
   }),
   getErrorMessage: vi.fn((e) => e.message),
+  notifySuccess: mockNotifySuccess,
+  notifyError: mockNotifyError,
+  sendSlackNotification: mockSendSlackNotification,
+  getSlackWebhookUrl: mockGetSlackWebhookUrl,
 }));
 
 vi.mock('../features/tasks/execute/pieceExecution.js', () => ({
@@ -149,6 +168,8 @@ describe('runAllTasks concurrency', () => {
         language: 'en',
         defaultPiece: 'default',
         logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runComplete: true, runAbort: true },
         concurrency: 1,
         taskPollIntervalMs: 500,
       });
@@ -190,6 +211,8 @@ describe('runAllTasks concurrency', () => {
         language: 'en',
         defaultPiece: 'default',
         logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runComplete: true, runAbort: true },
         concurrency: 3,
         taskPollIntervalMs: 500,
       });
@@ -266,6 +289,7 @@ describe('runAllTasks concurrency', () => {
         language: 'en',
         defaultPiece: 'default',
         logLevel: 'info',
+        notificationSound: false,
         concurrency: 1,
         taskPollIntervalMs: 500,
       });
@@ -283,6 +307,8 @@ describe('runAllTasks concurrency', () => {
         (call) => typeof call[0] === 'string' && call[0].startsWith('Concurrency:')
       );
       expect(concurrencyInfoCalls).toHaveLength(0);
+      expect(mockNotifySuccess).not.toHaveBeenCalled();
+      expect(mockNotifyError).not.toHaveBeenCalled();
     });
   });
 
@@ -291,7 +317,7 @@ describe('runAllTasks concurrency', () => {
       name: 'default',
       movements: [{ name: 'implement', personaDisplayName: 'coder' }],
       initialMovement: 'implement',
-      maxIterations: 10,
+      maxMovements: 10,
     };
 
     beforeEach(() => {
@@ -384,6 +410,16 @@ describe('runAllTasks concurrency', () => {
 
     it('should count partial failures correctly', async () => {
       // Given: 3 tasks, 1 fails, 2 succeed
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runAbort: true },
+        concurrency: 3,
+        taskPollIntervalMs: 500,
+      });
+
       const task1 = createTask('pass-1');
       const task2 = createTask('fail-1');
       const task3 = createTask('pass-2');
@@ -406,6 +442,8 @@ describe('runAllTasks concurrency', () => {
       expect(mockStatus).toHaveBeenCalledWith('Total', '3');
       expect(mockStatus).toHaveBeenCalledWith('Success', '2', undefined);
       expect(mockStatus).toHaveBeenCalledWith('Failed', '1', 'red');
+      expect(mockNotifySuccess).not.toHaveBeenCalled();
+      expect(mockNotifyError).toHaveBeenCalledTimes(1);
     });
 
     it('should persist failure reason and movement when piece aborts', async () => {
@@ -458,6 +496,8 @@ describe('runAllTasks concurrency', () => {
         language: 'en',
         defaultPiece: 'default',
         logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runComplete: true, runAbort: true },
         concurrency: 1,
         taskPollIntervalMs: 500,
       });
@@ -479,6 +519,241 @@ describe('runAllTasks concurrency', () => {
       const pieceOptions = callArgs?.[3];
       expect(pieceOptions?.abortSignal).toBeInstanceOf(AbortSignal);
       expect(pieceOptions?.taskPrefix).toBeUndefined();
+    });
+
+    it('should only notify once at run completion when multiple tasks succeed', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runComplete: true },
+        concurrency: 3,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      const task2 = createTask('task-2');
+      const task3 = createTask('task-3');
+
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1, task2, task3])
+        .mockReturnValueOnce([]);
+
+      await runAllTasks('/project');
+
+      expect(mockNotifySuccess).toHaveBeenCalledTimes(1);
+      expect(mockNotifyError).not.toHaveBeenCalled();
+    });
+
+    it('should not notify run completion when runComplete is explicitly false', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runComplete: false },
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      await runAllTasks('/project');
+
+      expect(mockNotifySuccess).not.toHaveBeenCalled();
+      expect(mockNotifyError).not.toHaveBeenCalled();
+    });
+
+    it('should notify run completion by default when notification_sound_events is not set', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      await runAllTasks('/project');
+
+      expect(mockNotifySuccess).toHaveBeenCalledTimes(1);
+      expect(mockNotifySuccess).toHaveBeenCalledWith('TAKT', 'run.notifyComplete');
+      expect(mockNotifyError).not.toHaveBeenCalled();
+    });
+
+    it('should notify run abort by default when notification_sound_events is not set', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      mockExecutePiece.mockResolvedValueOnce({ success: false, reason: 'failed' });
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      await runAllTasks('/project');
+
+      expect(mockNotifySuccess).not.toHaveBeenCalled();
+      expect(mockNotifyError).toHaveBeenCalledTimes(1);
+      expect(mockNotifyError).toHaveBeenCalledWith('TAKT', 'run.notifyAbort');
+    });
+
+    it('should not notify run abort when runAbort is explicitly false', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runAbort: false },
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      mockExecutePiece.mockResolvedValueOnce({ success: false, reason: 'failed' });
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      await runAllTasks('/project');
+
+      expect(mockNotifySuccess).not.toHaveBeenCalled();
+      expect(mockNotifyError).not.toHaveBeenCalled();
+    });
+
+    it('should notify run abort and rethrow when worker pool throws', async () => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        notificationSound: true,
+        notificationSoundEvents: { runAbort: true },
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+
+      const task1 = createTask('task-1');
+      const poolError = new Error('worker pool crashed');
+
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockImplementationOnce(() => {
+          throw poolError;
+        });
+
+      await expect(runAllTasks('/project')).rejects.toThrow('worker pool crashed');
+      expect(mockNotifyError).toHaveBeenCalledTimes(1);
+      expect(mockNotifyError).toHaveBeenCalledWith('TAKT', 'run.notifyAbort');
+    });
+  });
+
+  describe('Slack webhook notification', () => {
+    const webhookUrl = 'https://hooks.slack.com/services/T00/B00/xxx';
+    const fakePieceConfig = {
+      name: 'default',
+      movements: [{ name: 'implement', personaDisplayName: 'coder' }],
+      initialMovement: 'implement',
+      maxMovements: 10,
+    };
+
+    beforeEach(() => {
+      mockLoadGlobalConfig.mockReturnValue({
+        language: 'en',
+        defaultPiece: 'default',
+        logLevel: 'info',
+        concurrency: 1,
+        taskPollIntervalMs: 500,
+      });
+      mockLoadPieceByIdentifier.mockReturnValue(fakePieceConfig as never);
+    });
+
+    it('should send Slack notification on success when webhook URL is set', async () => {
+      // Given
+      mockGetSlackWebhookUrl.mockReturnValue(webhookUrl);
+      const task1 = createTask('task-1');
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      // When
+      await runAllTasks('/project');
+
+      // Then
+      expect(mockSendSlackNotification).toHaveBeenCalledOnce();
+      expect(mockSendSlackNotification).toHaveBeenCalledWith(
+        webhookUrl,
+        'TAKT Run complete: 1 tasks succeeded',
+      );
+    });
+
+    it('should send Slack notification on failure when webhook URL is set', async () => {
+      // Given
+      mockGetSlackWebhookUrl.mockReturnValue(webhookUrl);
+      const task1 = createTask('task-1');
+      mockExecutePiece.mockResolvedValueOnce({ success: false, reason: 'failed' });
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      // When
+      await runAllTasks('/project');
+
+      // Then
+      expect(mockSendSlackNotification).toHaveBeenCalledOnce();
+      expect(mockSendSlackNotification).toHaveBeenCalledWith(
+        webhookUrl,
+        'TAKT Run finished with errors: 1 failed out of 1 tasks',
+      );
+    });
+
+    it('should send Slack notification on exception when webhook URL is set', async () => {
+      // Given
+      mockGetSlackWebhookUrl.mockReturnValue(webhookUrl);
+      const task1 = createTask('task-1');
+      const poolError = new Error('worker pool crashed');
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockImplementationOnce(() => {
+          throw poolError;
+        });
+
+      // When / Then
+      await expect(runAllTasks('/project')).rejects.toThrow('worker pool crashed');
+      expect(mockSendSlackNotification).toHaveBeenCalledOnce();
+      expect(mockSendSlackNotification).toHaveBeenCalledWith(
+        webhookUrl,
+        'TAKT Run error: worker pool crashed',
+      );
+    });
+
+    it('should not send Slack notification when webhook URL is not set', async () => {
+      // Given
+      mockGetSlackWebhookUrl.mockReturnValue(undefined);
+      const task1 = createTask('task-1');
+      mockClaimNextTasks
+        .mockReturnValueOnce([task1])
+        .mockReturnValueOnce([]);
+
+      // When
+      await runAllTasks('/project');
+
+      // Then
+      expect(mockSendSlackNotification).not.toHaveBeenCalled();
     });
   });
 });

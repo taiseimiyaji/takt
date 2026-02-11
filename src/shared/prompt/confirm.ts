@@ -9,6 +9,16 @@ import * as readline from 'node:readline';
 import chalk from 'chalk';
 import { resolveTtyPolicy, assertTtyIfForced } from './tty.js';
 
+function pauseStdinSafely(): void {
+  try {
+    if (process.stdin.readable && !process.stdin.destroyed) {
+      process.stdin.pause();
+    }
+  } catch {
+    return;
+  }
+}
+
 /**
  * Prompt user for simple text input
  * @returns User input or null if cancelled
@@ -27,6 +37,7 @@ export async function promptInput(message: string): Promise<string | null> {
   return new Promise((resolve) => {
     rl.question(chalk.green(message + ': '), (answer) => {
       rl.close();
+      pauseStdinSafely();
 
       const trimmed = answer.trim();
       if (!trimmed) {
@@ -98,6 +109,7 @@ export async function confirm(message: string, defaultYes = true): Promise<boole
   return new Promise((resolve) => {
     rl.question(chalk.green(`${message} ${hint}: `), (answer) => {
       rl.close();
+      pauseStdinSafely();
 
       const trimmed = answer.trim().toLowerCase();
 

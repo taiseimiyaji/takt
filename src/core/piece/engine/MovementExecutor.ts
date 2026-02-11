@@ -6,7 +6,7 @@
  * Phase 3: Status judgment (no tools, optional)
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   PieceMovement,
@@ -23,6 +23,7 @@ import { buildSessionKey } from '../session-key.js';
 import { incrementMovementIteration, getPreviousOutput } from './state-manager.js';
 import { createLogger } from '../../../shared/utils/index.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
+import type { RunPaths } from '../run/run-paths.js';
 
 const log = createLogger('movement-executor');
 
@@ -31,6 +32,7 @@ export interface MovementExecutorDeps {
   readonly getCwd: () => string;
   readonly getProjectCwd: () => string;
   readonly getReportDir: () => string;
+  readonly getRunPaths: () => RunPaths;
   readonly getLanguage: () => Language | undefined;
   readonly getInteractive: () => boolean;
   readonly getPieceMovements: () => ReadonlyArray<{ name: string; description?: string }>;
@@ -52,19 +54,103 @@ export class MovementExecutor {
     private readonly deps: MovementExecutorDeps,
   ) {}
 
+  private static buildTimestamp(): string {
+    return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  private writeSnapshot(
+    content: string,
+    directoryRel: string,
+    filename: string,
+  ): string {
+    const absPath = join(this.deps.getCwd(), directoryRel, filename);
+    writeFileSync(absPath, content, 'utf-8');
+    return `${directoryRel}/${filename}`;
+  }
+
+  private writeFacetSnapshot(
+    facet: 'knowledge' | 'policy',
+    movementName: string,
+    movementIteration: number,
+    contents: string[] | undefined,
+  ): { content: string[]; sourcePath: string } | undefined {
+    if (!contents || contents.length === 0) return undefined;
+    const merged = contents.join('\n\n---\n\n');
+    const timestamp = MovementExecutor.buildTimestamp();
+    const runPaths = this.deps.getRunPaths();
+    const directoryRel = facet === 'knowledge'
+      ? runPaths.contextKnowledgeRel
+      : runPaths.contextPolicyRel;
+    const sourcePath = this.writeSnapshot(
+      merged,
+      directoryRel,
+      `${movementName}.${movementIteration}.${timestamp}.md`,
+    );
+    return { content: [merged], sourcePath };
+  }
+
+  private ensurePreviousResponseSnapshot(
+    state: PieceState,
+    movementName: string,
+    movementIteration: number,
+  ): void {
+    if (!state.lastOutput || state.previousResponseSourcePath) return;
+    const timestamp = MovementExecutor.buildTimestamp();
+    const runPaths = this.deps.getRunPaths();
+    const fileName = `${movementName}.${movementIteration}.${timestamp}.md`;
+    const sourcePath = this.writeSnapshot(
+      state.lastOutput.content,
+      runPaths.contextPreviousResponsesRel,
+      fileName,
+    );
+    this.writeSnapshot(
+      state.lastOutput.content,
+      runPaths.contextPreviousResponsesRel,
+      'latest.md',
+    );
+    state.previousResponseSourcePath = sourcePath;
+  }
+
+  persistPreviousResponseSnapshot(
+    state: PieceState,
+    movementName: string,
+    movementIteration: number,
+    content: string,
+  ): void {
+    const timestamp = MovementExecutor.buildTimestamp();
+    const runPaths = this.deps.getRunPaths();
+    const fileName = `${movementName}.${movementIteration}.${timestamp}.md`;
+    const sourcePath = this.writeSnapshot(content, runPaths.contextPreviousResponsesRel, fileName);
+    this.writeSnapshot(content, runPaths.contextPreviousResponsesRel, 'latest.md');
+    state.previousResponseSourcePath = sourcePath;
+  }
+
   /** Build Phase 1 instruction from template */
   buildInstruction(
     step: PieceMovement,
     movementIteration: number,
     state: PieceState,
     task: string,
-    maxIterations: number,
+    maxMovements: number,
   ): string {
+    this.ensurePreviousResponseSnapshot(state, step.name, movementIteration);
+    const policySnapshot = this.writeFacetSnapshot(
+      'policy',
+      step.name,
+      movementIteration,
+      step.policyContents,
+    );
+    const knowledgeSnapshot = this.writeFacetSnapshot(
+      'knowledge',
+      step.name,
+      movementIteration,
+      step.knowledgeContents,
+    );
     const pieceMovements = this.deps.getPieceMovements();
     return new InstructionBuilder(step, {
       task,
       iteration: state.iteration,
-      maxIterations,
+      maxMovements,
       movementIteration,
       cwd: this.deps.getCwd(),
       projectCwd: this.deps.getProjectCwd(),
@@ -78,8 +164,11 @@ export class MovementExecutor {
       pieceName: this.deps.getPieceName(),
       pieceDescription: this.deps.getPieceDescription(),
       retryNote: this.deps.getRetryNote(),
-      policyContents: step.policyContents,
-      knowledgeContents: step.knowledgeContents,
+      policyContents: policySnapshot?.content ?? step.policyContents,
+      policySourcePath: policySnapshot?.sourcePath,
+      knowledgeContents: knowledgeSnapshot?.content ?? step.knowledgeContents,
+      knowledgeSourcePath: knowledgeSnapshot?.sourcePath,
+      previousResponseSourcePath: state.previousResponseSourcePath,
     }).build();
   }
 
@@ -93,14 +182,14 @@ export class MovementExecutor {
     step: PieceMovement,
     state: PieceState,
     task: string,
-    maxIterations: number,
+    maxMovements: number,
     updatePersonaSession: (persona: string, sessionId: string | undefined) => void,
     prebuiltInstruction?: string,
   ): Promise<{ response: AgentResponse; instruction: string }> {
     const movementIteration = prebuiltInstruction
       ? state.movementIterations.get(step.name) ?? 1
       : incrementMovementIteration(state, step.name);
-    const instruction = prebuiltInstruction ?? this.buildInstruction(step, movementIteration, state, task, maxIterations);
+    const instruction = prebuiltInstruction ?? this.buildInstruction(step, movementIteration, state, task, maxMovements);
     const sessionKey = buildSessionKey(step);
     log.debug('Running movement', {
       movement: step.name,
@@ -120,8 +209,15 @@ export class MovementExecutor {
     const phaseCtx = this.deps.optionsBuilder.buildPhaseRunnerContext(state, response.content, updatePersonaSession, this.deps.onPhaseStart, this.deps.onPhaseComplete);
 
     // Phase 2: report output (resume same session, Write only)
+    // When report phase returns blocked, propagate to PieceEngine's handleBlocked flow
     if (step.outputContracts && step.outputContracts.length > 0) {
-      await runReportPhase(step, movementIteration, phaseCtx);
+      const reportResult = await runReportPhase(step, movementIteration, phaseCtx);
+      if (reportResult?.blocked) {
+        response = { ...response, status: 'blocked', content: reportResult.response.content };
+        state.movementOutputs.set(step.name, response);
+        state.lastOutput = response;
+        return { response, instruction };
+      }
     }
 
     // Phase 3: status judgment (resume session, no tools, output status tag)
@@ -144,6 +240,7 @@ export class MovementExecutor {
 
     state.movementOutputs.set(step.name, response);
     state.lastOutput = response;
+    this.persistPreviousResponseSnapshot(state, step.name, movementIteration, response.content);
     this.emitMovementReports(step);
     return { response, instruction };
   }

@@ -83,7 +83,7 @@ $ARGUMENTS を以下のように解析する:
 3. 見つからない場合: 上記2ディレクトリを Glob で列挙し、AskUserQuestion で選択させる
 
 YAMLから以下を抽出する（→ references/yaml-schema.md 参照）:
-- `name`, `max_iterations`, `initial_movement`, `movements` 配列
+- `name`, `max_movements`, `initial_movement`, `movements` 配列
 - セクションマップ: `personas`, `policies`, `instructions`, `output_contracts`, `knowledge`
 
 ### 手順 2: セクションリソースの事前読み込み
@@ -116,13 +116,21 @@ TeamCreate tool を呼ぶ:
 - `permission_mode = コマンドで解析された権限モード（"bypassPermissions" / "acceptEdits" / "default"）`
 - `movement_history = []`（遷移履歴。Loop Monitor 用）
 
-**レポートディレクトリ**: いずれかの movement に `report` フィールドがある場合、`.takt/reports/{YYYYMMDD-HHmmss}-{slug}/` を作成し、パスを `report_dir` 変数に保持する。
+**実行ディレクトリ**: いずれかの movement に `report` フィールドがある場合、`.takt/runs/{YYYYMMDD-HHmmss}-{slug}/` を作成し、以下を配置する。
+- `reports/`（レポート出力）
+- `context/knowledge/`（Knowledge スナップショット）
+- `context/policy/`（Policy スナップショット）
+- `context/previous_responses/`（Previous Response 履歴 + `latest.md`）
+- `logs/`（実行ログ）
+- `meta.json`（run メタデータ）
+
+レポート出力先パスを `report_dir` 変数（`.takt/runs/{slug}/reports`）として保持する。
 
 次に **手順 5** に進む。
 
 ### 手順 5: チームメイト起動
 
-**iteration が max_iterations を超えていたら → 手順 8（ABORT: イテレーション上限）に進む。**
+**iteration が max_movements を超えていたら → 手順 8（ABORT: イテレーション上限）に進む。**
 
 current_movement のプロンプトを構築する（→ references/engine.md のプロンプト構築を参照）。
 

@@ -8,7 +8,6 @@
 
 import { EventEmitter } from 'node:events';
 import { mkdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type {
   PieceConfig,
   PieceState,
@@ -27,10 +26,12 @@ import {
   addUserInput as addUserInputToState,
   incrementMovementIteration,
 } from './state-manager.js';
-import { generateReportDir, getErrorMessage, createLogger } from '../../../shared/utils/index.js';
+import { generateReportDir, getErrorMessage, createLogger, isValidReportDirName } from '../../../shared/utils/index.js';
 import { OptionsBuilder } from './OptionsBuilder.js';
 import { MovementExecutor } from './MovementExecutor.js';
 import { ParallelRunner } from './ParallelRunner.js';
+import { ArpeggioRunner } from './ArpeggioRunner.js';
+import { buildRunPaths, type RunPaths } from '../run/run-paths.js';
 
 const log = createLogger('engine');
 
@@ -55,11 +56,13 @@ export class PieceEngine extends EventEmitter {
   private loopDetector: LoopDetector;
   private cycleDetector: CycleDetector;
   private reportDir: string;
+  private runPaths: RunPaths;
   private abortRequested = false;
 
   private readonly optionsBuilder: OptionsBuilder;
   private readonly movementExecutor: MovementExecutor;
   private readonly parallelRunner: ParallelRunner;
+  private readonly arpeggioRunner: ArpeggioRunner;
   private readonly detectRuleIndex: (content: string, movementName: string) => number;
   private readonly callAiJudge: (
     agentOutput: string,
@@ -77,8 +80,13 @@ export class PieceEngine extends EventEmitter {
     this.options = options;
     this.loopDetector = new LoopDetector(config.loopDetection);
     this.cycleDetector = new CycleDetector(config.loopMonitors ?? []);
-    this.reportDir = `.takt/reports/${generateReportDir(task)}`;
-    this.ensureReportDirExists();
+    if (options.reportDirName !== undefined && !isValidReportDirName(options.reportDirName)) {
+      throw new Error(`Invalid reportDirName: ${options.reportDirName}`);
+    }
+    const reportDirName = options.reportDirName ?? generateReportDir(task);
+    this.runPaths = buildRunPaths(this.cwd, reportDirName);
+    this.reportDir = this.runPaths.reportsRel;
+    this.ensureRunDirsExist();
     this.validateConfig();
     this.state = createInitialState(config, options);
     this.detectRuleIndex = options.detectRuleIndex ?? (() => {
@@ -106,6 +114,7 @@ export class PieceEngine extends EventEmitter {
       getCwd: () => this.cwd,
       getProjectCwd: () => this.projectCwd,
       getReportDir: () => this.reportDir,
+      getRunPaths: () => this.runPaths,
       getLanguage: () => this.options.language,
       getInteractive: () => this.options.interactive === true,
       getPieceMovements: () => this.config.movements.map(s => ({ name: s.name, description: s.description })),
@@ -139,11 +148,26 @@ export class PieceEngine extends EventEmitter {
       },
     });
 
+    this.arpeggioRunner = new ArpeggioRunner({
+      optionsBuilder: this.optionsBuilder,
+      movementExecutor: this.movementExecutor,
+      getCwd: () => this.cwd,
+      getInteractive: () => this.options.interactive === true,
+      detectRuleIndex: this.detectRuleIndex,
+      callAiJudge: this.callAiJudge,
+      onPhaseStart: (step, phase, phaseName, instruction) => {
+        this.emit('phase:start', step, phase, phaseName, instruction);
+      },
+      onPhaseComplete: (step, phase, phaseName, content, phaseStatus, error) => {
+        this.emit('phase:complete', step, phase, phaseName, content, phaseStatus, error);
+      },
+    });
+
     log.debug('PieceEngine initialized', {
       piece: config.name,
       movements: config.movements.map(s => s.name),
       initialMovement: config.initialMovement,
-      maxIterations: config.maxIterations,
+      maxMovements: config.maxMovements,
     });
   }
 
@@ -155,11 +179,21 @@ export class PieceEngine extends EventEmitter {
     }
   }
 
-  /** Ensure report directory exists (in cwd, which is clone dir in worktree mode) */
-  private ensureReportDirExists(): void {
-    const reportDirPath = join(this.cwd, this.reportDir);
-    if (!existsSync(reportDirPath)) {
-      mkdirSync(reportDirPath, { recursive: true });
+  /** Ensure run directories exist (in cwd, which is clone dir in worktree mode) */
+  private ensureRunDirsExist(): void {
+    const requiredDirs = [
+      this.runPaths.runRootAbs,
+      this.runPaths.reportsAbs,
+      this.runPaths.contextAbs,
+      this.runPaths.contextKnowledgeAbs,
+      this.runPaths.contextPolicyAbs,
+      this.runPaths.contextPreviousResponsesAbs,
+      this.runPaths.logsAbs,
+    ];
+    for (const dir of requiredDirs) {
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
     }
   }
 
@@ -290,18 +324,22 @@ export class PieceEngine extends EventEmitter {
     }
   }
 
-  /** Run a single movement (delegates to ParallelRunner if movement has parallel sub-movements) */
+  /** Run a single movement (delegates to ParallelRunner, ArpeggioRunner, or MovementExecutor) */
   private async runMovement(step: PieceMovement, prebuiltInstruction?: string): Promise<{ response: AgentResponse; instruction: string }> {
     const updateSession = this.updatePersonaSession.bind(this);
     let result: { response: AgentResponse; instruction: string };
 
     if (step.parallel && step.parallel.length > 0) {
       result = await this.parallelRunner.runParallelMovement(
-        step, this.state, this.task, this.config.maxIterations, updateSession,
+        step, this.state, this.task, this.config.maxMovements, updateSession,
+      );
+    } else if (step.arpeggio) {
+      result = await this.arpeggioRunner.runArpeggioMovement(
+        step, this.state,
       );
     } else {
       result = await this.movementExecutor.runNormalMovement(
-        step, this.state, this.task, this.config.maxIterations, updateSession, prebuiltInstruction,
+        step, this.state, this.task, this.config.maxMovements, updateSession, prebuiltInstruction,
       );
     }
 
@@ -326,7 +364,7 @@ export class PieceEngine extends EventEmitter {
   /** Build instruction (public, used by pieceExecution.ts for logging) */
   buildInstruction(step: PieceMovement, movementIteration: number): string {
     return this.movementExecutor.buildInstruction(
-      step, movementIteration, this.state, this.task, this.config.maxIterations,
+      step, movementIteration, this.state, this.task, this.config.maxMovements,
     );
   }
 
@@ -413,7 +451,7 @@ export class PieceEngine extends EventEmitter {
     this.state.iteration++;
     const movementIteration = incrementMovementIteration(this.state, judgeMovement.name);
     const prebuiltInstruction = this.movementExecutor.buildInstruction(
-      judgeMovement, movementIteration, this.state, this.task, this.config.maxIterations,
+      judgeMovement, movementIteration, this.state, this.task, this.config.maxMovements,
     );
 
     this.emit('movement:start', judgeMovement, this.state.iteration, prebuiltInstruction);
@@ -422,7 +460,7 @@ export class PieceEngine extends EventEmitter {
       judgeMovement,
       this.state,
       this.task,
-      this.config.maxIterations,
+      this.config.maxMovements,
       this.updatePersonaSession.bind(this),
       prebuiltInstruction,
     );
@@ -453,27 +491,27 @@ export class PieceEngine extends EventEmitter {
         break;
       }
 
-      if (this.state.iteration >= this.config.maxIterations) {
-        this.emit('iteration:limit', this.state.iteration, this.config.maxIterations);
+      if (this.state.iteration >= this.config.maxMovements) {
+        this.emit('iteration:limit', this.state.iteration, this.config.maxMovements);
 
         if (this.options.onIterationLimit) {
           const additionalIterations = await this.options.onIterationLimit({
             currentIteration: this.state.iteration,
-            maxIterations: this.config.maxIterations,
+            maxMovements: this.config.maxMovements,
             currentMovement: this.state.currentMovement,
           });
 
           if (additionalIterations !== null && additionalIterations > 0) {
             this.config = {
               ...this.config,
-              maxIterations: this.config.maxIterations + additionalIterations,
+              maxMovements: this.config.maxMovements + additionalIterations,
             };
             continue;
           }
         }
 
         this.state.status = 'aborted';
-        this.emit('piece:abort', this.state, ERROR_MESSAGES.MAX_ITERATIONS_REACHED);
+        this.emit('piece:abort', this.state, ERROR_MESSAGES.MAX_MOVEMENTS_REACHED);
         break;
       }
 
@@ -492,13 +530,14 @@ export class PieceEngine extends EventEmitter {
 
       this.state.iteration++;
 
-      // Build instruction before emitting movement:start so listeners can log it
-      const isParallel = movement.parallel && movement.parallel.length > 0;
+      // Build instruction before emitting movement:start so listeners can log it.
+      // Parallel and arpeggio movements handle iteration incrementing internally.
+      const isDelegated = (movement.parallel && movement.parallel.length > 0) || !!movement.arpeggio;
       let prebuiltInstruction: string | undefined;
-      if (!isParallel) {
+      if (!isDelegated) {
         const movementIteration = incrementMovementIteration(this.state, movement.name);
         prebuiltInstruction = this.movementExecutor.buildInstruction(
-          movement, movementIteration, this.state, this.task, this.config.maxIterations,
+          movement, movementIteration, this.state, this.task, this.config.maxMovements,
         );
       }
       this.emit('movement:start', movement, this.state.iteration, prebuiltInstruction ?? '');

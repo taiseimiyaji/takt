@@ -8,7 +8,7 @@
 import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
 import type { PieceMovement, AgentResponse, PieceState, Language, LoopMonitorConfig } from '../models/types.js';
 
-export type ProviderType = 'claude' | 'codex' | 'mock';
+export type ProviderType = 'claude' | 'codex' | 'opencode' | 'mock';
 
 export interface StreamInitEventData {
   model: string;
@@ -117,7 +117,7 @@ export interface PieceEvents {
   'phase:complete': (step: PieceMovement, phase: 1 | 2 | 3, phaseName: PhaseName, content: string, status: string, error?: string) => void;
   'piece:complete': (state: PieceState) => void;
   'piece:abort': (state: PieceState, reason: string) => void;
-  'iteration:limit': (iteration: number, maxIterations: number) => void;
+  'iteration:limit': (iteration: number, maxMovements: number) => void;
   'movement:loop_detected': (step: PieceMovement, consecutiveCount: number) => void;
   'movement:cycle_detected': (monitor: LoopMonitorConfig, cycleCount: number) => void;
 }
@@ -136,8 +136,8 @@ export interface UserInputRequest {
 export interface IterationLimitRequest {
   /** Current iteration count */
   currentIteration: number;
-  /** Current max iterations */
-  maxIterations: number;
+  /** Current max movements */
+  maxMovements: number;
   /** Current movement name */
   currentMovement: string;
 }
@@ -190,6 +190,8 @@ export interface PieceEngineOptions {
   startMovement?: string;
   /** Retry note explaining why task is being retried */
   retryNote?: string;
+  /** Override report directory name (without parent path). */
+  reportDirName?: string;
   /** Task name prefix for parallel task execution output */
   taskPrefix?: string;
   /** Color index for task prefix (cycled across tasks) */

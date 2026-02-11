@@ -25,7 +25,7 @@ A piece is a YAML file that defines a sequence of steps executed by AI agents. E
 ```yaml
 name: my-piece
 description: Optional description
-max_iterations: 10
+max_movements: 10
 initial_step: first-step  # Optional, defaults to first step
 
 steps:
@@ -55,11 +55,11 @@ steps:
 |----------|-------------|
 | `{task}` | Original user request (auto-injected if not in template) |
 | `{iteration}` | Piece-wide turn count (total steps executed) |
-| `{max_iterations}` | Maximum iterations allowed |
+| `{max_movements}` | Maximum movements allowed |
 | `{step_iteration}` | Per-step iteration count (how many times THIS step has run) |
 | `{previous_response}` | Previous step's output (auto-injected if not in template) |
 | `{user_inputs}` | Additional user inputs during piece (auto-injected if not in template) |
-| `{report_dir}` | Report directory path (e.g., `.takt/reports/20250126-143052-task-summary`) |
+| `{report_dir}` | Report directory path (e.g., `.takt/runs/20250126-143052-task-summary/reports`) |
 | `{report:filename}` | Resolves to `{report_dir}/filename` (e.g., `{report:00-plan.md}`) |
 
 > **Note**: `{task}`, `{previous_response}`, and `{user_inputs}` are auto-injected into instructions. You only need explicit placeholders if you want to control their position in the template.
@@ -170,7 +170,7 @@ report:
 
 ```yaml
 name: simple-impl
-max_iterations: 5
+max_movements: 5
 
 steps:
   - name: implement
@@ -191,7 +191,7 @@ steps:
 
 ```yaml
 name: with-review
-max_iterations: 10
+max_movements: 10
 
 steps:
   - name: implement

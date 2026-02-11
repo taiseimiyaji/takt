@@ -2,20 +2,55 @@
  * Resolve execution directory and piece from task data.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { loadGlobalConfig } from '../../../infra/config/index.js';
 import { type TaskInfo, createSharedClone, summarizeTaskName, getCurrentBranch } from '../../../infra/task/index.js';
-import { info } from '../../../shared/ui/index.js';
+import { withProgress } from '../../../shared/ui/index.js';
+import { getTaskSlugFromTaskDir } from '../../../shared/utils/taskPaths.js';
 
 export interface ResolvedTaskExecution {
   execCwd: string;
   execPiece: string;
   isWorktree: boolean;
+  taskPrompt?: string;
+  reportDirName?: string;
   branch?: string;
   baseBranch?: string;
   startMovement?: string;
   retryNote?: string;
   autoPr?: boolean;
   issueNumber?: number;
+}
+
+function buildRunTaskDirInstruction(reportDirName: string): string {
+  const runTaskDir = `.takt/runs/${reportDirName}/context/task`;
+  const orderFile = `${runTaskDir}/order.md`;
+  return [
+    `Implement using only the files in \`${runTaskDir}\`.`,
+    `Primary spec: \`${orderFile}\`.`,
+    'Use report files in Report Directory as primary execution history.',
+    'Do not rely on previous response or conversation summary.',
+  ].join('\n');
+}
+
+function stageTaskSpecForExecution(
+  projectCwd: string,
+  execCwd: string,
+  taskDir: string,
+  reportDirName: string,
+): string {
+  const sourceOrderPath = path.join(projectCwd, taskDir, 'order.md');
+  if (!fs.existsSync(sourceOrderPath)) {
+    throw new Error(`Task spec file is missing: ${sourceOrderPath}`);
+  }
+
+  const targetTaskDir = path.join(execCwd, '.takt', 'runs', reportDirName, 'context', 'task');
+  const targetOrderPath = path.join(targetTaskDir, 'order.md');
+  fs.mkdirSync(targetTaskDir, { recursive: true });
+  fs.copyFileSync(sourceOrderPath, targetOrderPath);
+
+  return buildRunTaskDirInstruction(reportDirName);
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -44,28 +79,47 @@ export async function resolveTaskExecution(
 
   let execCwd = defaultCwd;
   let isWorktree = false;
+  let reportDirName: string | undefined;
+  let taskPrompt: string | undefined;
   let branch: string | undefined;
   let baseBranch: string | undefined;
+  if (task.taskDir) {
+    const taskSlug = getTaskSlugFromTaskDir(task.taskDir);
+    if (!taskSlug) {
+      throw new Error(`Invalid task_dir format: ${task.taskDir}`);
+    }
+    reportDirName = taskSlug;
+  }
 
   if (data.worktree) {
     throwIfAborted(abortSignal);
     baseBranch = getCurrentBranch(defaultCwd);
-    info('Generating branch name...');
-    const taskSlug = await summarizeTaskName(task.content, { cwd: defaultCwd });
+    const taskSlug = await withProgress(
+      'Generating branch name...',
+      (slug) => `Branch name generated: ${slug}`,
+      () => summarizeTaskName(task.content, { cwd: defaultCwd }),
+    );
 
     throwIfAborted(abortSignal);
-    info('Creating clone...');
-    const result = createSharedClone(defaultCwd, {
-      worktree: data.worktree,
-      branch: data.branch,
-      taskSlug,
-      issueNumber: data.issue,
-    });
+    const result = await withProgress(
+      'Creating clone...',
+      (cloneResult) => `Clone created: ${cloneResult.path} (branch: ${cloneResult.branch})`,
+      async () => createSharedClone(defaultCwd, {
+        worktree: data.worktree!,
+        branch: data.branch,
+        taskSlug,
+        issueNumber: data.issue,
+      }),
+    );
     throwIfAborted(abortSignal);
     execCwd = result.path;
     branch = result.branch;
     isWorktree = true;
-    info(`Clone created: ${result.path} (branch: ${result.branch})`);
+
+  }
+
+  if (task.taskDir && reportDirName) {
+    taskPrompt = stageTaskSpecForExecution(defaultCwd, execCwd, task.taskDir, reportDirName);
   }
 
   const execPiece = data.piece || defaultPiece;
@@ -80,5 +134,17 @@ export async function resolveTaskExecution(
     autoPr = globalConfig.autoPr;
   }
 
-  return { execCwd, execPiece, isWorktree, branch, baseBranch, startMovement, retryNote, autoPr, issueNumber: data.issue };
+  return {
+    execCwd,
+    execPiece,
+    isWorktree,
+    ...(taskPrompt ? { taskPrompt } : {}),
+    ...(reportDirName ? { reportDirName } : {}),
+    ...(branch ? { branch } : {}),
+    ...(baseBranch ? { baseBranch } : {}),
+    ...(startMovement ? { startMovement } : {}),
+    ...(retryNote ? { retryNote } : {}),
+    ...(autoPr !== undefined ? { autoPr } : {}),
+    ...(data.issue !== undefined ? { issueNumber: data.issue } : {}),
+  };
 }

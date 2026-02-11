@@ -81,7 +81,7 @@ describe('PieceConfigRawSchema', () => {
     expect(result.name).toBe('test-piece');
     expect(result.movements).toHaveLength(1);
     expect(result.movements![0]?.allowed_tools).toEqual(['Read', 'Grep']);
-    expect(result.max_iterations).toBe(10);
+    expect(result.max_movements).toBe(10);
   });
 
   it('should parse movement with permission_mode', () => {
@@ -410,15 +410,20 @@ describe('GlobalConfigSchema', () => {
     expect(result.default_piece).toBe('default');
     expect(result.log_level).toBe('info');
     expect(result.provider).toBe('claude');
+    expect(result.observability).toBeUndefined();
   });
 
   it('should accept valid config', () => {
     const config = {
       default_piece: 'custom',
       log_level: 'debug' as const,
+      observability: {
+        provider_events: false,
+      },
     };
 
     const result = GlobalConfigSchema.parse(config);
     expect(result.log_level).toBe('debug');
+    expect(result.observability?.provider_events).toBe(false);
   });
 });

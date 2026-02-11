@@ -30,14 +30,19 @@ export function replaceTemplatePlaceholders(
   // Replace {task}
   result = result.replace(/\{task\}/g, escapeTemplateChars(context.task));
 
-  // Replace {iteration}, {max_iterations}, and {movement_iteration}
+  // Replace {iteration}, {max_movements}, and {movement_iteration}
   result = result.replace(/\{iteration\}/g, String(context.iteration));
-  result = result.replace(/\{max_iterations\}/g, String(context.maxIterations));
+  result = result.replace(/\{max_movements\}/g, String(context.maxMovements));
   result = result.replace(/\{movement_iteration\}/g, String(context.movementIteration));
 
   // Replace {previous_response}
   if (step.passPreviousResponse) {
-    if (context.previousOutput) {
+    if (context.previousResponseText !== undefined) {
+      result = result.replace(
+        /\{previous_response\}/g,
+        escapeTemplateChars(context.previousResponseText),
+      );
+    } else if (context.previousOutput) {
       result = result.replace(
         /\{previous_response\}/g,
         escapeTemplateChars(context.previousOutput.content),

@@ -17,8 +17,8 @@ const RESET = '\x1b[0m';
 export interface ParallelProgressInfo {
   /** Current iteration (1-indexed) */
   iteration: number;
-  /** Maximum iterations allowed */
-  maxIterations: number;
+  /** Maximum movements allowed */
+  maxMovements: number;
 }
 
 export interface ParallelLoggerOptions {
@@ -83,8 +83,8 @@ export class ParallelLogger {
   buildPrefix(name: string, index: number): string {
     if (this.taskLabel && this.parentMovementName && this.progressInfo && this.movementIteration != null && this.taskColorIndex != null) {
       const taskColor = COLORS[this.taskColorIndex % COLORS.length];
-      const { iteration, maxIterations } = this.progressInfo;
-      return `${taskColor}[${this.taskLabel}]${RESET}[${this.parentMovementName}][${name}](${iteration}/${maxIterations})(${this.movementIteration}) `;
+      const { iteration, maxMovements } = this.progressInfo;
+      return `${taskColor}[${this.taskLabel}]${RESET}[${this.parentMovementName}][${name}](${iteration}/${maxMovements})(${this.movementIteration}) `;
     }
 
     const color = COLORS[index % COLORS.length];
@@ -92,9 +92,9 @@ export class ParallelLogger {
 
     let progressPart = '';
     if (this.progressInfo) {
-      const { iteration, maxIterations } = this.progressInfo;
+      const { iteration, maxMovements } = this.progressInfo;
       // index is 0-indexed, display as 1-indexed for step number
-      progressPart = `(${iteration}/${maxIterations}) step ${index + 1}/${this.totalSubMovements} `;
+      progressPart = `(${iteration}/${maxMovements}) step ${index + 1}/${this.totalSubMovements} `;
     }
 
     return `${color}[${name}]${RESET}${padding} ${progressPart}`;
@@ -190,6 +190,19 @@ export class ParallelLogger {
   }
 
   /**
+   * Build the prefix string for summary lines (no sub-movement name).
+   * Returns empty string in non-rich mode (no task-level prefix needed).
+   */
+  private buildSummaryPrefix(): string {
+    if (this.taskLabel && this.parentMovementName && this.progressInfo && this.movementIteration != null && this.taskColorIndex != null) {
+      const taskColor = COLORS[this.taskColorIndex % COLORS.length];
+      const { iteration, maxMovements } = this.progressInfo;
+      return `${taskColor}[${this.taskLabel}]${RESET}[${this.parentMovementName}](${iteration}/${maxMovements})(${this.movementIteration}) `;
+    }
+    return '';
+  }
+
+  /**
    * Flush remaining line buffers for all sub-movements.
    * Call after all sub-movements complete to output any trailing partial lines.
    */
@@ -243,10 +256,11 @@ export class ParallelLogger {
     const headerLine = `${'─'.repeat(sideWidth)}${headerText}${'─'.repeat(sideWidth)}`;
     const footerLine = '─'.repeat(headerLine.length);
 
-    this.writeFn(`${headerLine}\n`);
+    const summaryPrefix = this.buildSummaryPrefix();
+    this.writeFn(`${summaryPrefix}${headerLine}\n`);
     for (const line of resultLines) {
-      this.writeFn(`${line}\n`);
+      this.writeFn(`${summaryPrefix}${line}\n`);
     }
-    this.writeFn(`${footerLine}\n`);
+    this.writeFn(`${summaryPrefix}${footerLine}\n`);
   }
 }

@@ -287,6 +287,96 @@ describe('loadGlobalConfig', () => {
     expect(config.notificationSound).toBeUndefined();
   });
 
+  it('should load notification_sound_events config from config.yaml', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(
+      getGlobalConfigPath(),
+      [
+        'language: en',
+        'notification_sound_events:',
+        '  iteration_limit: false',
+        '  piece_complete: true',
+        '  piece_abort: true',
+        '  run_complete: true',
+        '  run_abort: false',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const config = loadGlobalConfig();
+    expect(config.notificationSoundEvents).toEqual({
+      iterationLimit: false,
+      pieceComplete: true,
+      pieceAbort: true,
+      runComplete: true,
+      runAbort: false,
+    });
+  });
+
+  it('should load observability.provider_events config from config.yaml', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(
+      getGlobalConfigPath(),
+      [
+        'language: en',
+        'observability:',
+        '  provider_events: false',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const config = loadGlobalConfig();
+    expect(config.observability).toEqual({
+      providerEvents: false,
+    });
+  });
+
+  it('should save and reload observability.provider_events config', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.observability = {
+      providerEvents: false,
+    };
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.observability).toEqual({
+      providerEvents: false,
+    });
+  });
+
+  it('should save and reload notification_sound_events config', () => {
+    const taktDir = join(testHomeDir, '.takt');
+    mkdirSync(taktDir, { recursive: true });
+    writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+    const config = loadGlobalConfig();
+    config.notificationSoundEvents = {
+      iterationLimit: false,
+      pieceComplete: true,
+      pieceAbort: false,
+      runComplete: true,
+      runAbort: true,
+    };
+    saveGlobalConfig(config);
+    invalidateGlobalConfigCache();
+
+    const reloaded = loadGlobalConfig();
+    expect(reloaded.notificationSoundEvents).toEqual({
+      iterationLimit: false,
+      pieceComplete: true,
+      pieceAbort: false,
+      runComplete: true,
+      runAbort: true,
+    });
+  });
+
   it('should load interactive_preview_movements config from config.yaml', () => {
     const taktDir = join(testHomeDir, '.takt');
     mkdirSync(taktDir, { recursive: true });
@@ -464,6 +554,78 @@ describe('loadGlobalConfig', () => {
       );
 
       expect(() => loadGlobalConfig()).not.toThrow();
+    });
+
+    it('should throw when provider is opencode but model is a Claude alias (opus)', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: opus\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'opus' is a Claude model alias but provider is 'opencode'/);
+    });
+
+    it('should throw when provider is opencode but model is sonnet', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: sonnet\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'sonnet' is a Claude model alias but provider is 'opencode'/);
+    });
+
+    it('should throw when provider is opencode but model is haiku', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: haiku\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/model 'haiku' is a Claude model alias but provider is 'opencode'/);
+    });
+
+    it('should not throw when provider is opencode with a compatible model', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: opencode/big-pickle\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).not.toThrow();
+    });
+
+    it('should throw when provider is opencode without a model', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/provider 'opencode' requires model in 'provider\/model' format/i);
+    });
+
+    it('should throw when provider is opencode and model is not provider/model format', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        'provider: opencode\nmodel: big-pickle\n',
+        'utf-8',
+      );
+
+      expect(() => loadGlobalConfig()).toThrow(/must be in 'provider\/model' format/i);
     });
   });
 });

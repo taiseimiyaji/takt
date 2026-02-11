@@ -69,8 +69,8 @@ abstract class JudgmentStrategyBase implements JudgmentStrategy {
   protected async runConductor(instruction: string, context: JudgmentContext): Promise<string> {
     const response = await runAgent('conductor', instruction, {
       cwd: context.cwd,
-      allowedTools: [],
       maxTurns: 3,
+      permissionMode: 'readonly',
       language: context.language,
     });
 

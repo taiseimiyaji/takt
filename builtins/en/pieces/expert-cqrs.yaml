@@ -1,6 +1,6 @@
 name: expert-cqrs
 description: CQRS+ES, Frontend, Security, QA Expert Review
-max_iterations: 30
+max_movements: 30
 initial_movement: plan
 movements:
   - name: plan
@@ -26,7 +26,6 @@ movements:
   - name: implement
     edit: true
     persona: coder
-    pass_previous_response: false
     policy:
       - coding
       - testing
@@ -87,7 +86,6 @@ movements:
   - name: ai_fix
     edit: true
     persona: coder
-    pass_previous_response: false
     policy:
       - coding
       - testing
@@ -218,7 +216,6 @@ movements:
   - name: fix
     edit: true
     persona: coder
-    pass_previous_response: false
     policy:
       - coding
       - testing
@@ -267,7 +264,6 @@ movements:
   - name: fix_supervisor
     edit: true
     persona: coder
-    pass_previous_response: false
     policy:
       - coding
       - testing

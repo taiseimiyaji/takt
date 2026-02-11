@@ -27,7 +27,7 @@ function makeContext(overrides: Partial<InstructionContext> = {}): InstructionCo
   return {
     task: 'test task',
     iteration: 1,
-    maxIterations: 10,
+    maxMovements: 10,
     movementIteration: 1,
     cwd: '/tmp/test',
     projectCwd: '/tmp/project',
@@ -101,7 +101,7 @@ describe('renderReportOutputInstruction', () => {
     const result = renderReportOutputInstruction(step, ctx, 'en');
     expect(result).toContain('Report output');
     expect(result).toContain('Report File');
-    expect(result).toContain('Iteration 2');
+    expect(result).toContain('Move current content to `logs/reports-history/`');
   });
 
   it('should render English multi-file instruction', () => {
@@ -121,6 +121,7 @@ describe('renderReportOutputInstruction', () => {
     const result = renderReportOutputInstruction(step, ctx, 'ja');
     expect(result).toContain('レポート出力');
     expect(result).toContain('Report File');
+    expect(result).toContain('`logs/reports-history/`');
   });
 
   it('should render Japanese multi-file instruction', () => {

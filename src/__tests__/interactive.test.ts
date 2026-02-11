@@ -369,6 +369,70 @@ describe('interactiveMode', () => {
     expect(result.task).toBe('Fix login page with clarified scope.');
   });
 
+  it('should pass sessionId to provider when sessionId parameter is given', async () => {
+    // Given
+    setupRawStdin(toRawInputs(['hello', '/cancel']));
+    setupMockProvider(['AI response']);
+
+    // When
+    await interactiveMode('/project', undefined, undefined, 'test-session-id');
+
+    // Then: provider call should include the overridden sessionId
+    const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
+    expect(mockProvider._call).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        sessionId: 'test-session-id',
+      }),
+    );
+  });
+
+  it('should abort in-flight provider call on SIGINT during initial input', async () => {
+    mockGetProvider.mockReturnValue({
+      setup: () => ({
+        call: vi.fn((_prompt: string, options: { abortSignal?: AbortSignal }) => {
+          return new Promise((resolve) => {
+            options.abortSignal?.addEventListener('abort', () => {
+              resolve({
+                persona: 'interactive',
+                status: 'error',
+                content: 'aborted',
+                timestamp: new Date(),
+              });
+            }, { once: true });
+          });
+        }),
+      }),
+    } as unknown as ReturnType<typeof getProvider>);
+
+    const promise = interactiveMode('/project', 'trigger');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    const listeners = process.rawListeners('SIGINT') as Array<() => void>;
+    listeners[listeners.length - 1]?.();
+
+    const result = await promise;
+    expect(result.action).toBe('cancel');
+  });
+
+  it('should use saved sessionId from initializeSession when no sessionId parameter is given', async () => {
+    // Given
+    setupRawStdin(toRawInputs(['hello', '/cancel']));
+    setupMockProvider(['AI response']);
+
+    // When: no sessionId parameter
+    await interactiveMode('/project');
+
+    // Then: provider call should include sessionId from initializeSession (undefined in mock)
+    const mockProvider = mockGetProvider.mock.results[0]!.value as { _call: ReturnType<typeof vi.fn> };
+    expect(mockProvider._call).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        sessionId: undefined,
+      }),
+    );
+  });
+
   describe('/play command', () => {
     it('should return action=execute with task on /play command', async () => {
       // Given

@@ -130,6 +130,46 @@ export const PieceRuleSchema = z.object({
   interactive_only: z.boolean().optional(),
 });
 
+/** Arpeggio merge configuration schema */
+export const ArpeggioMergeRawSchema = z.object({
+  /** Merge strategy: 'concat' or 'custom' */
+  strategy: z.enum(['concat', 'custom']).optional().default('concat'),
+  /** Inline JS function body for custom merge */
+  inline_js: z.string().optional(),
+  /** External JS file path for custom merge */
+  file: z.string().optional(),
+  /** Separator for concat strategy */
+  separator: z.string().optional(),
+}).refine(
+  (data) => data.strategy !== 'custom' || data.inline_js != null || data.file != null,
+  { message: "Custom merge strategy requires either 'inline_js' or 'file'" }
+).refine(
+  (data) => data.strategy !== 'concat' || (data.inline_js == null && data.file == null),
+  { message: "Concat merge strategy does not accept 'inline_js' or 'file'" }
+);
+
+/** Arpeggio configuration schema for data-driven batch processing */
+export const ArpeggioConfigRawSchema = z.object({
+  /** Data source type (e.g., 'csv') */
+  source: z.string().min(1),
+  /** Path to the data source file */
+  source_path: z.string().min(1),
+  /** Number of rows per batch (default: 1) */
+  batch_size: z.number().int().positive().optional().default(1),
+  /** Number of concurrent LLM calls (default: 1) */
+  concurrency: z.number().int().positive().optional().default(1),
+  /** Path to prompt template file */
+  template: z.string().min(1),
+  /** Merge configuration */
+  merge: ArpeggioMergeRawSchema.optional(),
+  /** Maximum retry attempts per batch (default: 2) */
+  max_retries: z.number().int().min(0).optional().default(2),
+  /** Delay between retries in ms (default: 1000) */
+  retry_delay_ms: z.number().int().min(0).optional().default(1000),
+  /** Optional output file path */
+  output_path: z.string().optional(),
+});
+
 /** Sub-movement schema for parallel execution */
 export const ParallelSubMovementRawSchema = z.object({
   name: z.string().min(1),
@@ -143,7 +183,7 @@ export const ParallelSubMovementRawSchema = z.object({
   knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
   mcp_servers: McpServersSchema,
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   model: z.string().optional(),
   permission_mode: PermissionModeSchema.optional(),
   edit: z.boolean().optional(),
@@ -173,7 +213,7 @@ export const PieceMovementRawSchema = z.object({
   knowledge: z.union([z.string(), z.array(z.string())]).optional(),
   allowed_tools: z.array(z.string()).optional(),
   mcp_servers: McpServersSchema,
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   model: z.string().optional(),
   /** Permission mode for tool execution in this movement */
   permission_mode: PermissionModeSchema.optional(),
@@ -190,6 +230,8 @@ export const PieceMovementRawSchema = z.object({
   pass_previous_response: z.boolean().optional().default(true),
   /** Sub-movements to execute in parallel */
   parallel: z.array(ParallelSubMovementRawSchema).optional(),
+  /** Arpeggio configuration for data-driven batch processing */
+  arpeggio: ArpeggioConfigRawSchema.optional(),
 });
 
 /** Loop monitor rule schema */
@@ -239,7 +281,7 @@ export const PieceConfigRawSchema = z.object({
   report_formats: z.record(z.string(), z.string()).optional(),
   movements: z.array(PieceMovementRawSchema).min(1),
   initial_movement: z.string().optional(),
-  max_iterations: z.number().int().positive().optional().default(10),
+  max_movements: z.number().int().positive().optional().default(10),
   loop_monitors: z.array(LoopMonitorSchema).optional(),
   answer_agent: z.string().optional(),
   /** Default interactive mode for this piece (overrides user default) */
@@ -254,7 +296,7 @@ export const CustomAgentConfigSchema = z.object({
   allowed_tools: z.array(z.string()).optional(),
   claude_agent: z.string().optional(),
   claude_skill: z.string().optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   model: z.string().optional(),
 }).refine(
   (data) => data.prompt_file || data.prompt || data.claude_agent || data.claude_skill,
@@ -265,6 +307,10 @@ export const CustomAgentConfigSchema = z.object({
 export const DebugConfigSchema = z.object({
   enabled: z.boolean().optional().default(false),
   log_file: z.string().optional(),
+});
+
+export const ObservabilityConfigSchema = z.object({
+  provider_events: z.boolean().optional(),
 });
 
 /** Language setting schema */
@@ -296,9 +342,10 @@ export const GlobalConfigSchema = z.object({
   language: LanguageSchema.optional().default(DEFAULT_LANGUAGE),
   default_piece: z.string().optional().default('default'),
   log_level: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
-  provider: z.enum(['claude', 'codex', 'mock']).optional().default('claude'),
+  provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional().default('claude'),
   model: z.string().optional(),
   debug: DebugConfigSchema.optional(),
+  observability: ObservabilityConfigSchema.optional(),
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktree_dir: z.string().optional(),
   /** Auto-create PR after worktree execution (default: prompt in interactive mode) */
@@ -311,6 +358,8 @@ export const GlobalConfigSchema = z.object({
   anthropic_api_key: z.string().optional(),
   /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
   openai_api_key: z.string().optional(),
+  /** OpenCode API key for OpenCode SDK (overridden by TAKT_OPENCODE_API_KEY env var) */
+  opencode_api_key: z.string().optional(),
   /** Pipeline execution settings */
   pipeline: PipelineConfigSchema.optional(),
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
@@ -320,13 +369,21 @@ export const GlobalConfigSchema = z.object({
   /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
   piece_categories_file: z.string().optional(),
   /** Per-persona provider overrides (e.g., { coder: 'codex' }) */
-  persona_providers: z.record(z.string(), z.enum(['claude', 'codex', 'mock'])).optional(),
+  persona_providers: z.record(z.string(), z.enum(['claude', 'codex', 'opencode', 'mock'])).optional(),
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branch_name_strategy: z.enum(['romaji', 'ai']).optional(),
   /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
   prevent_sleep: z.boolean().optional(),
   /** Enable notification sounds (default: true when undefined) */
   notification_sound: z.boolean().optional(),
+  /** Notification sound toggles per event timing */
+  notification_sound_events: z.object({
+    iteration_limit: z.boolean().optional(),
+    piece_complete: z.boolean().optional(),
+    piece_abort: z.boolean().optional(),
+    run_complete: z.boolean().optional(),
+    run_abort: z.boolean().optional(),
+  }).optional(),
   /** Number of movement previews to inject into interactive mode (0 to disable, max 10) */
   interactive_preview_movements: z.number().int().min(0).max(10).optional().default(3),
   /** Number of tasks to run concurrently in takt run (default: 1 = sequential, max: 10) */
@@ -339,5 +396,5 @@ export const GlobalConfigSchema = z.object({
 export const ProjectConfigSchema = z.object({
   piece: z.string().optional(),
   agents: z.array(CustomAgentConfigSchema).optional(),
-  provider: z.enum(['claude', 'codex', 'mock']).optional(),
+  provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
 });

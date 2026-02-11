@@ -35,6 +35,13 @@ interactive:
     quietDescription: "質問なしでベストエフォートの指示書を生成"
     passthrough: "パススルー"
     passthroughDescription: "入力をそのままタスクとして渡す"
+  sessionSelector:
+    confirm: "前回セッションを選択しますか？"
+    prompt: "直近のセッションを引き継ぎますか？"
+    newSession: "新しいセッション"
+    newSessionDescription: "新しい会話を始める"
+    lastResponse: "最後: {response}"
+    messages: "{count}メッセージ"
   previousTask:
     success: "✅ 前回のタスクは正常に完了しました"
     error: "❌ 前回のタスクはエラーで終了しました: {error}"
@@ -45,7 +52,7 @@ interactive:
 # ===== Piece Execution UI =====
 piece:
   iterationLimit:
-    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxIterations})"
+    maxReached: "最大イテレーションに到達しました ({currentIteration}/{maxMovements})"
     currentMovement: "現在のムーブメント: {currentMovement}"
     continueQuestion: "続行しますか？"
     continueLabel: "続行する（追加イテレーション数を入力）"
@@ -58,3 +65,7 @@ piece:
   notifyAbort: "中断: {reason}"
   sigintGraceful: "Ctrl+C: ピースを中断しています..."
   sigintForce: "Ctrl+C: 強制終了します"
+
+run:
+  notifyComplete: "run完了 ({total} tasks)"
+  notifyAbort: "runはエラー終了 ({failed})"

@@ -48,14 +48,14 @@ export async function previewPrompts(cwd: string, pieceIdentifier?: string): Pro
     const context: InstructionContext = {
       task: '<task content>',
       iteration: 1,
-      maxIterations: config.maxIterations,
+      maxMovements: config.maxMovements,
       movementIteration: 1,
       cwd,
       projectCwd: cwd,
       userInputs: [],
       pieceMovements: config.movements,
       currentMovementIndex: i,
-      reportDir: movement.outputContracts && movement.outputContracts.length > 0 ? '.takt/reports/preview' : undefined,
+      reportDir: movement.outputContracts && movement.outputContracts.length > 0 ? '.takt/runs/preview/reports' : undefined,
       language,
     };
 
@@ -67,7 +67,7 @@ export async function previewPrompts(cwd: string, pieceIdentifier?: string): Pro
     if (movement.outputContracts && movement.outputContracts.length > 0) {
       const reportBuilder = new ReportInstructionBuilder(movement, {
         cwd,
-        reportDir: '.takt/reports/preview',
+        reportDir: '.takt/runs/preview/reports',
         movementIteration: 1,
         language,
       });

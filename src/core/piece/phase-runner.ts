@@ -5,9 +5,9 @@
  * as session-resume operations.
  */
 
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve, sep } from 'node:path';
-import type { PieceMovement, Language } from '../models/types.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, parse, resolve, sep } from 'node:path';
+import type { PieceMovement, Language, AgentResponse } from '../models/types.js';
 import type { PhaseName } from './types.js';
 import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
 import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
@@ -17,6 +17,9 @@ import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
 
 const log = createLogger('phase-runner');
+
+/** Result when Phase 2 encounters a blocked status */
+export type ReportPhaseBlockedResult = { blocked: true; response: AgentResponse };
 
 export interface PhaseRunnerContext {
   /** Working directory (agent work dir, may be a clone) */
@@ -49,6 +52,41 @@ export function needsStatusJudgmentPhase(step: PieceMovement): boolean {
   return hasTagBasedRules(step);
 }
 
+function formatHistoryTimestamp(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hour = String(date.getUTCHours()).padStart(2, '0');
+  const minute = String(date.getUTCMinutes()).padStart(2, '0');
+  const second = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${year}${month}${day}T${hour}${minute}${second}Z`;
+}
+
+function buildHistoryFileName(fileName: string, timestamp: string, sequence: number): string {
+  const parsed = parse(fileName);
+  const duplicateSuffix = sequence === 0 ? '' : `.${sequence}`;
+  return `${parsed.name}.${timestamp}${duplicateSuffix}${parsed.ext}`;
+}
+
+function backupExistingReport(reportDir: string, fileName: string, targetPath: string): void {
+  if (!existsSync(targetPath)) {
+    return;
+  }
+
+  const currentContent = readFileSync(targetPath, 'utf-8');
+  const historyDir = resolve(reportDir, '..', 'logs', 'reports-history');
+  mkdirSync(historyDir, { recursive: true });
+
+  const timestamp = formatHistoryTimestamp(new Date());
+  let sequence = 0;
+  let historyPath = resolve(historyDir, buildHistoryFileName(fileName, timestamp, sequence));
+  while (existsSync(historyPath)) {
+    sequence += 1;
+    historyPath = resolve(historyDir, buildHistoryFileName(fileName, timestamp, sequence));
+  }
+
+  writeFileSync(historyPath, currentContent);
+}
 
 function writeReportFile(reportDir: string, fileName: string, content: string): void {
   const baseDir = resolve(reportDir);
@@ -58,11 +96,8 @@ function writeReportFile(reportDir: string, fileName: string, content: string): 
     throw new Error(`Report file path escapes report directory: ${fileName}`);
   }
   mkdirSync(dirname(targetPath), { recursive: true });
-  if (existsSync(targetPath)) {
-    appendFileSync(targetPath, `\n\n${content}`);
-  } else {
-    writeFileSync(targetPath, content);
-  }
+  backupExistingReport(baseDir, fileName, targetPath);
+  writeFileSync(targetPath, content);
 }
 
 /**
@@ -75,7 +110,7 @@ export async function runReportPhase(
   step: PieceMovement,
   movementIteration: number,
   ctx: PhaseRunnerContext,
-): Promise<void> {
+): Promise<ReportPhaseBlockedResult | void> {
   const sessionKey = buildSessionKey(step);
   let currentSessionId = ctx.getSessionId(sessionKey);
   if (!currentSessionId) {
@@ -119,6 +154,11 @@ export async function runReportPhase(
       const errorMsg = error instanceof Error ? error.message : String(error);
       ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
       throw error;
+    }
+
+    if (reportResponse.status === 'blocked') {
+      ctx.onPhaseComplete?.(step, 2, 'report', reportResponse.content, reportResponse.status);
+      return { blocked: true, response: reportResponse };
     }
 
     if (reportResponse.status !== 'done') {

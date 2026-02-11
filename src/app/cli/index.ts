@@ -35,6 +35,11 @@ import { executeDefaultAction } from './routing.js';
 
   // Normal parsing for all other cases (including '#' prefixed inputs)
   await program.parseAsync();
+
+  const rootArg = process.argv.slice(2)[0];
+  if (rootArg !== 'watch') {
+    process.exit(0);
+  }
 })().catch((err) => {
   console.error(err);
   process.exit(1);

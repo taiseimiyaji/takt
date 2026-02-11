@@ -1,6 +1,6 @@
 {
   "name": "takt",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "description": "TAKT: Task Agent Koordination Tool - AI Agent Piece Orchestration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,8 +20,10 @@
     "test:e2e:provider": "npm run test:e2e:provider:claude && npm run test:e2e:provider:codex",
     "test:e2e:provider:claude": "TAKT_E2E_PROVIDER=claude vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
     "test:e2e:provider:codex": "TAKT_E2E_PROVIDER=codex vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
+    "test:e2e:provider:opencode": "TAKT_E2E_PROVIDER=opencode vitest run --config vitest.config.e2e.provider.ts --reporter=verbose",
     "test:e2e:claude": "npm run test:e2e:provider:claude",
     "test:e2e:codex": "npm run test:e2e:provider:codex",
+    "test:e2e:opencode": "npm run test:e2e:provider:opencode",
     "lint": "eslint src/",
     "prepublishOnly": "npm run lint && npm run build && npm run test"
   },
@@ -59,6 +61,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.37",
     "@openai/codex-sdk": "^0.98.0",
+    "@opencode-ai/sdk": "^1.1.53",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "update-notifier": "^7.3.1",

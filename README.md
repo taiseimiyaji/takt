@@ -4,7 +4,7 @@
 
 **T**ask **A**gent **K**oordination **T**ool - Define how AI agents coordinate, where humans intervene, and what gets recorded — in YAML
 
-TAKT runs multiple AI agents (Claude Code, Codex) through YAML-defined workflows. Each step — who runs, what they see, what's allowed, what happens on failure — is declared in a piece file, not left to the agent.
+TAKT runs multiple AI agents (Claude Code, Codex, OpenCode) through YAML-defined workflows. Each step — who runs, what they see, what's allowed, what happens on failure — is declared in a piece file, not left to the agent.
 
 TAKT is built with TAKT itself (dogfooding).
 
@@ -49,14 +49,14 @@ Personas, policies, and knowledge are managed as independent files and freely co
 
 Choose one:
 
-- **Use provider CLIs**: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex](https://github.com/openai/codex) installed
-- **Use direct API**: **Anthropic API Key** or **OpenAI API Key** (no CLI required)
+- **Use provider CLIs**: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), or [OpenCode](https://opencode.ai) installed
+- **Use direct API**: **Anthropic API Key**, **OpenAI API Key**, or **OpenCode API Key** (no CLI required)
 
 Additionally required:
 
 - [GitHub CLI](https://cli.github.com/) (`gh`) — Only needed for `takt #N` (GitHub Issue execution)
 
-**Pricing Note**: When using API Keys, TAKT directly calls the Claude API (Anthropic) or OpenAI API. The pricing structure is the same as using Claude Code or Codex. Be mindful of costs, especially when running automated tasks in CI/CD environments, as API usage can accumulate.
+**Pricing Note**: When using API Keys, TAKT directly calls the Claude API (Anthropic), OpenAI API, or OpenCode API. The pricing structure is the same as using the respective CLI tools. Be mindful of costs, especially when running automated tasks in CI/CD environments, as API usage can accumulate.
 
 ## Installation
 
@@ -186,7 +186,7 @@ takt #6 --auto-pr
 
 ### Task Management (add / run / watch / list)
 
-Batch processing using task files (`.takt/tasks/`). Useful for accumulating multiple tasks and executing them together later.
+Batch processing using `.takt/tasks.yaml` with task directories under `.takt/tasks/{slug}/`. Useful for accumulating multiple tasks and executing them together later.
 
 #### Add Task (`takt add`)
 
@@ -201,14 +201,14 @@ takt add #28
 #### Execute Tasks (`takt run`)
 
 ```bash
-# Execute all pending tasks in .takt/tasks/
+# Execute all pending tasks in .takt/tasks.yaml
 takt run
 ```
 
 #### Watch Tasks (`takt watch`)
 
 ```bash
-# Monitor .takt/tasks/ and auto-execute tasks (resident process)
+# Monitor .takt/tasks.yaml and auto-execute tasks (resident process)
 takt watch
 ```
 
@@ -224,6 +224,13 @@ takt list --non-interactive --action diff --branch takt/my-branch
 takt list --non-interactive --action delete --branch takt/my-branch --yes
 takt list --non-interactive --format json
 ```
+
+#### Task Directory Workflow (Create / Run / Verify)
+
+1. Run `takt add` and confirm a pending record is created in `.takt/tasks.yaml`.
+2. Open the generated `.takt/tasks/{slug}/order.md` and add detailed specifications/references as needed.
+3. Run `takt run` (or `takt watch`) to execute pending tasks from `tasks.yaml`.
+4. Verify outputs in `.takt/runs/{slug}/reports/` using the same slug as `task_dir`.
 
 ### Pipeline Mode (for CI/Automation)
 
@@ -315,7 +322,7 @@ takt reset categories
 | `--repo <owner/repo>` | Specify repository (for PR creation) |
 | `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
 | `-q, --quiet` | Minimal output mode: suppress AI output (for CI) |
-| `--provider <name>` | Override agent provider (claude\|codex\|mock) |
+| `--provider <name>` | Override agent provider (claude\|codex\|opencode\|mock) |
 | `--model <name>` | Override agent model |
 
 ## Pieces
@@ -328,7 +335,7 @@ TAKT uses YAML-based piece definitions and rule-based routing. Builtin pieces ar
 
 ```yaml
 name: default
-max_iterations: 10
+max_movements: 10
 initial_movement: plan
 
 # Section maps — key: file path (relative to this YAML)
@@ -466,6 +473,7 @@ TAKT includes multiple builtin pieces:
 | `structural-reform` | Full project review and structural reform: iterative codebase restructuring with staged file splits. |
 | `unit-test` | Unit test focused piece: test analysis → test implementation → review → fix. |
 | `e2e-test` | E2E test focused piece: E2E analysis → E2E implementation → review → fix (Vitest-based E2E flow). |
+| `frontend` | Frontend-specialized development piece with React/Next.js focused reviews and knowledge injection. |
 
 **Per-persona provider overrides:** Use `persona_providers` in config to route specific personas to different providers (e.g., coder on Codex, reviewers on Claude) without duplicating pieces.
 
@@ -532,14 +540,14 @@ The model string is passed to the Codex SDK. If unspecified, defaults to `codex`
 
 .takt/                      # Project-level configuration
 ├── config.yaml             # Project config (current piece, etc.)
-├── tasks/                  # Pending task files (.yaml, .md)
-├── completed/              # Completed tasks and reports
-├── reports/                # Execution reports (auto-generated)
-│   └── {timestamp}-{slug}/
-└── logs/                   # NDJSON format session logs
-    ├── latest.json         # Pointer to current/latest session
-    ├── previous.json       # Pointer to previous session
-    └── {sessionId}.jsonl   # NDJSON session log per piece execution
+├── tasks/                  # Task input directories (.takt/tasks/{slug}/order.md, etc.)
+├── tasks.yaml              # Pending tasks metadata (task_dir, piece, worktree, etc.)
+└── runs/                   # Run-scoped artifacts
+    └── {slug}/
+        ├── reports/        # Execution reports (auto-generated)
+        ├── context/        # knowledge/policy/previous_response snapshots
+        ├── logs/           # NDJSON session logs for this run
+        └── meta.json       # Run metadata
 ```
 
 Builtin resources are embedded in the npm package (`builtins/`). User files in `~/.takt/` take priority.
@@ -553,11 +561,17 @@ Configure default provider and model in `~/.takt/config.yaml`:
 language: en
 default_piece: default
 log_level: info
-provider: claude         # Default provider: claude or codex
+provider: claude         # Default provider: claude, codex, or opencode
 model: sonnet            # Default model (optional)
 branch_name_strategy: romaji  # Branch name generation: 'romaji' (fast) or 'ai' (slow)
 prevent_sleep: false     # Prevent macOS idle sleep during execution (caffeinate)
 notification_sound: true # Enable/disable notification sounds
+notification_sound_events: # Optional per-event toggles
+  iteration_limit: false
+  piece_complete: true
+  piece_abort: true
+  run_complete: true # Enabled by default; set false to disable
+  run_abort: true    # Enabled by default; set false to disable
 concurrency: 1           # Parallel task count for takt run (1-10, default: 1 = sequential)
 task_poll_interval_ms: 500  # Polling interval for new tasks during takt run (100-5000, default: 500)
 interactive_preview_movements: 3  # Movement previews in interactive mode (0-10, default: 3)
@@ -569,9 +583,10 @@ interactive_preview_movements: 3  # Movement previews in interactive mode (0-10,
 #   ai-antipattern-reviewer: claude  # Keep reviewers on Claude
 
 # API Key configuration (optional)
-# Can be overridden by environment variables TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY
+# Can be overridden by environment variables TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY / TAKT_OPENCODE_API_KEY
 anthropic_api_key: sk-ant-...  # For Claude (Anthropic)
 # openai_api_key: sk-...       # For Codex (OpenAI)
+# opencode_api_key: ...        # For OpenCode
 
 # Builtin piece filtering (optional)
 # builtin_pieces_enabled: true           # Set false to disable all builtins
@@ -595,17 +610,17 @@ anthropic_api_key: sk-ant-...  # For Claude (Anthropic)
 1. **Set via environment variables**:
    ```bash
    export TAKT_ANTHROPIC_API_KEY=sk-ant-...  # For Claude
-   # or
    export TAKT_OPENAI_API_KEY=sk-...         # For Codex
+   export TAKT_OPENCODE_API_KEY=...          # For OpenCode
    ```
 
 2. **Set in config file**:
-   Write `anthropic_api_key` or `openai_api_key` in `~/.takt/config.yaml` as shown above
+   Write `anthropic_api_key`, `openai_api_key`, or `opencode_api_key` in `~/.takt/config.yaml` as shown above
 
 Priority: Environment variables > `config.yaml` settings
 
 **Notes:**
-- If you set an API Key, installing Claude Code or Codex is not necessary. TAKT directly calls the Anthropic API or OpenAI API.
+- If you set an API Key, installing Claude Code, Codex, or OpenCode is not necessary. TAKT directly calls the respective API.
 - **Security**: If you write API Keys in `config.yaml`, be careful not to commit this file to Git. Consider using environment variables or adding `~/.takt/config.yaml` to `.gitignore`.
 
 **Pipeline Template Variables:**
@@ -621,36 +636,43 @@ Priority: Environment variables > `config.yaml` settings
 1. Piece movement `model` (highest priority)
 2. Custom agent `model`
 3. Global config `model`
-4. Provider default (Claude: sonnet, Codex: codex)
+4. Provider default (Claude: sonnet, Codex: codex, OpenCode: provider default)
 
 ## Detailed Guides
 
-### Task File Formats
+### Task Directory Format
 
-TAKT supports batch processing with task files in `.takt/tasks/`. Both `.yaml`/`.yml` and `.md` file formats are supported.
+TAKT stores task metadata in `.takt/tasks.yaml`, and each task's long specification in `.takt/tasks/{slug}/`.
 
-**YAML format** (recommended, supports worktree/branch/piece options):
+**Recommended layout**:
+
+```text
+.takt/
+  tasks/
+    20260201-015714-foptng/
+      order.md
+      schema.sql
+      wireframe.png
+  tasks.yaml
+  runs/
+    20260201-015714-foptng/
+      reports/
+```
+
+**tasks.yaml record**:
 
 ```yaml
-# .takt/tasks/add-auth.yaml
-task: "Add authentication feature"
-worktree: true                  # Execute in isolated shared clone
-branch: "feat/add-auth"         # Branch name (auto-generated if omitted)
-piece: "default"             # Piece specification (uses current if omitted)
+tasks:
+  - name: add-auth-feature
+    status: pending
+    task_dir: .takt/tasks/20260201-015714-foptng
+    piece: default
+    created_at: "2026-02-01T01:57:14.000Z"
+    started_at: null
+    completed_at: null
 ```
 
-**Markdown format** (simple, backward compatible):
-
-```markdown
-# .takt/tasks/add-login-feature.md
-
-Add login feature to the application.
-
-Requirements:
-- Username and password fields
-- Form validation
-- Error handling on failure
-```
+`takt add` creates `.takt/tasks/{slug}/order.md` automatically and saves `task_dir` to `tasks.yaml`.
 
 #### Isolated Execution with Shared Clone
 
@@ -667,15 +689,14 @@ Clones are ephemeral. After task completion, they auto-commit + push, then delet
 
 ### Session Logs
 
-TAKT writes session logs in NDJSON (`.jsonl`) format to `.takt/logs/`. Each record is atomically appended, so partial logs are preserved even if the process crashes, and you can track in real-time with `tail -f`.
+TAKT writes session logs in NDJSON (`.jsonl`) format to `.takt/runs/{slug}/logs/`. Each record is atomically appended, so partial logs are preserved even if the process crashes, and you can track in real-time with `tail -f`.
 
-- `.takt/logs/latest.json` - Pointer to current (or latest) session
-- `.takt/logs/previous.json` - Pointer to previous session
-- `.takt/logs/{sessionId}.jsonl` - NDJSON session log per piece execution
+- `.takt/runs/{slug}/logs/{sessionId}.jsonl` - NDJSON session log per piece execution
+- `.takt/runs/{slug}/meta.json` - Run metadata (`task`, `piece`, `start/end`, `status`, etc.)
 
 Record types: `piece_start`, `step_start`, `step_complete`, `piece_complete`, `piece_abort`
 
-Agents can read `previous.json` to inherit context from the previous execution. Session continuation is automatic — just run `takt "task"` to continue from the previous session.
+The latest previous response is stored at `.takt/runs/{slug}/context/previous_responses/latest.md` and inherited automatically.
 
 ### Adding Custom Pieces
 
@@ -690,7 +711,7 @@ takt eject default
 # ~/.takt/pieces/my-piece.yaml
 name: my-piece
 description: Custom piece
-max_iterations: 5
+max_movements: 5
 initial_movement: analyze
 
 personas:
@@ -740,11 +761,11 @@ Variables available in `instruction_template`:
 |----------|-------------|
 | `{task}` | Original user request (auto-injected if not in template) |
 | `{iteration}` | Piece-wide turn count (total steps executed) |
-| `{max_iterations}` | Maximum iteration count |
+| `{max_movements}` | Maximum iteration count |
 | `{movement_iteration}` | Per-movement iteration count (times this movement has been executed) |
 | `{previous_response}` | Output from previous movement (auto-injected if not in template) |
 | `{user_inputs}` | Additional user inputs during piece (auto-injected if not in template) |
-| `{report_dir}` | Report directory path (e.g., `.takt/reports/20250126-143052-task-summary`) |
+| `{report_dir}` | Report directory path (e.g., `.takt/runs/20250126-143052-task-summary/reports`) |
 | `{report:filename}` | Expands to `{report_dir}/filename` (e.g., `{report:00-plan.md}`) |
 
 ### Piece Design
@@ -777,7 +798,7 @@ Special `next` values: `COMPLETE` (success), `ABORT` (failure)
 | `edit` | - | Whether movement can edit project files (`true`/`false`) |
 | `pass_previous_response` | `true` | Pass previous movement output to `{previous_response}` |
 | `allowed_tools` | - | List of tools agent can use (Read, Glob, Grep, Edit, Write, Bash, etc.) |
-| `provider` | - | Override provider for this movement (`claude` or `codex`) |
+| `provider` | - | Override provider for this movement (`claude`, `codex`, or `opencode`) |
 | `model` | - | Override model for this movement |
 | `permission_mode` | - | Permission mode: `readonly`, `edit`, `full` (provider-independent) |
 | `output_contracts` | - | Output contract definitions for report files |
@@ -855,7 +876,7 @@ npm install -g takt
 takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
 ```
 
-For authentication, set `TAKT_ANTHROPIC_API_KEY` or `TAKT_OPENAI_API_KEY` environment variables (TAKT-specific prefix).
+For authentication, set `TAKT_ANTHROPIC_API_KEY`, `TAKT_OPENAI_API_KEY`, or `TAKT_OPENCODE_API_KEY` environment variables (TAKT-specific prefix).
 
 ```bash
 # For Claude (Anthropic)
@@ -863,6 +884,9 @@ export TAKT_ANTHROPIC_API_KEY=sk-ant-...
 
 # For Codex (OpenAI)
 export TAKT_OPENAI_API_KEY=sk-...
+
+# For OpenCode
+export TAKT_OPENCODE_API_KEY=...
 ```
 
 ## Documentation

@@ -96,7 +96,6 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
     iterations: 0,
   }),
   finalizeSessionLog: vi.fn().mockImplementation((log, status) => ({ ...log, status })),
-  updateLatestPointer: vi.fn(),
   initNdjsonLog: vi.fn().mockReturnValue('/tmp/test.ndjson'),
   appendNdjsonLine: vi.fn(),
   generateReportDir: vi.fn().mockReturnValue('test-report-dir'),
@@ -172,7 +171,7 @@ function createTestPieceDir(): { dir: string; piecePath: string } {
   const pieceYaml = `
 name: it-pipeline
 description: Pipeline test piece
-max_iterations: 10
+max_movements: 10
 initial_movement: plan
 
 movements:

@@ -15,7 +15,7 @@ import { resolveAgentOverrides } from './helpers.js';
 
 program
   .command('run')
-  .description('Run all pending tasks from .takt/tasks/')
+  .description('Run all pending tasks from .takt/tasks.yaml')
   .action(async () => {
     const piece = getCurrentPiece(resolvedCwd);
     await runAllTasks(resolvedCwd, piece, resolveAgentOverrides(program));
@@ -30,7 +30,7 @@ program
 
 program
   .command('add')
-  .description('Add a new task (interactive AI conversation)')
+  .description('Add a new task')
   .argument('[task]', 'Task description or GitHub issue reference (e.g. "#28")')
   .action(async (task?: string) => {
     await addTask(resolvedCwd, task);

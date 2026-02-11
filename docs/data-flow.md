@@ -431,7 +431,7 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
 2. **ログ初期化**:
    - `createSessionLog()`: セッションログオブジェクト作成
    - `initNdjsonLog()`: NDJSON形式のログファイル初期化
-   - `updateLatestPointer()`: `latest.json` ポインタ更新
+   - `meta.json` 更新: 実行ステータス（running/completed/aborted）と時刻を保存
 
 3. **PieceEngine初期化**:
    ```typescript
@@ -498,7 +498,7 @@ TAKTのデータフローは以下の7つの主要なレイヤーで構成され
    while (state.status === 'running') {
      // 1. Abort & Iteration チェック
      if (abortRequested) { ... }
-     if (iteration >= maxIterations) { ... }
+     if (iteration >= maxMovements) { ... }
 
      // 2. ステップ取得
      const step = getStep(state.currentStep);
@@ -619,6 +619,7 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
    - Step Iteration (per-step)
    - Step name
    - Report Directory/File info
+   - Run Source Paths (`.takt/runs/{slug}/context/...`)
 
 3. **User Request** (タスク本文):
    - `{task}` プレースホルダーがテンプレートにない場合のみ自動注入
@@ -626,6 +627,8 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
 4. **Previous Response** (前ステップの出力):
    - `step.passPreviousResponse === true` かつ
    - `{previous_response}` プレースホルダーがテンプレートにない場合のみ自動注入
+   - 長さ制御（2000 chars）と `...TRUNCATED...` を適用
+   - Source Path を常時注入
 
 5. **Additional User Inputs** (blocked時の追加入力):
    - `{user_inputs}` プレースホルダーがテンプレートにない場合のみ自動注入
@@ -643,7 +646,7 @@ const match = await detectMatchedRule(step, response.content, tagContent, {...})
 - `{previous_response}`: 前ステップの出力
 - `{user_inputs}`: 追加ユーザー入力
 - `{iteration}`: ピース全体のイテレーション
-- `{max_iterations}`: 最大イテレーション
+- `{max_movements}`: 最大イテレーション
 - `{step_iteration}`: ステップのイテレーション
 - `{report_dir}`: レポートディレクトリ
 
@@ -821,7 +824,7 @@ new PieceEngine(pieceConfig, cwd, task, {
 
 1. **コンテキスト収集**:
    - `task`: 元のユーザーリクエスト
-   - `iteration`, `maxIterations`: イテレーション情報
+   - `iteration`, `maxMovements`: イテレーション情報
    - `stepIteration`: ステップごとの実行回数
    - `cwd`, `projectCwd`: ディレクトリ情報
    - `userInputs`: blocked時の追加入力

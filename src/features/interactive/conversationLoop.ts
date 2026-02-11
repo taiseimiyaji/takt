@@ -22,6 +22,7 @@ import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import { info, error, blankLine, StreamDisplay } from '../../shared/ui/index.js';
 import { getLabel, getLabelObject } from '../../shared/i18n/index.js';
 import { readMultilineInput } from './lineEditor.js';
+import { EXIT_SIGINT } from '../../shared/exitCodes.js';
 import {
   type PieceContext,
   type InteractiveModeResult,
@@ -97,6 +98,21 @@ export async function callAIWithRetry(
   ctx: SessionContext,
 ): Promise<{ result: CallAIResult | null; sessionId: string | undefined }> {
   const display = new StreamDisplay('assistant', isQuietMode());
+  const abortController = new AbortController();
+  let sigintCount = 0;
+  const onSigInt = (): void => {
+    sigintCount += 1;
+    if (sigintCount === 1) {
+      blankLine();
+      info(getLabel('piece.sigintGraceful', ctx.lang));
+      abortController.abort();
+      return;
+    }
+    blankLine();
+    error(getLabel('piece.sigintForce', ctx.lang));
+    process.exit(EXIT_SIGINT);
+  };
+  process.on('SIGINT', onSigInt);
   let { sessionId } = ctx;
 
   try {
@@ -106,6 +122,7 @@ export async function callAIWithRetry(
       model: ctx.model,
       sessionId,
       allowedTools,
+      abortSignal: abortController.signal,
       onStream: display.createHandler(),
     });
     display.flush();
@@ -121,6 +138,7 @@ export async function callAIWithRetry(
         model: ctx.model,
         sessionId: undefined,
         allowedTools,
+        abortSignal: abortController.signal,
         onStream: retryDisplay.createHandler(),
       });
       retryDisplay.flush();
@@ -148,6 +166,8 @@ export async function callAIWithRetry(
     error(msg);
     blankLine();
     return { result: null, sessionId };
+  } finally {
+    process.removeListener('SIGINT', onSigInt);
   }
 }
 

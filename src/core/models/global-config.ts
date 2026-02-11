@@ -10,7 +10,7 @@ export interface CustomAgentConfig {
   allowedTools?: string[];
   claudeAgent?: string;
   claudeSkill?: string;
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'opencode' | 'mock';
   model?: string;
 }
 
@@ -18,6 +18,12 @@ export interface CustomAgentConfig {
 export interface DebugConfig {
   enabled: boolean;
   logFile?: string;
+}
+
+/** Observability configuration for runtime event logs */
+export interface ObservabilityConfig {
+  /** Enable provider stream event logging (default: false when undefined) */
+  providerEvents?: boolean;
 }
 
 /** Language setting for takt */
@@ -33,14 +39,29 @@ export interface PipelineConfig {
   prBodyTemplate?: string;
 }
 
+/** Notification sound toggles per event timing */
+export interface NotificationSoundEventsConfig {
+  /** Warning when iteration limit is reached */
+  iterationLimit?: boolean;
+  /** Success notification when piece execution completes */
+  pieceComplete?: boolean;
+  /** Error notification when piece execution aborts */
+  pieceAbort?: boolean;
+  /** Success notification when runAllTasks finishes without failures */
+  runComplete?: boolean;
+  /** Error notification when runAllTasks finishes with failures or aborts */
+  runAbort?: boolean;
+}
+
 /** Global configuration for takt */
 export interface GlobalConfig {
   language: Language;
   defaultPiece: string;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'opencode' | 'mock';
   model?: string;
   debug?: DebugConfig;
+  observability?: ObservabilityConfig;
   /** Directory for shared clones (worktree_dir in config). If empty, uses ../{clone-name} relative to project */
   worktreeDir?: string;
   /** Auto-create PR after worktree execution (default: prompt in interactive mode) */
@@ -53,6 +74,8 @@ export interface GlobalConfig {
   anthropicApiKey?: string;
   /** OpenAI API key for Codex SDK (overridden by TAKT_OPENAI_API_KEY env var) */
   openaiApiKey?: string;
+  /** OpenCode API key for OpenCode SDK (overridden by TAKT_OPENCODE_API_KEY env var) */
+  opencodeApiKey?: string;
   /** Pipeline execution settings */
   pipeline?: PipelineConfig;
   /** Minimal output mode for CI - suppress AI output to prevent sensitive information leaks */
@@ -62,13 +85,15 @@ export interface GlobalConfig {
   /** Path to piece categories file (default: ~/.takt/preferences/piece-categories.yaml) */
   pieceCategoriesFile?: string;
   /** Per-persona provider overrides (e.g., { coder: 'codex' }) */
-  personaProviders?: Record<string, 'claude' | 'codex' | 'mock'>;
+  personaProviders?: Record<string, 'claude' | 'codex' | 'opencode' | 'mock'>;
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branchNameStrategy?: 'romaji' | 'ai';
   /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
   preventSleep?: boolean;
   /** Enable notification sounds (default: true when undefined) */
   notificationSound?: boolean;
+  /** Notification sound toggles per event timing */
+  notificationSoundEvents?: NotificationSoundEventsConfig;
   /** Number of movement previews to inject into interactive mode (0 to disable, max 10) */
   interactivePreviewMovements?: number;
   /** Number of tasks to run concurrently in takt run (default: 1 = sequential) */
@@ -81,5 +106,5 @@ export interface GlobalConfig {
 export interface ProjectConfig {
   piece?: string;
   agents?: CustomAgentConfig[];
-  provider?: 'claude' | 'codex' | 'mock';
+  provider?: 'claude' | 'codex' | 'opencode' | 'mock';
 }
