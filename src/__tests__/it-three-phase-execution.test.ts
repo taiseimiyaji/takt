@@ -114,7 +114,7 @@ describe('Three-Phase Execution IT: phase1 only (no report, no tag rules)', () =
     // No tag rules needed → Phase 3 not needed
     mockNeedsStatusJudgmentPhase.mockReturnValue(false);
     mockRunReportPhase.mockResolvedValue(undefined);
-    mockRunStatusJudgmentPhase.mockResolvedValue('');
+    mockRunStatusJudgmentPhase.mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' });
   });
 
   afterEach(() => {
@@ -166,7 +166,7 @@ describe('Three-Phase Execution IT: phase1 + phase2 (report defined)', () => {
 
     mockNeedsStatusJudgmentPhase.mockReturnValue(false);
     mockRunReportPhase.mockResolvedValue(undefined);
-    mockRunStatusJudgmentPhase.mockResolvedValue('');
+    mockRunStatusJudgmentPhase.mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' });
   });
 
   afterEach(() => {
@@ -246,7 +246,7 @@ describe('Three-Phase Execution IT: phase1 + phase3 (tag rules defined)', () => 
     mockNeedsStatusJudgmentPhase.mockReturnValue(true);
     mockRunReportPhase.mockResolvedValue(undefined);
     // Phase 3 returns content with a tag
-    mockRunStatusJudgmentPhase.mockResolvedValue('[STEP:1]');
+    mockRunStatusJudgmentPhase.mockResolvedValue({ tag: '[STEP:1]', ruleIndex: 0, method: 'structured_output' });
   });
 
   afterEach(() => {
@@ -298,7 +298,7 @@ describe('Three-Phase Execution IT: all three phases', () => {
 
     mockNeedsStatusJudgmentPhase.mockReturnValue(true);
     mockRunReportPhase.mockResolvedValue(undefined);
-    mockRunStatusJudgmentPhase.mockResolvedValue('[STEP:1]');
+    mockRunStatusJudgmentPhase.mockResolvedValue({ tag: '[STEP:1]', ruleIndex: 0, method: 'structured_output' });
   });
 
   afterEach(() => {
@@ -369,7 +369,7 @@ describe('Three-Phase Execution IT: phase3 tag → rule match', () => {
     ]);
 
     // Phase 3 returns rule 2 (ABORT)
-    mockRunStatusJudgmentPhase.mockResolvedValue('[STEP1:2]');
+    mockRunStatusJudgmentPhase.mockResolvedValue({ tag: '[STEP1:2]', ruleIndex: 1, method: 'structured_output' });
 
     const config: PieceConfig = {
       name: 'it-phase3-tag',

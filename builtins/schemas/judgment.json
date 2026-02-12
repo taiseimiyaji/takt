@@ -10,6 +10,6 @@
       "description": "Brief justification for the decision"
     }
   },
-  "required": ["step"],
+  "required": ["step", "reason"],
   "additionalProperties": false
 }

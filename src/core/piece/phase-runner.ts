@@ -15,7 +15,7 @@ import { hasTagBasedRules, getReportFiles } from './evaluation/rule-utils.js';
 import { executeAgent } from './agent-usecases.js';
 import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
-export { runStatusJudgmentPhase } from './status-judgment-phase.js';
+export { runStatusJudgmentPhase, type StatusJudgmentPhaseResult } from './status-judgment-phase.js';
 
 const log = createLogger('phase-runner');
 

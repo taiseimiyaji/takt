@@ -114,15 +114,19 @@ export class ParallelRunner {
         }
 
         // Phase 3: status judgment for sub-movement
-        let subTagContent = '';
-        if (needsStatusJudgmentPhase(subMovement)) {
-          subTagContent = await runStatusJudgmentPhase(subMovement, phaseCtx);
-        }
+        const subPhase3 = needsStatusJudgmentPhase(subMovement)
+          ? await runStatusJudgmentPhase(subMovement, phaseCtx)
+          : undefined;
 
-        const match = await detectMatchedRule(subMovement, subResponse.content, subTagContent, ruleCtx);
-        const finalResponse = match
-          ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
-          : subResponse;
+        let finalResponse: AgentResponse;
+        if (subPhase3) {
+          finalResponse = { ...subResponse, matchedRuleIndex: subPhase3.ruleIndex, matchedRuleMethod: subPhase3.method };
+        } else {
+          const match = await detectMatchedRule(subMovement, subResponse.content, '', ruleCtx);
+          finalResponse = match
+            ? { ...subResponse, matchedRuleIndex: match.index, matchedRuleMethod: match.method }
+            : subResponse;
+        }
 
         state.movementOutputs.set(subMovement.name, finalResponse);
         this.deps.movementExecutor.emitMovementReports(subMovement);

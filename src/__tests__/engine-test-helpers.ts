@@ -173,7 +173,7 @@ export function createTestTmpDir(): string {
 export function applyDefaultMocks(): void {
   vi.mocked(needsStatusJudgmentPhase).mockReturnValue(false);
   vi.mocked(runReportPhase).mockResolvedValue(undefined);
-  vi.mocked(runStatusJudgmentPhase).mockResolvedValue('');
+  vi.mocked(runStatusJudgmentPhase).mockResolvedValue({ tag: '', ruleIndex: 0, method: 'auto_select' });
   vi.mocked(generateReportDir).mockReturnValue('test-report-dir');
 }
 

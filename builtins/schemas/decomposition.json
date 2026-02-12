@@ -19,11 +19,11 @@
             "description": "Instruction for the part agent"
           },
           "timeout_ms": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "description": "Optional timeout in ms"
           }
         },
-        "required": ["id", "title", "instruction"],
+        "required": ["id", "title", "instruction", "timeout_ms"],
         "additionalProperties": false
       }
     }

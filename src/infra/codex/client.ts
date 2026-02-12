@@ -4,9 +4,9 @@
  * Uses @openai/codex-sdk for native TypeScript integration.
  */
 
-import { Codex } from '@openai/codex-sdk';
+import { Codex, type TurnOptions } from '@openai/codex-sdk';
 import type { AgentResponse } from '../../core/models/index.js';
-import { createLogger, getErrorMessage, createStreamDiagnostics, type StreamDiagnostics } from '../../shared/utils/index.js';
+import { createLogger, getErrorMessage, createStreamDiagnostics, parseStructuredOutput, type StreamDiagnostics } from '../../shared/utils/index.js';
 import { mapToCodexSandboxMode, type CodexCallOptions } from './types.js';
 import {
   type CodexEvent,
@@ -150,20 +150,15 @@ export class CodexClient {
         const diag = createStreamDiagnostics('codex-sdk', { agentType, model: options.model, attempt });
         diagRef = diag;
 
-        const runOptions: Record<string, unknown> = {
+        const turnOptions: TurnOptions = {
           signal: streamAbortController.signal,
+          ...(options.outputSchema ? { outputSchema: options.outputSchema } : {}),
         };
-        if (options.outputSchema) {
-          runOptions.outputSchema = options.outputSchema;
-        }
-        // Codex SDK types do not yet expose outputSchema even though runtime accepts it.
-        const runStreamedOptions = runOptions as unknown as Parameters<typeof thread.runStreamed>[1];
-        const { events } = await thread.runStreamed(fullPrompt, runStreamedOptions);
+        const { events } = await thread.runStreamed(fullPrompt, turnOptions);
         resetIdleTimeout();
         diag.onConnected();
 
         let content = '';
-        let structuredOutput: Record<string, unknown> | undefined;
         const contentOffsets = new Map<string, number>();
         let success = true;
         let failureMessage = '';
@@ -194,20 +189,6 @@ export class CodexClient {
             failureMessage = typeof event.message === 'string' ? event.message : 'Unknown error';
             diag.onStreamError('error', failureMessage);
             break;
-          }
-
-          if (event.type === 'turn.completed') {
-            const rawFinalResponse = (event as unknown as {
-              turn?: { finalResponse?: unknown };
-            }).turn?.finalResponse;
-            if (
-              rawFinalResponse
-              && typeof rawFinalResponse === 'object'
-              && !Array.isArray(rawFinalResponse)
-            ) {
-              structuredOutput = rawFinalResponse as Record<string, unknown>;
-            }
-            continue;
           }
 
           if (event.type === 'item.started') {
@@ -291,6 +272,7 @@ export class CodexClient {
         }
 
         const trimmed = content.trim();
+        const structuredOutput = parseStructuredOutput(trimmed, !!options.outputSchema);
         emitResult(options.onStream, true, trimmed, currentThreadId);
 
         return {

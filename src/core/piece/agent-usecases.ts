@@ -85,7 +85,8 @@ export async function evaluateCondition(
 }
 
 export async function judgeStatus(
-  instruction: string,
+  structuredInstruction: string,
+  tagInstruction: string,
   rules: PieceRule[],
   options: JudgeStatusOptions,
 ): Promise<JudgeStatusResult> {
@@ -94,48 +95,47 @@ export async function judgeStatus(
   }
 
   if (rules.length === 1) {
-    return {
-      ruleIndex: 0,
-      method: 'auto_select',
-    };
+    return { ruleIndex: 0, method: 'auto_select' };
   }
 
-  const response = await runAgent('conductor', instruction, {
+  const agentOptions = {
     cwd: options.cwd,
     maxTurns: 3,
-    permissionMode: 'readonly',
+    permissionMode: 'readonly' as const,
     language: options.language,
+  };
+
+  // Stage 1: Structured output
+  const structuredResponse = await runAgent('conductor', structuredInstruction, {
+    ...agentOptions,
     outputSchema: loadJudgmentSchema(),
   });
 
-  if (response.status === 'done') {
-    const stepNumber = response.structuredOutput?.step;
+  if (structuredResponse.status === 'done') {
+    const stepNumber = structuredResponse.structuredOutput?.step;
     if (typeof stepNumber === 'number' && Number.isInteger(stepNumber)) {
       const ruleIndex = stepNumber - 1;
       if (ruleIndex >= 0 && ruleIndex < rules.length) {
-        return {
-          ruleIndex,
-          method: 'structured_output',
-        };
+        return { ruleIndex, method: 'structured_output' };
       }
-    }
-
-    const tagRuleIndex = detectRuleIndex(response.content, options.movementName);
-    if (tagRuleIndex >= 0 && tagRuleIndex < rules.length) {
-      return {
-        ruleIndex: tagRuleIndex,
-        method: 'phase3_tag',
-      };
     }
   }
 
+  // Stage 2: Tag detection (dedicated call, no outputSchema)
+  const tagResponse = await runAgent('conductor', tagInstruction, agentOptions);
+
+  if (tagResponse.status === 'done') {
+    const tagRuleIndex = detectRuleIndex(tagResponse.content, options.movementName);
+    if (tagRuleIndex >= 0 && tagRuleIndex < rules.length) {
+      return { ruleIndex: tagRuleIndex, method: 'phase3_tag' };
+    }
+  }
+
+  // Stage 3: AI judge
   const conditions = rules.map((rule, index) => ({ index, text: rule.condition }));
-  const fallbackIndex = await evaluateCondition(instruction, conditions, { cwd: options.cwd });
+  const fallbackIndex = await evaluateCondition(structuredInstruction, conditions, { cwd: options.cwd });
   if (fallbackIndex >= 0 && fallbackIndex < rules.length) {
-    return {
-      ruleIndex: fallbackIndex,
-      method: 'ai_judge',
-    };
+    return { ruleIndex: fallbackIndex, method: 'ai_judge' };
   }
 
   throw new Error(`Status not found for movement "${options.movementName}"`);

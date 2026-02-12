@@ -27,8 +27,8 @@ export interface StatusJudgmentContext {
   lastResponse?: string;
   /** Input source type for fallback strategies */
   inputSource?: 'report' | 'response';
-  /** Structured output mode omits tag-format instructions */
-  useStructuredOutput?: boolean;
+  /** When true, omit tag output instructions (structured output schema handles format) */
+  structuredOutput?: boolean;
 }
 
 /**
@@ -66,14 +66,17 @@ export class StatusJudgmentBuilder {
       contentToJudge = this.buildFromResponse();
     }
 
+    const isStructured = this.context.structuredOutput ?? false;
+
     return loadTemplate('perform_phase3_message', language, {
       reportContent: contentToJudge,
       criteriaTable: components.criteriaTable,
-      outputList: this.context.useStructuredOutput
-        ? ''
-        : components.outputList,
-      hasAppendix: components.hasAppendix,
-      appendixContent: components.appendixContent,
+      structuredOutput: isStructured,
+      ...(isStructured ? {} : {
+        outputList: components.outputList,
+        hasAppendix: components.hasAppendix,
+        appendixContent: components.appendixContent,
+      }),
     });
   }
 

@@ -1,8 +1,12 @@
 /**
  * Codex SDK layer structured output tests.
  *
- * Tests CodexClient's extraction of structuredOutput from
- * `turn.completed` events' `finalResponse` field.
+ * Tests CodexClient's extraction of structuredOutput by parsing
+ * JSON text from agent_message items when outputSchema is provided.
+ *
+ * Codex SDK returns structured output as JSON text in agent_message
+ * items (not via turn.completed.finalResponse which doesn't exist
+ * on TurnCompletedEvent).
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -42,34 +46,32 @@ describe('CodexClient — structuredOutput 抽出', () => {
     mockEvents = [];
   });
 
-  it('turn.completed の finalResponse を structuredOutput として返す', async () => {
+  it('outputSchema 指定時に agent_message の JSON テキストを structuredOutput として返す', async () => {
+    const schema = { type: 'object', properties: { step: { type: 'integer' } } };
     mockEvents = [
       { type: 'thread.started', thread_id: 'thread-1' },
       {
         type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'response text' },
+        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2, "reason": "approved"}' },
       },
-      {
-        type: 'turn.completed',
-        turn: { finalResponse: { step: 2, reason: 'approved' } },
-      },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
     ];
 
     const client = new CodexClient();
-    const result = await client.call('coder', 'prompt', { cwd: '/tmp' });
+    const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
 
     expect(result.status).toBe('done');
     expect(result.structuredOutput).toEqual({ step: 2, reason: 'approved' });
   });
 
-  it('turn.completed に finalResponse がない場合は undefined', async () => {
+  it('outputSchema なしの場合はテキストを JSON パースしない', async () => {
     mockEvents = [
       { type: 'thread.started', thread_id: 'thread-1' },
       {
         type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'text' },
+        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 2}' },
       },
-      { type: 'turn.completed', turn: {} },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
     ];
 
     const client = new CodexClient();
@@ -79,86 +81,64 @@ describe('CodexClient — structuredOutput 抽出', () => {
     expect(result.structuredOutput).toBeUndefined();
   });
 
-  it('finalResponse が配列の場合は無視する', async () => {
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'text' },
-      },
-      { type: 'turn.completed', turn: { finalResponse: [1, 2, 3] } },
-    ];
-
-    const client = new CodexClient();
-    const result = await client.call('coder', 'prompt', { cwd: '/tmp' });
-
-    expect(result.structuredOutput).toBeUndefined();
-  });
-
-  it('finalResponse が null の場合は undefined', async () => {
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      { type: 'turn.completed', turn: { finalResponse: null } },
-    ];
-
-    const client = new CodexClient();
-    const result = await client.call('coder', 'prompt', { cwd: '/tmp' });
-
-    expect(result.structuredOutput).toBeUndefined();
-  });
-
-  it('turn.completed がない場合は structuredOutput なし', async () => {
-    mockEvents = [
-      { type: 'thread.started', thread_id: 'thread-1' },
-      {
-        type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'response' },
-      },
-    ];
-
-    const client = new CodexClient();
-    const result = await client.call('coder', 'prompt', { cwd: '/tmp' });
-
-    expect(result.status).toBe('done');
-    expect(result.structuredOutput).toBeUndefined();
-  });
-
-  it('outputSchema が runStreamed に渡される', async () => {
+  it('agent_message が JSON でない場合は undefined', async () => {
     const schema = { type: 'object', properties: { step: { type: 'integer' } } };
-    const runStreamedSpy = vi.fn().mockResolvedValue({
-      events: (async function* () {
-        yield { type: 'thread.started', thread_id: 'thread-1' };
-        yield {
-          type: 'item.completed',
-          item: { id: 'msg-1', type: 'agent_message', text: 'ok' },
-        };
-        yield {
-          type: 'turn.completed',
-          turn: { finalResponse: { step: 1 } },
-        };
-      })(),
-    });
-
-    // Mock SDK で startThread が返す thread の runStreamed を spy に差し替え
-    const { Codex } = await import('@openai/codex-sdk');
-    const codex = new Codex({} as never);
-    const thread = await codex.startThread();
-    thread.runStreamed = runStreamedSpy;
-
-    // CodexClient は内部で Codex を new するため、
-    // SDK クラス自体のモックで startThread の返り値を制御
-    // → mockEvents ベースの簡易テストでは runStreamed の引数を直接検証できない
-    // ここではプロバイダ層テスト (provider-structured-output.test.ts) で
-    // outputSchema パススルーを検証済みのため、SDK 内部の引数検証はスキップ
-
-    // 代わりに、outputSchema 付きで呼び出して structuredOutput が返ることを確認
     mockEvents = [
       { type: 'thread.started', thread_id: 'thread-1' },
       {
         type: 'item.completed',
-        item: { id: 'msg-1', type: 'agent_message', text: 'ok' },
+        item: { id: 'msg-1', type: 'agent_message', text: 'plain text response' },
       },
-      { type: 'turn.completed', turn: { finalResponse: { step: 1 } } },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
+    ];
+
+    const client = new CodexClient();
+    const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
+
+    expect(result.status).toBe('done');
+    expect(result.structuredOutput).toBeUndefined();
+  });
+
+  it('JSON が配列の場合は無視する', async () => {
+    const schema = { type: 'object', properties: { step: { type: 'integer' } } };
+    mockEvents = [
+      { type: 'thread.started', thread_id: 'thread-1' },
+      {
+        type: 'item.completed',
+        item: { id: 'msg-1', type: 'agent_message', text: '[1, 2, 3]' },
+      },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
+    ];
+
+    const client = new CodexClient();
+    const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
+
+    expect(result.structuredOutput).toBeUndefined();
+  });
+
+  it('agent_message がない場合は structuredOutput なし', async () => {
+    const schema = { type: 'object', properties: { step: { type: 'integer' } } };
+    mockEvents = [
+      { type: 'thread.started', thread_id: 'thread-1' },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
+    ];
+
+    const client = new CodexClient();
+    const result = await client.call('coder', 'prompt', { cwd: '/tmp', outputSchema: schema });
+
+    expect(result.status).toBe('done');
+    expect(result.structuredOutput).toBeUndefined();
+  });
+
+  it('outputSchema 付きで呼び出して structuredOutput が返る', async () => {
+    const schema = { type: 'object', properties: { step: { type: 'integer' } } };
+    mockEvents = [
+      { type: 'thread.started', thread_id: 'thread-1' },
+      {
+        type: 'item.completed',
+        item: { id: 'msg-1', type: 'agent_message', text: '{"step": 1}' },
+      },
+      { type: 'turn.completed', usage: { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0 } },
     ];
 
     const client = new CodexClient();

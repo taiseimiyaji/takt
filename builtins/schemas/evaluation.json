@@ -10,6 +10,6 @@
       "description": "Why this condition was matched"
     }
   },
-  "required": ["matched_index"],
+  "required": ["matched_index", "reason"],
   "additionalProperties": false
 }
