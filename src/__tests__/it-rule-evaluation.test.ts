@@ -34,7 +34,8 @@ vi.mock('../infra/config/project/projectConfig.js', () => ({
 
 // --- Imports (after mocks) ---
 
-import { detectMatchedRule, evaluateAggregateConditions } from '../core/piece/index.js';
+import { evaluateAggregateConditions } from '../core/piece/index.js';
+import { detectMatchedRule } from '../core/piece/evaluation/index.js';
 import { detectRuleIndex } from '../infra/claude/index.js';
 import type { RuleMatch, RuleEvaluatorContext } from '../core/piece/index.js';
 

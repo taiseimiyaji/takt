@@ -35,7 +35,7 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 
 import { PieceEngine } from '../core/piece/index.js';
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../core/piece/index.js';
+import { detectMatchedRule } from '../core/piece/evaluation/index.js';
 import {
   makeResponse,
   makeMovement,

@@ -94,6 +94,7 @@ export class QueryExecutor {
     let resultContent: string | undefined;
     let hasResultMessage = false;
     let accumulatedAssistantText = '';
+    let structuredOutput: Record<string, unknown> | undefined;
     let onExternalAbort: (() => void) | undefined;
 
     try {
@@ -139,6 +140,17 @@ export class QueryExecutor {
           const resultMsg = message as SDKResultMessage;
           if (resultMsg.subtype === 'success') {
             resultContent = resultMsg.result;
+            const rawStructuredOutput = (resultMsg as unknown as {
+              structured_output?: unknown;
+              structuredOutput?: unknown;
+            }).structured_output ?? (resultMsg as unknown as { structuredOutput?: unknown }).structuredOutput;
+            if (
+              rawStructuredOutput
+              && typeof rawStructuredOutput === 'object'
+              && !Array.isArray(rawStructuredOutput)
+            ) {
+              structuredOutput = rawStructuredOutput as Record<string, unknown>;
+            }
             success = true;
           } else {
             success = false;
@@ -169,6 +181,7 @@ export class QueryExecutor {
         content: finalContent.trim(),
         sessionId,
         fullContent: accumulatedAssistantText.trim(),
+        structuredOutput,
       };
     } catch (error) {
       if (onExternalAbort && options.abortSignal) {

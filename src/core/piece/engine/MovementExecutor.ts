@@ -15,7 +15,7 @@ import type {
   Language,
 } from '../../models/types.js';
 import type { PhaseName } from '../types.js';
-import { runAgent } from '../../../agents/runner.js';
+import { executeAgent } from '../agent-usecases.js';
 import { InstructionBuilder, isOutputContractItem } from '../instruction/InstructionBuilder.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
@@ -202,7 +202,7 @@ export class MovementExecutor {
     // Phase 1: main execution (Write excluded if movement has report)
     this.deps.onPhaseStart?.(step, 1, 'execute', instruction);
     const agentOptions = this.deps.optionsBuilder.buildAgentOptions(step);
-    let response = await runAgent(step.persona, instruction, agentOptions);
+    let response = await executeAgent(step.persona, instruction, agentOptions);
     updatePersonaSession(sessionKey, response.sessionId);
     this.deps.onPhaseComplete?.(step, 1, 'execute', response.content, response.status, response.error);
 

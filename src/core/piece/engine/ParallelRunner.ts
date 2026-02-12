@@ -10,7 +10,7 @@ import type {
   PieceState,
   AgentResponse,
 } from '../../models/types.js';
-import { runAgent } from '../../../agents/runner.js';
+import { executeAgent } from '../agent-usecases.js';
 import { ParallelLogger } from './parallel-logger.js';
 import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../phase-runner.js';
 import { detectMatchedRule } from '../evaluation/index.js';
@@ -101,7 +101,7 @@ export class ParallelRunner {
           : baseOptions;
 
         this.deps.onPhaseStart?.(subMovement, 1, 'execute', subInstruction);
-        const subResponse = await runAgent(subMovement.persona, subInstruction, agentOptions);
+        const subResponse = await executeAgent(subMovement.persona, subInstruction, agentOptions);
         updatePersonaSession(subSessionKey, subResponse.sessionId);
         this.deps.onPhaseComplete?.(subMovement, 1, 'execute', subResponse.content, subResponse.status, subResponse.error);
 

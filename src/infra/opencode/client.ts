@@ -329,14 +329,22 @@ export class OpenCodeClient {
         diag.onConnected();
 
         const tools = mapToOpenCodeTools(options.allowedTools);
+        const promptPayload: Record<string, unknown> = {
+          sessionID: sessionId,
+          directory: options.cwd,
+          model: parsedModel,
+          ...(tools ? { tools } : {}),
+          parts: [{ type: 'text' as const, text: fullPrompt }],
+        };
+        if (options.outputSchema) {
+          promptPayload.outputFormat = {
+            type: 'json_schema',
+            schema: options.outputSchema,
+          };
+        }
+
         await client.session.promptAsync(
-          {
-            sessionID: sessionId,
-            directory: options.cwd,
-            model: parsedModel,
-            ...(tools ? { tools } : {}),
-            parts: [{ type: 'text' as const, text: fullPrompt }],
-          },
+          promptPayload as never,
           { signal: streamAbortController.signal },
         );
 
@@ -571,6 +579,17 @@ export class OpenCodeClient {
         }
 
         const trimmed = content.trim();
+        let structuredOutput: Record<string, unknown> | undefined;
+        if (options.outputSchema && trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmed) as unknown;
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              structuredOutput = parsed as Record<string, unknown>;
+            }
+          } catch {
+            // Non-JSON response falls back to text path.
+          }
+        }
         emitResult(options.onStream, true, trimmed, sessionId);
 
         return {
@@ -579,6 +598,7 @@ export class OpenCodeClient {
           content: trimmed,
           timestamp: new Date(),
           sessionId,
+          structuredOutput,
         };
       } catch (error) {
         const message = getErrorMessage(error);

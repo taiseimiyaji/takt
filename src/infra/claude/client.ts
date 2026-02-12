@@ -52,6 +52,7 @@ export class ClaudeClient {
       onAskUserQuestion: options.onAskUserQuestion,
       bypassPermissions: options.bypassPermissions,
       anthropicApiKey: options.anthropicApiKey,
+      outputSchema: options.outputSchema,
     };
   }
 
@@ -76,6 +77,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 
@@ -104,6 +106,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 
@@ -153,6 +156,7 @@ export class ClaudeClient {
       timestamp: new Date(),
       sessionId: result.sessionId,
       error: result.error,
+      structuredOutput: result.structuredOutput,
     };
   }
 

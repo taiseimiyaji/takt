@@ -16,9 +16,9 @@ import { makeRule } from './test-helpers.js';
 // --- Mock imports (consumers must call vi.mock before importing this) ---
 
 import { runAgent } from '../agents/runner.js';
-import { detectMatchedRule } from '../core/piece/index.js';
-import type { RuleMatch } from '../core/piece/index.js';
-import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/index.js';
+import { detectMatchedRule } from '../core/piece/evaluation/index.js';
+import type { RuleMatch } from '../core/piece/evaluation/index.js';
+import { needsStatusJudgmentPhase, runReportPhase, runStatusJudgmentPhase } from '../core/piece/phase-runner.js';
 import { generateReportDir } from '../shared/utils/index.js';
 
 // --- Factory functions ---

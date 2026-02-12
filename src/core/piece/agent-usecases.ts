@@ -1,0 +1,235 @@
+import type { AgentResponse, PartDefinition, PieceRule, RuleMatchMethod, Language } from '../models/types.js';
+import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
+import { detectJudgeIndex, buildJudgePrompt } from '../../agents/judge-utils.js';
+import { parseParts } from './engine/task-decomposer.js';
+import { loadJudgmentSchema, loadEvaluationSchema, loadDecompositionSchema } from './schema-loader.js';
+
+export type UsecaseOptions = RunAgentOptions;
+
+export interface JudgeStatusOptions {
+  cwd: string;
+  movementName: string;
+  language?: Language;
+}
+
+export interface JudgeStatusResult {
+  ruleIndex: number;
+  method: RuleMatchMethod;
+}
+
+export interface EvaluateConditionOptions {
+  cwd: string;
+}
+
+export interface DecomposeTaskOptions {
+  cwd: string;
+  persona?: string;
+  language?: Language;
+  model?: string;
+  provider?: 'claude' | 'codex' | 'opencode' | 'mock';
+}
+
+function detectRuleIndex(content: string, movementName: string): number {
+  const tag = movementName.toUpperCase();
+  const regex = new RegExp(`\\[${tag}:(\\d+)\\]`, 'gi');
+  const matches = [...content.matchAll(regex)];
+  const match = matches.at(-1);
+  if (match?.[1]) {
+    const index = Number.parseInt(match[1], 10) - 1;
+    return index >= 0 ? index : -1;
+  }
+  return -1;
+}
+
+function toPartDefinitions(raw: unknown, maxParts: number): PartDefinition[] {
+  if (!Array.isArray(raw)) {
+    throw new Error('Structured output "parts" must be an array');
+  }
+  if (raw.length === 0) {
+    throw new Error('Structured output "parts" must not be empty');
+  }
+  if (raw.length > maxParts) {
+    throw new Error(`Structured output produced too many parts: ${raw.length} > ${maxParts}`);
+  }
+
+  const parts: PartDefinition[] = raw.map((entry, index) => {
+    if (typeof entry !== 'object' || entry == null || Array.isArray(entry)) {
+      throw new Error(`Part[${index}] must be an object`);
+    }
+    const row = entry as Record<string, unknown>;
+    const id = row.id;
+    const title = row.title;
+    const instruction = row.instruction;
+    const timeoutMs = row.timeout_ms;
+
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      throw new Error(`Part[${index}] "id" must be a non-empty string`);
+    }
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      throw new Error(`Part[${index}] "title" must be a non-empty string`);
+    }
+    if (typeof instruction !== 'string' || instruction.trim().length === 0) {
+      throw new Error(`Part[${index}] "instruction" must be a non-empty string`);
+    }
+    if (
+      timeoutMs != null
+      && (typeof timeoutMs !== 'number' || !Number.isInteger(timeoutMs) || timeoutMs <= 0)
+    ) {
+      throw new Error(`Part[${index}] "timeout_ms" must be a positive integer`);
+    }
+
+    return {
+      id,
+      title,
+      instruction,
+      timeoutMs: timeoutMs as number | undefined,
+    };
+  });
+
+  const seen = new Set<string>();
+  for (const part of parts) {
+    if (seen.has(part.id)) {
+      throw new Error(`Duplicate part id: ${part.id}`);
+    }
+    seen.add(part.id);
+  }
+
+  return parts;
+}
+
+export async function executeAgent(
+  persona: string | undefined,
+  instruction: string,
+  options: UsecaseOptions,
+): Promise<AgentResponse> {
+  return runAgent(persona, instruction, options);
+}
+
+export async function generateReport(
+  persona: string | undefined,
+  instruction: string,
+  options: UsecaseOptions,
+): Promise<AgentResponse> {
+  return runAgent(persona, instruction, options);
+}
+
+export async function executePart(
+  persona: string | undefined,
+  instruction: string,
+  options: UsecaseOptions,
+): Promise<AgentResponse> {
+  return runAgent(persona, instruction, options);
+}
+
+export async function evaluateCondition(
+  agentOutput: string,
+  conditions: Array<{ index: number; text: string }>,
+  options: EvaluateConditionOptions,
+): Promise<number> {
+  const prompt = buildJudgePrompt(agentOutput, conditions);
+  const response = await runAgent(undefined, prompt, {
+    cwd: options.cwd,
+    maxTurns: 1,
+    permissionMode: 'readonly',
+    outputSchema: loadEvaluationSchema(),
+  });
+
+  if (response.status !== 'done') {
+    return -1;
+  }
+
+  const matchedIndex = response.structuredOutput?.matched_index;
+  if (typeof matchedIndex === 'number' && Number.isInteger(matchedIndex)) {
+    const zeroBased = matchedIndex - 1;
+    if (zeroBased >= 0 && zeroBased < conditions.length) {
+      return zeroBased;
+    }
+  }
+
+  return detectJudgeIndex(response.content);
+}
+
+export async function judgeStatus(
+  instruction: string,
+  rules: PieceRule[],
+  options: JudgeStatusOptions,
+): Promise<JudgeStatusResult> {
+  if (rules.length === 0) {
+    throw new Error('judgeStatus requires at least one rule');
+  }
+
+  if (rules.length === 1) {
+    return {
+      ruleIndex: 0,
+      method: 'auto_select',
+    };
+  }
+
+  const response = await runAgent('conductor', instruction, {
+    cwd: options.cwd,
+    maxTurns: 3,
+    permissionMode: 'readonly',
+    language: options.language,
+    outputSchema: loadJudgmentSchema(),
+  });
+
+  if (response.status === 'done') {
+    const stepNumber = response.structuredOutput?.step;
+    if (typeof stepNumber === 'number' && Number.isInteger(stepNumber)) {
+      const ruleIndex = stepNumber - 1;
+      if (ruleIndex >= 0 && ruleIndex < rules.length) {
+        return {
+          ruleIndex,
+          method: 'structured_output',
+        };
+      }
+    }
+
+    const tagRuleIndex = detectRuleIndex(response.content, options.movementName);
+    if (tagRuleIndex >= 0 && tagRuleIndex < rules.length) {
+      return {
+        ruleIndex: tagRuleIndex,
+        method: 'phase3_tag',
+      };
+    }
+  }
+
+  const conditions = rules.map((rule, index) => ({ index, text: rule.condition }));
+  const fallbackIndex = await evaluateCondition(instruction, conditions, { cwd: options.cwd });
+  if (fallbackIndex >= 0 && fallbackIndex < rules.length) {
+    return {
+      ruleIndex: fallbackIndex,
+      method: 'ai_judge',
+    };
+  }
+
+  throw new Error(`Status not found for movement "${options.movementName}"`);
+}
+
+export async function decomposeTask(
+  instruction: string,
+  maxParts: number,
+  options: DecomposeTaskOptions,
+): Promise<PartDefinition[]> {
+  const response = await runAgent(options.persona, instruction, {
+    cwd: options.cwd,
+    language: options.language,
+    model: options.model,
+    provider: options.provider,
+    permissionMode: 'readonly',
+    maxTurns: 3,
+    outputSchema: loadDecompositionSchema(maxParts),
+  });
+
+  if (response.status !== 'done') {
+    const detail = response.error ?? response.content;
+    throw new Error(`Team leader failed: ${detail}`);
+  }
+
+  const parts = response.structuredOutput?.parts;
+  if (parts != null) {
+    return toPartDefinitions(parts, maxParts);
+  }
+
+  return parseParts(response.content, maxParts);
+}

@@ -109,6 +109,8 @@ export interface ClaudeResult {
   interrupted?: boolean;
   /** All assistant text accumulated during execution (for status detection) */
   fullContent?: string;
+  /** Structured output returned by Claude SDK */
+  structuredOutput?: Record<string, unknown>;
 }
 
 /** Extended result with query ID for concurrent execution */
@@ -141,6 +143,8 @@ export interface ClaudeCallOptions {
   bypassPermissions?: boolean;
   /** Anthropic API key to inject via env (bypasses CLI auth) */
   anthropicApiKey?: string;
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }
 
 /** Options for spawning a Claude SDK query (low-level, used by executor/process) */
@@ -168,6 +172,8 @@ export interface ClaudeSpawnOptions {
   bypassPermissions?: boolean;
   /** Anthropic API key to inject via env (bypasses CLI auth) */
   anthropicApiKey?: string;
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
   /** Callback for stderr output from the Claude Code process */
   onStderr?: (data: string) => void;
 }

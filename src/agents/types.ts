@@ -39,4 +39,6 @@ export interface RunAgentOptions {
     movementsList: ReadonlyArray<{ name: string; description?: string }>;
     currentPosition: string;
   };
+  /** JSON Schema for structured output */
+  outputSchema?: Record<string, unknown>;
 }

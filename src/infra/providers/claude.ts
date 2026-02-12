@@ -22,6 +22,7 @@ function toClaudeOptions(options: ProviderCallOptions): ClaudeCallOptions {
     onAskUserQuestion: options.onAskUserQuestion,
     bypassPermissions: options.bypassPermissions,
     anthropicApiKey: options.anthropicApiKey ?? resolveAnthropicApiKey(),
+    outputSchema: options.outputSchema,
   };
 }
 

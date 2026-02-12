@@ -9,12 +9,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, parse, resolve, sep } from 'node:path';
 import type { PieceMovement, Language, AgentResponse } from '../models/types.js';
 import type { PhaseName } from './types.js';
-import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
+import type { RunAgentOptions } from '../../agents/runner.js';
 import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
 import { hasTagBasedRules, getReportFiles } from './evaluation/rule-utils.js';
-import { JudgmentStrategyFactory, type JudgmentContext } from './judgment/index.js';
+import { generateReport } from './agent-usecases.js';
 import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
+export { runStatusJudgmentPhase } from './status-judgment-phase.js';
 
 const log = createLogger('phase-runner');
 
@@ -213,7 +214,7 @@ async function runSingleReportAttempt(
 
   let response: AgentResponse;
   try {
-    response = await runAgent(step.persona, instruction, options);
+    response = await generateReport(step.persona, instruction, options);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);
@@ -240,56 +241,4 @@ async function runSingleReportAttempt(
 
   ctx.onPhaseComplete?.(step, 2, 'report', response.content, response.status);
   return { kind: 'success', content: trimmedContent, response };
-}
-
-/**
- * Phase 3: Status judgment.
- * Uses the 'conductor' agent in a new session to output a status tag.
- * Implements multi-stage fallback logic to ensure judgment succeeds.
- * Returns the Phase 3 response content (containing the status tag).
- */
-export async function runStatusJudgmentPhase(
-  step: PieceMovement,
-  ctx: PhaseRunnerContext,
-): Promise<string> {
-  log.debug('Running status judgment phase', { movement: step.name });
-
-  const strategies = JudgmentStrategyFactory.createStrategies();
-  const sessionKey = buildSessionKey(step);
-  const judgmentContext: JudgmentContext = {
-    step,
-    cwd: ctx.cwd,
-    language: ctx.language,
-    reportDir: ctx.reportDir,
-    lastResponse: ctx.lastResponse,
-    sessionId: ctx.getSessionId(sessionKey),
-  };
-
-  for (const strategy of strategies) {
-    if (!strategy.canApply(judgmentContext)) {
-      log.debug(`Strategy ${strategy.name} not applicable, skipping`);
-      continue;
-    }
-
-    log.debug(`Trying strategy: ${strategy.name}`);
-    ctx.onPhaseStart?.(step, 3, 'judge', `Strategy: ${strategy.name}`);
-
-    try {
-      const result = await strategy.execute(judgmentContext);
-      if (result.success) {
-        log.debug(`Strategy ${strategy.name} succeeded`, { tag: result.tag });
-        ctx.onPhaseComplete?.(step, 3, 'judge', result.tag!, 'done');
-        return result.tag!;
-      }
-
-      log.debug(`Strategy ${strategy.name} failed`, { reason: result.reason });
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      log.debug(`Strategy ${strategy.name} threw error`, { error: errorMsg });
-    }
-  }
-
-  const errorMsg = 'All judgment strategies failed';
-  ctx.onPhaseComplete?.(step, 3, 'judge', '', 'error', errorMsg);
-  throw new Error(errorMsg);
 }

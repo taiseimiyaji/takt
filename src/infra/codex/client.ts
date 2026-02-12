@@ -150,13 +150,18 @@ export class CodexClient {
         const diag = createStreamDiagnostics('codex-sdk', { agentType, model: options.model, attempt });
         diagRef = diag;
 
-        const { events } = await thread.runStreamed(fullPrompt, {
+        const runOptions: Record<string, unknown> = {
           signal: streamAbortController.signal,
-        });
+        };
+        if (options.outputSchema) {
+          runOptions.outputSchema = options.outputSchema;
+        }
+        const { events } = await thread.runStreamed(fullPrompt, runOptions as never);
         resetIdleTimeout();
         diag.onConnected();
 
         let content = '';
+        let structuredOutput: Record<string, unknown> | undefined;
         const contentOffsets = new Map<string, number>();
         let success = true;
         let failureMessage = '';
@@ -187,6 +192,20 @@ export class CodexClient {
             failureMessage = typeof event.message === 'string' ? event.message : 'Unknown error';
             diag.onStreamError('error', failureMessage);
             break;
+          }
+
+          if (event.type === 'turn.completed') {
+            const rawFinalResponse = (event as unknown as {
+              turn?: { finalResponse?: unknown };
+            }).turn?.finalResponse;
+            if (
+              rawFinalResponse
+              && typeof rawFinalResponse === 'object'
+              && !Array.isArray(rawFinalResponse)
+            ) {
+              structuredOutput = rawFinalResponse as Record<string, unknown>;
+            }
+            continue;
           }
 
           if (event.type === 'item.started') {
@@ -278,6 +297,7 @@ export class CodexClient {
           content: trimmed,
           timestamp: new Date(),
           sessionId: currentThreadId,
+          structuredOutput,
         };
       } catch (error) {
         const message = getErrorMessage(error);

@@ -1,4 +1,3 @@
-import { runAgent } from '../../../agents/runner.js';
 import type {
   PieceMovement,
   PieceState,
@@ -6,11 +5,11 @@ import type {
   PartDefinition,
   PartResult,
 } from '../../models/types.js';
+import { decomposeTask, executePart } from '../agent-usecases.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { buildSessionKey } from '../session-key.js';
 import { ParallelLogger } from './parallel-logger.js';
 import { incrementMovementIteration } from './state-manager.js';
-import { parseParts } from './task-decomposer.js';
 import { buildAbortSignal } from './abort-signal.js';
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
 import type { OptionsBuilder } from './OptionsBuilder.js';
@@ -99,26 +98,19 @@ export class TeamLeaderRunner {
     );
 
     this.deps.onPhaseStart?.(leaderStep, 1, 'execute', instruction);
-    const leaderResponse = await runAgent(
-      leaderStep.persona,
-      instruction,
-      this.deps.optionsBuilder.buildAgentOptions(leaderStep),
-    );
-    updatePersonaSession(buildSessionKey(leaderStep), leaderResponse.sessionId);
-    this.deps.onPhaseComplete?.(
-      leaderStep,
-      1,
-      'execute',
-      leaderResponse.content,
-      leaderResponse.status,
-      leaderResponse.error,
-    );
-    if (leaderResponse.status === 'error') {
-      const detail = leaderResponse.error ?? leaderResponse.content;
-      throw new Error(`Team leader failed: ${detail}`);
-    }
-
-    const parts = parseParts(leaderResponse.content, teamLeaderConfig.maxParts);
+    const parts = await decomposeTask(instruction, teamLeaderConfig.maxParts, {
+      cwd: this.deps.getCwd(),
+      persona: leaderStep.persona,
+      model: leaderStep.model,
+      provider: leaderStep.provider,
+    });
+    const leaderResponse: AgentResponse = {
+      persona: leaderStep.persona ?? leaderStep.name,
+      status: 'done',
+      content: JSON.stringify({ parts }, null, 2),
+      timestamp: new Date(),
+    };
+    this.deps.onPhaseComplete?.(leaderStep, 1, 'execute', leaderResponse.content, leaderResponse.status, leaderResponse.error);
     log.debug('Team leader decomposed parts', {
       movement: step.name,
       partCount: parts.length,
@@ -240,7 +232,7 @@ export class TeamLeaderRunner {
       : { ...baseOptions, abortSignal: signal };
 
     try {
-      const response = await runAgent(partMovement.persona, part.instruction, options);
+      const response = await executePart(partMovement.persona, part.instruction, options);
       updatePersonaSession(buildSessionKey(partMovement), response.sessionId);
       return {
         part,

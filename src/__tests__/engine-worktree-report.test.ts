@@ -35,7 +35,7 @@ vi.mock('../shared/utils/index.js', async (importOriginal) => ({
 // --- Imports (after mocks) ---
 
 import { PieceEngine } from '../core/piece/index.js';
-import { runReportPhase } from '../core/piece/index.js';
+import { runReportPhase } from '../core/piece/phase-runner.js';
 import {
   makeResponse,
   makeMovement,

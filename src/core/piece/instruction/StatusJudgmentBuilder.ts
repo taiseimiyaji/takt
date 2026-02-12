@@ -27,6 +27,8 @@ export interface StatusJudgmentContext {
   lastResponse?: string;
   /** Input source type for fallback strategies */
   inputSource?: 'report' | 'response';
+  /** Structured output mode omits tag-format instructions */
+  useStructuredOutput?: boolean;
 }
 
 /**
@@ -67,7 +69,9 @@ export class StatusJudgmentBuilder {
     return loadTemplate('perform_phase3_message', language, {
       reportContent: contentToJudge,
       criteriaTable: components.criteriaTable,
-      outputList: components.outputList,
+      outputList: this.context.useStructuredOutput
+        ? ''
+        : components.outputList,
       hasAppendix: components.hasAppendix,
       appendixContent: components.appendixContent,
     });

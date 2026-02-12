@@ -61,12 +61,6 @@ export {
   createCanUseToolCallback,
   createAskUserQuestionHooks,
   buildSdkOptions,
-  callClaude,
-  callClaudeCustom,
-  callClaudeAgent,
-  callClaudeSkill,
-  detectRuleIndex,
-  isRegexSafe,
 } from './infra/claude/index.js';
 export type {
   StreamEvent,
@@ -90,7 +84,8 @@ export type {
 } from './infra/claude/index.js';
 
 // Codex integration
-export * from './infra/codex/index.js';
+export { CodexClient, mapToCodexSandboxMode } from './infra/codex/index.js';
+export type { CodexCallOptions, CodexSandboxMode } from './infra/codex/index.js';
 
 // Agent execution
 export * from './agents/index.js';
@@ -115,12 +110,15 @@ export {
   StatusJudgmentBuilder,
   buildEditRule,
   RuleEvaluator,
-  detectMatchedRule,
   evaluateAggregateConditions,
   AggregateEvaluator,
   needsStatusJudgmentPhase,
-  runReportPhase,
-  runStatusJudgmentPhase,
+  executeAgent,
+  generateReport,
+  executePart,
+  judgeStatus,
+  evaluateCondition,
+  decomposeTask,
 } from './core/piece/index.js';
 export type {
   PieceEvents,
@@ -133,6 +131,7 @@ export type {
   ProviderType,
   RuleMatch,
   RuleEvaluatorContext,
+  JudgeStatusResult,
   ReportInstructionContext,
   StatusJudgmentContext,
   InstructionContext,
