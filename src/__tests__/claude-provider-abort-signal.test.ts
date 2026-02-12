@@ -9,7 +9,7 @@ const {
   mockResolveAnthropicApiKey: vi.fn(),
 }));
 
-vi.mock('../infra/claude/index.js', () => ({
+vi.mock('../infra/claude/client.js', () => ({
   callClaude: mockCallClaude,
   callClaudeCustom: vi.fn(),
   callClaudeAgent: vi.fn(),
