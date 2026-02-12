@@ -12,7 +12,7 @@ import type { PhaseName } from './types.js';
 import type { RunAgentOptions } from '../../agents/runner.js';
 import { ReportInstructionBuilder } from './instruction/ReportInstructionBuilder.js';
 import { hasTagBasedRules, getReportFiles } from './evaluation/rule-utils.js';
-import { generateReport } from './agent-usecases.js';
+import { executeAgent } from './agent-usecases.js';
 import { createLogger } from '../../shared/utils/index.js';
 import { buildSessionKey } from './session-key.js';
 export { runStatusJudgmentPhase } from './status-judgment-phase.js';
@@ -214,7 +214,7 @@ async function runSingleReportAttempt(
 
   let response: AgentResponse;
   try {
-    response = await generateReport(step.persona, instruction, options);
+    response = await executeAgent(step.persona, instruction, options);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     ctx.onPhaseComplete?.(step, 2, 'report', '', 'error', errorMsg);

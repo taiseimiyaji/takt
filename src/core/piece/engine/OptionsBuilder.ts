@@ -1,10 +1,3 @@
-/**
- * Builds RunAgentOptions for different execution phases.
- *
- * Centralizes the option construction logic that was previously
- * scattered across PieceEngine methods.
- */
-
 import { join } from 'node:path';
 import type { PieceMovement, PieceState, Language } from '../../models/types.js';
 import type { RunAgentOptions } from '../../../agents/runner.js';

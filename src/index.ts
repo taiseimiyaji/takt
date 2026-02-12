@@ -87,9 +87,6 @@ export type {
 export { CodexClient, mapToCodexSandboxMode } from './infra/codex/index.js';
 export type { CodexCallOptions, CodexSandboxMode } from './infra/codex/index.js';
 
-// Agent execution
-export * from './agents/index.js';
-
 // Piece engine
 export {
   PieceEngine,
@@ -107,12 +104,6 @@ export {
   InstructionBuilder,
   isOutputContractItem,
   ReportInstructionBuilder,
-  StatusJudgmentBuilder,
-  buildEditRule,
-  RuleEvaluator,
-  evaluateAggregateConditions,
-  AggregateEvaluator,
-  needsStatusJudgmentPhase,
   executeAgent,
   generateReport,
   executePart,
@@ -129,13 +120,7 @@ export type {
   PieceEngineOptions,
   LoopCheckResult,
   ProviderType,
-  RuleMatch,
-  RuleEvaluatorContext,
   JudgeStatusResult,
-  ReportInstructionContext,
-  StatusJudgmentContext,
-  InstructionContext,
-  StatusRulesComponents,
   BlockedHandlerResult,
 } from './core/piece/index.js';
 

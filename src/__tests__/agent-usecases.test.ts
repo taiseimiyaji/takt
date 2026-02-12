@@ -86,6 +86,22 @@ describe('agent-usecases', () => {
     expect(detectJudgeIndex).toHaveBeenCalledWith('[JUDGE:2]');
   });
 
+  it('evaluateCondition は runAgent が done 以外なら -1 を返す', async () => {
+    vi.mocked(runAgent).mockResolvedValue({
+      persona: 'tester',
+      status: 'error',
+      content: 'failed',
+      timestamp: new Date('2026-02-12T00:00:00Z'),
+    });
+
+    const result = await evaluateCondition('agent output', [
+      { index: 0, text: 'first' },
+    ], { cwd: '/repo' });
+
+    expect(result).toBe(-1);
+    expect(detectJudgeIndex).not.toHaveBeenCalled();
+  });
+
   it('judgeStatus は単一ルール時に auto_select を返す', async () => {
     const result = await judgeStatus('instruction', [{ condition: 'always', next: 'done' }], {
       cwd: '/repo',
@@ -94,6 +110,13 @@ describe('agent-usecases', () => {
 
     expect(result).toEqual({ ruleIndex: 0, method: 'auto_select' });
     expect(runAgent).not.toHaveBeenCalled();
+  });
+
+  it('judgeStatus はルールが空ならエラー', async () => {
+    await expect(judgeStatus('instruction', [], {
+      cwd: '/repo',
+      movementName: 'review',
+    })).rejects.toThrow('judgeStatus requires at least one rule');
   });
 
   it('judgeStatus は構造化出力 step を採用する', async () => {
@@ -139,6 +162,21 @@ describe('agent-usecases', () => {
 
     expect(result).toEqual({ ruleIndex: 1, method: 'ai_judge' });
     expect(runAgent).toHaveBeenCalledTimes(2);
+  });
+
+  it('judgeStatus は全ての判定に失敗したらエラー', async () => {
+    vi.mocked(runAgent)
+      .mockResolvedValueOnce(doneResponse('no match'))
+      .mockResolvedValueOnce(doneResponse('still no match'));
+    vi.mocked(detectJudgeIndex).mockReturnValue(-1);
+
+    await expect(judgeStatus('instruction', [
+      { condition: 'a', next: 'one' },
+      { condition: 'b', next: 'two' },
+    ], {
+      cwd: '/repo',
+      movementName: 'review',
+    })).rejects.toThrow('Status not found for movement "review"');
   });
 
   it('decomposeTask は構造化出力 parts を返す', async () => {

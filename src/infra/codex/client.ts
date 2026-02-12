@@ -156,7 +156,9 @@ export class CodexClient {
         if (options.outputSchema) {
           runOptions.outputSchema = options.outputSchema;
         }
-        const { events } = await thread.runStreamed(fullPrompt, runOptions as never);
+        // Codex SDK types do not yet expose outputSchema even though runtime accepts it.
+        const runStreamedOptions = runOptions as unknown as Parameters<typeof thread.runStreamed>[1];
+        const { events } = await thread.runStreamed(fullPrompt, runStreamedOptions);
         resetIdleTimeout();
         diag.onConnected();
 

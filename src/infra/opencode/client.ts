@@ -343,10 +343,11 @@ export class OpenCodeClient {
           };
         }
 
-        await client.session.promptAsync(
-          promptPayload as never,
-          { signal: streamAbortController.signal },
-        );
+        // OpenCode SDK types do not yet expose outputFormat even though runtime accepts it.
+        const promptPayloadForSdk = promptPayload as unknown as Parameters<typeof client.session.promptAsync>[0];
+        await client.session.promptAsync(promptPayloadForSdk, {
+          signal: streamAbortController.signal,
+        });
 
         emitInit(options.onStream, options.model, sessionId);
 

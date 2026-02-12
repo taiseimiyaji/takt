@@ -1,4 +1,5 @@
 import type { PartDefinition } from '../../models/part.js';
+import { ensureUniquePartIds, parsePartDefinitionEntry } from '../part-definition-validator.js';
 
 const JSON_CODE_BLOCK_REGEX = /```json\s*([\s\S]*?)```/g;
 
@@ -24,36 +25,6 @@ function parseJsonBlock(content: string): unknown {
   }
 }
 
-function assertString(value: unknown, fieldName: string, index: number): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`Part[${index}] "${fieldName}" must be a non-empty string`);
-  }
-  return value;
-}
-
-function parsePartEntry(entry: unknown, index: number): PartDefinition {
-  if (typeof entry !== 'object' || entry == null || Array.isArray(entry)) {
-    throw new Error(`Part[${index}] must be an object`);
-  }
-
-  const raw = entry as Record<string, unknown>;
-  const id = assertString(raw.id, 'id', index);
-  const title = assertString(raw.title, 'title', index);
-  const instruction = assertString(raw.instruction, 'instruction', index);
-
-  const timeoutMs = raw.timeout_ms;
-  if (timeoutMs != null && (typeof timeoutMs !== 'number' || !Number.isInteger(timeoutMs) || timeoutMs <= 0)) {
-    throw new Error(`Part[${index}] "timeout_ms" must be a positive integer`);
-  }
-
-  return {
-    id,
-    title,
-    instruction,
-    timeoutMs: timeoutMs as number | undefined,
-  };
-}
-
 export function parseParts(content: string, maxParts: number): PartDefinition[] {
   const parsed = parseJsonBlock(content);
   if (!Array.isArray(parsed)) {
@@ -66,14 +37,8 @@ export function parseParts(content: string, maxParts: number): PartDefinition[] 
     throw new Error(`Team leader produced too many parts: ${parsed.length} > ${maxParts}`);
   }
 
-  const parts = parsed.map((entry, index) => parsePartEntry(entry, index));
-  const ids = new Set<string>();
-  for (const part of parts) {
-    if (ids.has(part.id)) {
-      throw new Error(`Duplicate part id: ${part.id}`);
-    }
-    ids.add(part.id);
-  }
+  const parts = parsed.map((entry, index) => parsePartDefinitionEntry(entry, index));
+  ensureUniquePartIds(parts);
 
   return parts;
 }

@@ -3,8 +3,8 @@ import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
 import { detectJudgeIndex, buildJudgePrompt } from '../../agents/judge-utils.js';
 import { parseParts } from './engine/task-decomposer.js';
 import { loadJudgmentSchema, loadEvaluationSchema, loadDecompositionSchema } from './schema-loader.js';
-
-export type UsecaseOptions = RunAgentOptions;
+import { detectRuleIndex } from '../../shared/utils/ruleIndex.js';
+import { ensureUniquePartIds, parsePartDefinitionEntry } from './part-definition-validator.js';
 
 export interface JudgeStatusOptions {
   cwd: string;
@@ -29,18 +29,6 @@ export interface DecomposeTaskOptions {
   provider?: 'claude' | 'codex' | 'opencode' | 'mock';
 }
 
-function detectRuleIndex(content: string, movementName: string): number {
-  const tag = movementName.toUpperCase();
-  const regex = new RegExp(`\\[${tag}:(\\d+)\\]`, 'gi');
-  const matches = [...content.matchAll(regex)];
-  const match = matches.at(-1);
-  if (match?.[1]) {
-    const index = Number.parseInt(match[1], 10) - 1;
-    return index >= 0 ? index : -1;
-  }
-  return -1;
-}
-
 function toPartDefinitions(raw: unknown, maxParts: number): PartDefinition[] {
   if (!Array.isArray(raw)) {
     throw new Error('Structured output "parts" must be an array');
@@ -52,47 +40,8 @@ function toPartDefinitions(raw: unknown, maxParts: number): PartDefinition[] {
     throw new Error(`Structured output produced too many parts: ${raw.length} > ${maxParts}`);
   }
 
-  const parts: PartDefinition[] = raw.map((entry, index) => {
-    if (typeof entry !== 'object' || entry == null || Array.isArray(entry)) {
-      throw new Error(`Part[${index}] must be an object`);
-    }
-    const row = entry as Record<string, unknown>;
-    const id = row.id;
-    const title = row.title;
-    const instruction = row.instruction;
-    const timeoutMs = row.timeout_ms;
-
-    if (typeof id !== 'string' || id.trim().length === 0) {
-      throw new Error(`Part[${index}] "id" must be a non-empty string`);
-    }
-    if (typeof title !== 'string' || title.trim().length === 0) {
-      throw new Error(`Part[${index}] "title" must be a non-empty string`);
-    }
-    if (typeof instruction !== 'string' || instruction.trim().length === 0) {
-      throw new Error(`Part[${index}] "instruction" must be a non-empty string`);
-    }
-    if (
-      timeoutMs != null
-      && (typeof timeoutMs !== 'number' || !Number.isInteger(timeoutMs) || timeoutMs <= 0)
-    ) {
-      throw new Error(`Part[${index}] "timeout_ms" must be a positive integer`);
-    }
-
-    return {
-      id,
-      title,
-      instruction,
-      timeoutMs: timeoutMs as number | undefined,
-    };
-  });
-
-  const seen = new Set<string>();
-  for (const part of parts) {
-    if (seen.has(part.id)) {
-      throw new Error(`Duplicate part id: ${part.id}`);
-    }
-    seen.add(part.id);
-  }
+  const parts: PartDefinition[] = raw.map((entry, index) => parsePartDefinitionEntry(entry, index));
+  ensureUniquePartIds(parts);
 
   return parts;
 }
@@ -100,26 +49,12 @@ function toPartDefinitions(raw: unknown, maxParts: number): PartDefinition[] {
 export async function executeAgent(
   persona: string | undefined,
   instruction: string,
-  options: UsecaseOptions,
+  options: RunAgentOptions,
 ): Promise<AgentResponse> {
   return runAgent(persona, instruction, options);
 }
-
-export async function generateReport(
-  persona: string | undefined,
-  instruction: string,
-  options: UsecaseOptions,
-): Promise<AgentResponse> {
-  return runAgent(persona, instruction, options);
-}
-
-export async function executePart(
-  persona: string | undefined,
-  instruction: string,
-  options: UsecaseOptions,
-): Promise<AgentResponse> {
-  return runAgent(persona, instruction, options);
-}
+export const generateReport = executeAgent;
+export const executePart = executeAgent;
 
 export async function evaluateCondition(
   agentOutput: string,

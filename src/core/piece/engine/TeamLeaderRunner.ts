@@ -5,7 +5,7 @@ import type {
   PartDefinition,
   PartResult,
 } from '../../models/types.js';
-import { decomposeTask, executePart } from '../agent-usecases.js';
+import { decomposeTask, executeAgent } from '../agent-usecases.js';
 import { detectMatchedRule } from '../evaluation/index.js';
 import { buildSessionKey } from '../session-key.js';
 import { ParallelLogger } from './parallel-logger.js';
@@ -232,7 +232,7 @@ export class TeamLeaderRunner {
       : { ...baseOptions, abortSignal: signal };
 
     try {
-      const response = await executePart(partMovement.persona, part.instruction, options);
+      const response = await executeAgent(partMovement.persona, part.instruction, options);
       updatePersonaSession(buildSessionKey(partMovement), response.sessionId);
       return {
         part,
