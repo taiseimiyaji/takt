@@ -24,25 +24,17 @@ export interface ProviderCallOptions {
   sessionId?: string;
   model?: string;
   allowedTools?: string[];
-  /** MCP servers configuration */
   mcpServers?: Record<string, McpServerConfig>;
-  /** Maximum number of agentic turns */
   maxTurns?: number;
-  /** Permission mode for tool execution (from piece step) */
   permissionMode?: PermissionMode;
-  /** Provider-specific movement options */
   providerOptions?: MovementProviderOptions;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
   bypassPermissions?: boolean;
-  /** Anthropic API key for Claude provider */
   anthropicApiKey?: string;
-  /** OpenAI API key for Codex provider */
   openaiApiKey?: string;
-  /** OpenCode API key for OpenCode provider */
   opencodeApiKey?: string;
-  /** JSON Schema for structured output */
   outputSchema?: Record<string, unknown>;
 }
 

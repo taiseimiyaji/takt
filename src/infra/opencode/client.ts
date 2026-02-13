@@ -273,6 +273,8 @@ export class OpenCodeClient {
       let diagRef: StreamDiagnostics | undefined;
       let serverClose: (() => void) | undefined;
       let opencodeApiClient: Awaited<ReturnType<typeof createOpencode>>['client'] | undefined;
+      let sessionId: string | undefined = options.sessionId;
+      const interactionTimeoutMs = options.interactionTimeoutMs ?? OPENCODE_INTERACTION_TIMEOUT_MS;
 
       const resetIdleTimeout = (): void => {
         if (idleTimeoutId !== undefined) {
@@ -330,14 +332,14 @@ export class OpenCodeClient {
         opencodeApiClient = client;
         serverClose = server.close;
 
-        const sessionResult = options.sessionId
-          ? { data: { id: options.sessionId } }
+        const sessionResult = sessionId
+          ? { data: { id: sessionId } }
           : await client.session.create({
             directory: options.cwd,
             permission: buildOpenCodePermissionRuleset(options.permissionMode, options.networkAccess),
           });
 
-        const sessionId = sessionResult.data?.id;
+        sessionId = sessionResult.data?.id;
         if (!sessionId) {
           throw new Error('Failed to create OpenCode session');
         }
@@ -420,18 +422,24 @@ export class OpenCodeClient {
               sessionID: string;
             };
             if (permProps.sessionID === sessionId) {
-              const reply = options.permissionMode
-                ? mapToOpenCodePermissionReply(options.permissionMode)
-                : 'once';
-              await withTimeout(
-                (signal) => client.permission.reply({
-                  requestID: permProps.id,
-                  directory: options.cwd,
-                  reply,
-                }, { signal }),
-                OPENCODE_INTERACTION_TIMEOUT_MS,
-                'OpenCode permission reply timed out',
-              );
+              try {
+                const reply = options.permissionMode
+                  ? mapToOpenCodePermissionReply(options.permissionMode)
+                  : 'once';
+                await withTimeout(
+                  (signal) => client.permission.reply({
+                    requestID: permProps.id,
+                    directory: options.cwd,
+                    reply,
+                  }, { signal }),
+                  interactionTimeoutMs,
+                  'OpenCode permission reply timed out',
+                );
+              } catch (e) {
+                success = false;
+                failureMessage = getErrorMessage(e);
+                break;
+              }
             }
             continue;
           }
@@ -440,14 +448,20 @@ export class OpenCodeClient {
             const questionProps = sseEvent.properties as OpenCodeQuestionAskedProperties;
             if (questionProps.sessionID === sessionId) {
               if (!options.onAskUserQuestion) {
-                await withTimeout(
-                  (signal) => client.question.reject({
-                    requestID: questionProps.id,
-                    directory: options.cwd,
-                  }, { signal }),
-                  OPENCODE_INTERACTION_TIMEOUT_MS,
-                  'OpenCode question reject timed out',
-                );
+                try {
+                  await withTimeout(
+                    (signal) => client.question.reject({
+                      requestID: questionProps.id,
+                      directory: options.cwd,
+                    }, { signal }),
+                    interactionTimeoutMs,
+                    'OpenCode question reject timed out',
+                  );
+                } catch (e) {
+                  success = false;
+                  failureMessage = getErrorMessage(e);
+                  break;
+                }
                 continue;
               }
 
@@ -459,20 +473,12 @@ export class OpenCodeClient {
                     directory: options.cwd,
                     answers: toQuestionAnswers(questionProps, answers),
                   }, { signal }),
-                  OPENCODE_INTERACTION_TIMEOUT_MS,
+                  interactionTimeoutMs,
                   'OpenCode question reply timed out',
                 );
-              } catch {
-                await withTimeout(
-                  (signal) => client.question.reject({
-                    requestID: questionProps.id,
-                    directory: options.cwd,
-                  }, { signal }),
-                  OPENCODE_INTERACTION_TIMEOUT_MS,
-                  'OpenCode question reject timed out',
-                );
+              } catch (e) {
                 success = false;
-                failureMessage = 'OpenCode question handling failed';
+                failureMessage = getErrorMessage(e);
                 break;
               }
             }
@@ -631,8 +637,8 @@ export class OpenCodeClient {
           continue;
         }
 
-        if (options.sessionId) {
-          emitResult(options.onStream, false, errorMessage, options.sessionId);
+        if (sessionId) {
+          emitResult(options.onStream, false, errorMessage, sessionId);
         }
 
         return {
@@ -640,7 +646,7 @@ export class OpenCodeClient {
           status: 'error',
           content: errorMessage,
           timestamp: new Date(),
-          sessionId: options.sessionId,
+          sessionId,
         };
       } finally {
         if (idleTimeoutId !== undefined) {

@@ -14,26 +14,17 @@ export interface RunAgentOptions {
   sessionId?: string;
   model?: string;
   provider?: 'claude' | 'codex' | 'opencode' | 'mock';
-  /** Resolved path to persona prompt file */
   personaPath?: string;
-  /** Allowed tools for this agent run */
   allowedTools?: string[];
-  /** MCP servers for this agent run */
   mcpServers?: Record<string, McpServerConfig>;
-  /** Maximum number of agentic turns */
   maxTurns?: number;
-  /** Permission mode for tool execution (from piece step) */
   permissionMode?: PermissionMode;
-  /** Provider-specific movement options */
   providerOptions?: MovementProviderOptions;
   onStream?: StreamCallback;
   onPermissionRequest?: PermissionHandler;
   onAskUserQuestion?: AskUserQuestionHandler;
-  /** Bypass all permission checks (sacrifice-my-pc mode) */
   bypassPermissions?: boolean;
-  /** Language for template resolution */
   language?: Language;
-  /** Piece meta information for system prompt template */
   pieceMeta?: {
     pieceName: string;
     pieceDescription?: string;
@@ -41,6 +32,5 @@ export interface RunAgentOptions {
     movementsList: ReadonlyArray<{ name: string; description?: string }>;
     currentPosition: string;
   };
-  /** JSON Schema for structured output */
   outputSchema?: Record<string, unknown>;
 }
