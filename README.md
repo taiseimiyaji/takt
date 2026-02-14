@@ -578,6 +578,12 @@ concurrency: 1           # Parallel task count for takt run (1-10, default: 1 = 
 task_poll_interval_ms: 500  # Polling interval for new tasks during takt run (100-5000, default: 500)
 interactive_preview_movements: 3  # Movement previews in interactive mode (0-10, default: 3)
 
+# Runtime environment defaults (applies to all pieces unless piece_config.runtime overrides)
+# runtime:
+#   prepare:
+#     - gradle    # Prepare Gradle cache/config in .runtime/
+#     - node      # Prepare npm cache in .runtime/
+
 # Per-persona provider overrides (optional)
 # Route specific personas to different providers without duplicating pieces
 # persona_providers:
@@ -817,7 +823,13 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
+  runtime:
+    prepare:
+      - gradle
+      - node
 ```
+
+Runtime `prepare` entries can be builtin presets (`gradle`, `node`) or paths to custom shell scripts. Scripts receive `TAKT_RUNTIME_ROOT` and related env vars, and can export additional variables via stdout.
 
 ## API Usage Example
 

@@ -578,6 +578,12 @@ concurrency: 1           # takt run の並列タスク数（1-10、デフォル�
 task_poll_interval_ms: 500  # takt run 中の新タスク検出ポーリング間隔（100-5000、デフォルト: 500）
 interactive_preview_movements: 3  # 対話モードでのムーブメントプレビュー数（0-10、デフォルト: 3）
 
+# ランタイム環境デフォルト（piece_config.runtime で上書き可能）
+# runtime:
+#   prepare:
+#     - gradle    # Gradle のキャッシュ/設定を .runtime/ に準備
+#     - node      # npm キャッシュを .runtime/ に準備
+
 # ペルソナ別プロバイダー設定（オプション）
 # ピースを複製せずに特定のペルソナを異なるプロバイダーにルーティング
 # persona_providers:
@@ -817,7 +823,13 @@ piece_config:
       network_access: true
     opencode:
       network_access: true
+  runtime:
+    prepare:
+      - gradle
+      - node
 ```
+
+`runtime.prepare` にはビルトインプリセット（`gradle`、`node`）またはカスタムシェルスクリプトのパスを指定できます。スクリプトは `TAKT_RUNTIME_ROOT` などの環境変数を受け取り、stdout で追加の環境変数をエクスポートできます。
 
 ## API使用例
 
