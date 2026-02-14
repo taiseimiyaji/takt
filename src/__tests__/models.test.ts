@@ -84,7 +84,7 @@ describe('PieceConfigRawSchema', () => {
     expect(result.max_movements).toBe(10);
   });
 
-  it('should parse movement with permission_mode', () => {
+  it('should parse movement with required_permission_mode', () => {
     const config = {
       name: 'test-piece',
       movements: [
@@ -92,7 +92,7 @@ describe('PieceConfigRawSchema', () => {
           name: 'implement',
           persona: 'coder',
           allowed_tools: ['Read', 'Edit', 'Write', 'Bash'],
-          permission_mode: 'edit',
+          required_permission_mode: 'edit',
           instruction: '{task}',
           rules: [
             { condition: 'Done', next: 'COMPLETE' },
@@ -102,7 +102,7 @@ describe('PieceConfigRawSchema', () => {
     };
 
     const result = PieceConfigRawSchema.parse(config);
-    expect(result.movements![0]?.permission_mode).toBe('edit');
+    expect(result.movements![0]?.required_permission_mode).toBe('edit');
   });
 
   it('should parse movement with provider_options', () => {
@@ -177,7 +177,7 @@ describe('PieceConfigRawSchema', () => {
     });
   });
 
-  it('should allow omitting permission_mode', () => {
+  it('should allow omitting required_permission_mode', () => {
     const config = {
       name: 'test-piece',
       movements: [
@@ -190,17 +190,33 @@ describe('PieceConfigRawSchema', () => {
     };
 
     const result = PieceConfigRawSchema.parse(config);
-    expect(result.movements![0]?.permission_mode).toBeUndefined();
+    expect(result.movements![0]?.required_permission_mode).toBeUndefined();
   });
 
-  it('should reject invalid permission_mode', () => {
+  it('should reject invalid required_permission_mode', () => {
     const config = {
       name: 'test-piece',
       movements: [
         {
           name: 'step1',
           persona: 'coder',
-          permission_mode: 'superAdmin',
+          required_permission_mode: 'superAdmin',
+          instruction: '{task}',
+        },
+      ],
+    };
+
+    expect(() => PieceConfigRawSchema.parse(config)).toThrow();
+  });
+
+  it('should reject legacy permission_mode', () => {
+    const config = {
+      name: 'test-piece',
+      movements: [
+        {
+          name: 'step1',
+          persona: 'coder',
+          permission_mode: 'edit',
           instruction: '{task}',
         },
       ],

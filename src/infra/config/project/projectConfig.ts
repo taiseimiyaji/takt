@@ -9,6 +9,7 @@ import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { copyProjectResourcesToDir } from '../../resources/index.js';
 import type { PermissionMode, ProjectLocalConfig } from '../types.js';
+import type { ProviderPermissionProfiles } from '../../../core/models/provider-profiles.js';
 
 export type { PermissionMode, ProjectLocalConfig };
 
@@ -34,6 +35,28 @@ function getConfigPath(projectDir: string): string {
   return join(getConfigDir(projectDir), 'config.yaml');
 }
 
+function normalizeProviderProfiles(raw: Record<string, { default_permission_mode: unknown; movement_permission_overrides?: Record<string, unknown> }> | undefined): ProviderPermissionProfiles | undefined {
+  if (!raw) return undefined;
+  return Object.fromEntries(
+    Object.entries(raw).map(([provider, profile]) => [provider, {
+      defaultPermissionMode: profile.default_permission_mode,
+      movementPermissionOverrides: profile.movement_permission_overrides,
+    }]),
+  ) as ProviderPermissionProfiles;
+}
+
+function denormalizeProviderProfiles(profiles: ProviderPermissionProfiles | undefined): Record<string, { default_permission_mode: string; movement_permission_overrides?: Record<string, string> }> | undefined {
+  if (!profiles) return undefined;
+  const entries = Object.entries(profiles);
+  if (entries.length === 0) return undefined;
+  return Object.fromEntries(entries.map(([provider, profile]) => [provider, {
+    default_permission_mode: profile.defaultPermissionMode,
+    ...(profile.movementPermissionOverrides
+      ? { movement_permission_overrides: profile.movementPermissionOverrides }
+      : {}),
+  }])) as Record<string, { default_permission_mode: string; movement_permission_overrides?: Record<string, string> }>;
+}
+
 /**
  * Load project configuration from .takt/config.yaml
  */
@@ -46,8 +69,12 @@ export function loadProjectConfig(projectDir: string): ProjectLocalConfig {
 
   try {
     const content = readFileSync(configPath, 'utf-8');
-    const parsed = parse(content) as ProjectLocalConfig | null;
-    return { ...DEFAULT_PROJECT_CONFIG, ...parsed };
+    const parsed = (parse(content) as ProjectLocalConfig | null) ?? {};
+    return {
+      ...DEFAULT_PROJECT_CONFIG,
+      ...parsed,
+      providerProfiles: normalizeProviderProfiles(parsed.provider_profiles as Record<string, { default_permission_mode: unknown; movement_permission_overrides?: Record<string, unknown> }> | undefined),
+    };
   } catch {
     return { ...DEFAULT_PROJECT_CONFIG };
   }
@@ -68,7 +95,16 @@ export function saveProjectConfig(projectDir: string, config: ProjectLocalConfig
   // Copy project resources (only copies files that don't exist)
   copyProjectResourcesToDir(configDir);
 
-  const content = stringify(config, { indent: 2 });
+  const savePayload: ProjectLocalConfig = { ...config };
+  const rawProfiles = denormalizeProviderProfiles(config.providerProfiles);
+  if (rawProfiles && Object.keys(rawProfiles).length > 0) {
+    savePayload.provider_profiles = rawProfiles;
+  } else {
+    delete savePayload.provider_profiles;
+  }
+  delete savePayload.providerProfiles;
+
+  const content = stringify(savePayload, { indent: 2 });
   writeFileSync(configPath, content, 'utf-8');
 }
 

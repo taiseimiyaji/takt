@@ -3,6 +3,7 @@
  */
 
 import type { MovementProviderOptions, PieceRuntimeConfig } from './piece-types.js';
+import type { ProviderPermissionProfiles } from './provider-profiles.js';
 
 /** Custom agent configuration */
 export interface CustomAgentConfig {
@@ -90,6 +91,8 @@ export interface GlobalConfig {
   personaProviders?: Record<string, 'claude' | 'codex' | 'opencode' | 'mock'>;
   /** Global provider-specific options (lowest priority) */
   providerOptions?: MovementProviderOptions;
+  /** Provider-specific permission profiles */
+  providerProfiles?: ProviderPermissionProfiles;
   /** Global runtime environment defaults (can be overridden by piece runtime) */
   runtime?: PieceRuntimeConfig;
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
@@ -114,4 +117,6 @@ export interface ProjectConfig {
   agents?: CustomAgentConfig[];
   provider?: 'claude' | 'codex' | 'opencode' | 'mock';
   providerOptions?: MovementProviderOptions;
+  /** Provider-specific permission profiles */
+  providerProfiles?: ProviderPermissionProfiles;
 }

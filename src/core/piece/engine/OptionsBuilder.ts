@@ -5,6 +5,7 @@ import type { PhaseRunnerContext } from '../phase-runner.js';
 import type { PieceEngineOptions, PhaseName } from '../types.js';
 import { buildSessionKey } from '../session-key.js';
 import { resolveMovementProviderModel } from '../provider-resolution.js';
+import { DEFAULT_PROVIDER_PERMISSION_PROFILES, resolveMovementPermissionMode } from '../permission-profile-resolution.js';
 
 export class OptionsBuilder {
   constructor(
@@ -31,6 +32,13 @@ export class OptionsBuilder {
       personaProviders: this.engineOptions.personaProviders,
     });
 
+    const resolvedProviderForPermissions =
+      this.engineOptions.provider
+      ?? this.engineOptions.projectProvider
+      ?? resolved.provider
+      ?? this.engineOptions.globalProvider
+      ?? 'claude';
+
     return {
       cwd: this.getCwd(),
       abortSignal: this.engineOptions.abortSignal,
@@ -39,7 +47,13 @@ export class OptionsBuilder {
       model: this.engineOptions.model,
       stepProvider: resolved.provider,
       stepModel: resolved.model,
-      permissionMode: step.permissionMode,
+      permissionMode: resolveMovementPermissionMode({
+        movementName: step.name,
+        requiredPermissionMode: step.requiredPermissionMode,
+        provider: resolvedProviderForPermissions,
+        projectProviderProfiles: this.engineOptions.projectProviderProfiles,
+        globalProviderProfiles: this.engineOptions.globalProviderProfiles ?? DEFAULT_PROVIDER_PERMISSION_PROFILES,
+      }),
       providerOptions: step.providerOptions,
       language: this.getLanguage(),
       onStream: this.engineOptions.onStream,

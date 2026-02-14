@@ -1,91 +1,92 @@
-# TAKT Global Configuration
+# TAKT global configuration sample
 # Location: ~/.takt/config.yaml
 
-# ── Basic ──
-
-# Language (en | ja)
+# ---- Core ----
 language: en
-
-# Default piece when no piece is specified
 default_piece: default
-
-# Log level (debug | info | warn | error)
 log_level: info
 
-# ── Provider & Model ──
-
-# Provider runtime (claude | codex)
+# ---- Provider ----
+# provider: claude | codex | opencode | mock
 provider: claude
 
-# Default model (optional)
-# Claude: opus, sonnet, haiku
-# Codex: gpt-5.2-codex, gpt-5.1-codex, etc.
+# Model (optional)
+# Claude examples: opus, sonnet, haiku
+# Codex examples: gpt-5.2-codex, gpt-5.1-codex
+# OpenCode format: provider/model
 # model: sonnet
 
-# Per-persona provider override (optional)
-# Override provider for specific personas. Others use the global provider.
+# Per-persona provider override
 # persona_providers:
 #   coder: codex
+#   reviewer: claude
 
-# ── API Keys ──
-# Optional. Environment variables take priority:
-#   TAKT_ANTHROPIC_API_KEY, TAKT_OPENAI_API_KEY
+# Provider-specific movement permission policy
+# Priority:
+# 1) project provider_profiles override
+# 2) global provider_profiles override
+# 3) project provider_profiles default
+# 4) global provider_profiles default
+# 5) movement.required_permission_mode (minimum floor)
+# provider_profiles:
+#   codex:
+#     default_permission_mode: full
+#     movement_permission_overrides:
+#       ai_review: readonly
+#   claude:
+#     default_permission_mode: edit
 
+# Provider-specific runtime options
+# provider_options:
+#   codex:
+#     network_access: true
+#   claude:
+#     sandbox:
+#       allow_unsandboxed_commands: true
+
+# ---- API Keys ----
+# Environment variables take priority:
+# TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY / TAKT_OPENCODE_API_KEY
 # anthropic_api_key: ""
 # openai_api_key: ""
+# opencode_api_key: ""
 
-# ── Execution ──
-
-# Worktree (shared clone) directory (default: ../{clone-name} relative to project)
-# worktree_dir: ~/takt-worktrees
-
-# Auto-create PR after worktree execution (default: prompt in interactive mode)
-# auto_pr: false
-
-# Prevent macOS idle sleep during execution using caffeinate (default: false)
-# prevent_sleep: false
-
-# Runtime environment defaults (applies to all pieces unless piece_config.runtime overrides)
+# ---- Runtime ----
+# Global runtime preparation (piece_config.runtime overrides this)
 # runtime:
 #   prepare:
 #     - gradle
 #     - node
 
-# ── Parallel Execution (takt run) ──
+# ---- Execution ----
+# worktree_dir: ~/takt-worktrees
+# auto_pr: false
+# prevent_sleep: false
 
-# Number of tasks to run concurrently (1 = sequential, max: 10)
+# ---- Run Loop ----
 # concurrency: 1
-
-# Polling interval in ms for picking up new tasks (100-5000, default: 500)
 # task_poll_interval_ms: 500
-
-# ── Interactive Mode ──
-
-# Number of movement previews shown in interactive mode (0 to disable, max: 10)
 # interactive_preview_movements: 3
-
-# Branch name generation strategy (romaji: fast default | ai: slow)
 # branch_name_strategy: romaji
 
-# ── Output ──
-
-# Notification sounds (default: true)
-# notification_sound: true
-
-# Minimal output for CI - suppress AI output (default: false)
+# ---- Output ----
 # minimal_output: false
+# notification_sound: true
+# notification_sound_events:
+#   iteration_limit: true
+#   piece_complete: true
+#   piece_abort: true
+#   run_complete: true
+#   run_abort: true
+# observability:
+#   provider_events: true
 
-# ── Builtin Pieces ──
-
-# Enable builtin pieces (default: true)
+# ---- Builtins ----
 # enable_builtin_pieces: true
-
-# Exclude specific builtins from loading
 # disabled_builtins:
 #   - magi
 
-# ── Pipeline Mode (--pipeline) ──
-
+# ---- Pipeline ----
 # pipeline:
 #   default_branch_prefix: "takt/"
 #   commit_message_template: "feat: {title} (#{issue})"
@@ -94,14 +95,11 @@ provider: claude
 #     {issue_body}
 #     Closes #{issue}
 
-# ── Preferences ──
-
-# Custom paths for preference files
+# ---- Preferences ----
 # bookmarks_file: ~/.takt/preferences/bookmarks.yaml
 # piece_categories_file: ~/.takt/preferences/piece-categories.yaml
 
-# ── Debug ──
-
+# ---- Debug ----
 # debug:
 #   enabled: false
 #   log_file: ~/.takt/logs/debug.log

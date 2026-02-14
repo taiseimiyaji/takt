@@ -9,6 +9,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { GlobalConfigSchema } from '../../../core/models/index.js';
 import type { GlobalConfig, DebugConfig, Language } from '../../../core/models/index.js';
+import type { ProviderPermissionProfiles } from '../../../core/models/provider-profiles.js';
 import { normalizeProviderOptions } from '../loaders/pieceParser.js';
 import { getGlobalConfigPath, getProjectConfigPath } from '../paths.js';
 import { DEFAULT_LANGUAGE } from '../../../shared/constants.js';
@@ -39,6 +40,34 @@ function validateProviderModelCompatibility(provider: string | undefined, model:
   if (provider === 'opencode') {
     parseProviderModel(model, "Configuration error: model");
   }
+}
+
+function normalizeProviderProfiles(
+  raw: Record<string, { default_permission_mode: unknown; movement_permission_overrides?: Record<string, unknown> }> | undefined,
+): ProviderPermissionProfiles | undefined {
+  if (!raw) return undefined;
+
+  const entries = Object.entries(raw).map(([provider, profile]) => [provider, {
+    defaultPermissionMode: profile.default_permission_mode,
+    movementPermissionOverrides: profile.movement_permission_overrides,
+  }]);
+
+  return Object.fromEntries(entries) as ProviderPermissionProfiles;
+}
+
+function denormalizeProviderProfiles(
+  profiles: ProviderPermissionProfiles | undefined,
+): Record<string, { default_permission_mode: string; movement_permission_overrides?: Record<string, string> }> | undefined {
+  if (!profiles) return undefined;
+  const entries = Object.entries(profiles);
+  if (entries.length === 0) return undefined;
+
+  return Object.fromEntries(entries.map(([provider, profile]) => [provider, {
+    default_permission_mode: profile.defaultPermissionMode,
+    ...(profile.movementPermissionOverrides
+      ? { movement_permission_overrides: profile.movementPermissionOverrides }
+      : {}),
+  }])) as Record<string, { default_permission_mode: string; movement_permission_overrides?: Record<string, string> }>;
 }
 
 /** Create default global configuration (fresh instance each call) */
@@ -126,6 +155,7 @@ export class GlobalConfigManager {
       pieceCategoriesFile: parsed.piece_categories_file,
       personaProviders: parsed.persona_providers,
       providerOptions: normalizeProviderOptions(parsed.provider_options),
+      providerProfiles: normalizeProviderProfiles(parsed.provider_profiles as Record<string, { default_permission_mode: unknown; movement_permission_overrides?: Record<string, unknown> }> | undefined),
       runtime: parsed.runtime?.prepare && parsed.runtime.prepare.length > 0
         ? { prepare: [...new Set(parsed.runtime.prepare)] }
         : undefined,
@@ -212,6 +242,10 @@ export class GlobalConfigManager {
     }
     if (config.personaProviders && Object.keys(config.personaProviders).length > 0) {
       raw.persona_providers = config.personaProviders;
+    }
+    const rawProviderProfiles = denormalizeProviderProfiles(config.providerProfiles);
+    if (rawProviderProfiles && Object.keys(rawProviderProfiles).length > 0) {
+      raw.provider_profiles = rawProviderProfiles;
     }
     if (config.runtime?.prepare && config.runtime.prepare.length > 0) {
       raw.runtime = {

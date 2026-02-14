@@ -51,7 +51,7 @@ movement 内では**キー名**で参照する（パスを直接書かない）�
   instruction: implement       # 指示テンプレートキー（instructions マップを参照、任意）
   knowledge: architecture      # ナレッジキー（knowledge マップを参照、任意）
   edit: true                   # ファイル編集可否（必須）
-  permission_mode: edit        # 権限モード: edit / readonly / full（任意）
+  required_permission_mode: edit # 必要最小権限: edit / readonly / full（任意）
   session: refresh             # セッション管理（任意）
   pass_previous_response: true # 前の出力を渡すか（デフォルト: true）
   allowed_tools: [...]         # 許可ツール一覧（任意、参考情報）

@@ -226,7 +226,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     instruction: implement
     rules:
       - condition: Implementation complete
@@ -309,7 +309,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Fix complete
         next: reviewers

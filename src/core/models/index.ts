@@ -34,6 +34,9 @@ export type {
   PipelineConfig,
   GlobalConfig,
   ProjectConfig,
+  ProviderProfileName,
+  ProviderPermissionProfile,
+  ProviderPermissionProfiles,
 } from './types.js';
 
 // Re-export from agent.ts

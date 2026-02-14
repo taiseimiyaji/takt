@@ -25,7 +25,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     instruction: implement
     rules:
       - condition: Implementation complete
@@ -106,7 +106,7 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
-        permission_mode: edit
+        required_permission_mode: edit
         rules:
           - condition: AI Reviewer's issues fixed
           - condition: No fix needed (verified target files/spec)
@@ -126,7 +126,7 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
-        permission_mode: edit
+        required_permission_mode: edit
         rules:
           - condition: Supervisor's issues fixed
           - condition: Cannot proceed, insufficient info
@@ -151,7 +151,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: AI Reviewer's issues fixed
         next: reviewers
@@ -175,7 +175,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Supervisor's issues fixed
         next: reviewers
