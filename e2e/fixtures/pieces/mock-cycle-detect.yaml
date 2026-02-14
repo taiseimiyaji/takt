@@ -36,7 +36,7 @@ movements:
   - name: fix
     persona: ../agents/test-coder.md
     edit: true
-    permission_mode: edit
+    required_permission_mode: edit
     instruction_template: |
       Fix the issues found in review.
     rules:

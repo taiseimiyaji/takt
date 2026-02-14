@@ -254,7 +254,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: 修正が完了した
         next: reviewers

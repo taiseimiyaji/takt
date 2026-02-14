@@ -81,7 +81,7 @@ describe('E2E: runtime.prepare with provider', () => {
         '    allowed_tools:',
         '      - Read',
         '      - Bash',
-        '    permission_mode: edit',
+        '    required_permission_mode: edit',
         '    instruction_template: |',
         '      {task}',
         '    rules:',

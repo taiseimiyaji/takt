@@ -59,7 +59,7 @@ function createPartMovement(step: PieceMovement, part: PartDefinition): PieceMov
     mcpServers: step.mcpServers,
     provider: step.provider,
     model: step.model,
-    permissionMode: step.teamLeader.partPermissionMode ?? step.permissionMode,
+    requiredPermissionMode: step.teamLeader.partPermissionMode ?? step.requiredPermissionMode,
     edit: step.teamLeader.partEdit ?? step.edit,
     instructionTemplate: part.instruction,
     passPreviousResponse: false,

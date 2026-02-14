@@ -52,6 +52,14 @@ export type {
   PieceState,
 } from './piece-types.js';
 
+
+// Provider permission profiles
+export type {
+  ProviderProfileName,
+  ProviderPermissionProfile,
+  ProviderPermissionProfiles,
+} from './provider-profiles.js';
+
 // Configuration types (global and project)
 export type {
   CustomAgentConfig,

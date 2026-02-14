@@ -25,7 +25,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Task complete
         next: COMPLETE

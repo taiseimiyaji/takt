@@ -25,7 +25,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     instruction: implement
     rules:
       - condition: 実装が完了した
@@ -106,7 +106,7 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
-        permission_mode: edit
+        required_permission_mode: edit
         rules:
           - condition: AI問題の修正完了
           - condition: 修正不要（指摘対象ファイル/仕様の確認済み）
@@ -126,7 +126,7 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
-        permission_mode: edit
+        required_permission_mode: edit
         rules:
           - condition: 監督者の指摘に対する修正が完了した
           - condition: 修正を進行できない
@@ -151,7 +151,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: AI問題の修正完了
         next: reviewers
@@ -175,7 +175,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: 監督者の指摘に対する修正が完了した
         next: reviewers

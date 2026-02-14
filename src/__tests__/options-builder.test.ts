@@ -3,19 +3,26 @@ import { OptionsBuilder } from '../core/piece/engine/OptionsBuilder.js';
 import type { PieceMovement } from '../core/models/types.js';
 import type { PieceEngineOptions } from '../core/piece/types.js';
 
-function createMovement(): PieceMovement {
+function createMovement(overrides: Partial<PieceMovement> = {}): PieceMovement {
   return {
     name: 'reviewers',
     personaDisplayName: 'Reviewers',
     instructionTemplate: 'review',
     passPreviousResponse: false,
-    permissionMode: 'full',
+    ...overrides,
   };
 }
 
-function createBuilder(step: PieceMovement): OptionsBuilder {
+function createBuilder(step: PieceMovement, engineOverrides: Partial<PieceEngineOptions> = {}): OptionsBuilder {
   const engineOptions: PieceEngineOptions = {
     projectCwd: '/project',
+    globalProvider: 'codex',
+    globalProviderProfiles: {
+      codex: {
+        defaultPermissionMode: 'full',
+      },
+    },
+    ...engineOverrides,
   };
 
   return new OptionsBuilder(
@@ -31,10 +38,43 @@ function createBuilder(step: PieceMovement): OptionsBuilder {
   );
 }
 
+describe('OptionsBuilder.buildBaseOptions', () => {
+  it('resolves permission mode using provider profiles', () => {
+    const step = createMovement();
+    const builder = createBuilder(step);
+
+    const options = builder.buildBaseOptions(step);
+
+    expect(options.permissionMode).toBe('full');
+  });
+
+  it('applies movement requiredPermissionMode as minimum floor', () => {
+    const step = createMovement({ requiredPermissionMode: 'full' });
+    const builder = createBuilder(step);
+
+    const options = builder.buildBaseOptions(step);
+
+    expect(options.permissionMode).toBe('full');
+  });
+
+  it('uses default profile when provider_profiles are not provided', () => {
+    const step = createMovement();
+    const builder = createBuilder(step, {
+      globalProvider: undefined,
+      globalProviderProfiles: undefined,
+      projectProvider: undefined,
+      provider: undefined,
+    });
+
+    const options = builder.buildBaseOptions(step);
+    expect(options.permissionMode).toBe('edit');
+  });
+});
+
 describe('OptionsBuilder.buildResumeOptions', () => {
   it('should enforce readonly permission and empty allowedTools for report/status phases', () => {
     // Given
-    const step = createMovement();
+    const step = createMovement({ requiredPermissionMode: 'full' });
     const builder = createBuilder(step);
 
     // When

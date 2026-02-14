@@ -78,6 +78,23 @@ export const MovementProviderOptionsSchema = z.object({
   }).optional(),
 }).optional();
 
+/** Provider key schema for profile maps */
+export const ProviderProfileNameSchema = z.enum(['claude', 'codex', 'opencode', 'mock']);
+
+/** Provider permission profile schema */
+export const ProviderPermissionProfileSchema = z.object({
+  default_permission_mode: PermissionModeSchema,
+  movement_permission_overrides: z.record(z.string(), PermissionModeSchema).optional(),
+});
+
+/** Provider permission profiles schema */
+export const ProviderPermissionProfilesSchema = z.object({
+  claude: ProviderPermissionProfileSchema.optional(),
+  codex: ProviderPermissionProfileSchema.optional(),
+  opencode: ProviderPermissionProfileSchema.optional(),
+  mock: ProviderPermissionProfileSchema.optional(),
+}).optional();
+
 /** Runtime prepare preset identifiers */
 export const RuntimePreparePresetSchema = z.enum(['gradle', 'node']);
 /** Runtime prepare entry: preset name or script path */
@@ -240,7 +257,9 @@ export const ParallelSubMovementRawSchema = z.object({
   mcp_servers: McpServersSchema,
   provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   model: z.string().optional(),
-  permission_mode: PermissionModeSchema.optional(),
+  /** Removed legacy field (no backward compatibility) */
+  permission_mode: z.never().optional(),
+  required_permission_mode: PermissionModeSchema.optional(),
   provider_options: MovementProviderOptionsSchema,
   edit: z.boolean().optional(),
   instruction: z.string().optional(),
@@ -271,8 +290,10 @@ export const PieceMovementRawSchema = z.object({
   mcp_servers: McpServersSchema,
   provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   model: z.string().optional(),
-  /** Permission mode for tool execution in this movement */
-  permission_mode: PermissionModeSchema.optional(),
+  /** Removed legacy field (no backward compatibility) */
+  permission_mode: z.never().optional(),
+  /** Required minimum permission mode for tool execution in this movement */
+  required_permission_mode: PermissionModeSchema.optional(),
   /** Provider-specific movement options */
   provider_options: MovementProviderOptionsSchema,
   /** Whether this movement is allowed to edit project files */
@@ -439,6 +460,8 @@ export const GlobalConfigSchema = z.object({
   persona_providers: z.record(z.string(), z.enum(['claude', 'codex', 'opencode', 'mock'])).optional(),
   /** Global provider-specific options (lowest priority) */
   provider_options: MovementProviderOptionsSchema,
+  /** Provider-specific permission profiles */
+  provider_profiles: ProviderPermissionProfilesSchema,
   /** Global runtime defaults (piece runtime overrides this) */
   runtime: RuntimeConfigSchema,
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
@@ -469,4 +492,5 @@ export const ProjectConfigSchema = z.object({
   agents: z.array(CustomAgentConfigSchema).optional(),
   provider: z.enum(['claude', 'codex', 'opencode', 'mock']).optional(),
   provider_options: MovementProviderOptionsSchema,
+  provider_profiles: ProviderPermissionProfilesSchema,
 });

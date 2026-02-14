@@ -310,7 +310,7 @@ function normalizeStepFromRaw(
     mcpServers: step.mcp_servers,
     provider: step.provider,
     model: step.model,
-    permissionMode: step.permission_mode,
+    requiredPermissionMode: step.required_permission_mode,
     providerOptions: mergeProviderOptions(inheritedProviderOptions, normalizeProviderOptions(step.provider_options)),
     edit: step.edit,
     instructionTemplate: (step.instruction_template

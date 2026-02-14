@@ -144,8 +144,8 @@ export interface PieceMovement {
   provider?: 'claude' | 'codex' | 'opencode' | 'mock';
   /** Model override for this movement */
   model?: string;
-  /** Permission mode for tool execution in this movement */
-  permissionMode?: PermissionMode;
+  /** Required minimum permission mode for tool execution in this movement */
+  requiredPermissionMode?: PermissionMode;
   /** Provider-specific movement options */
   providerOptions?: MovementProviderOptions;
   /** Whether this movement is allowed to edit project files (true=allowed, false=prohibited, undefined=no prompt) */

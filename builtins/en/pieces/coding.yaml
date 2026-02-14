@@ -51,7 +51,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Implementation complete
         next: reviewers
@@ -132,7 +132,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Fix complete
         next: reviewers

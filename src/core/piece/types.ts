@@ -7,6 +7,7 @@
 
 import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
 import type { PieceMovement, AgentResponse, PieceState, Language, LoopMonitorConfig } from '../models/types.js';
+import type { ProviderPermissionProfiles } from '../models/provider-profiles.js';
 
 export type ProviderType = 'claude' | 'codex' | 'opencode' | 'mock';
 
@@ -177,9 +178,17 @@ export interface PieceEngineOptions {
   /** Language for instruction metadata. Defaults to 'en'. */
   language?: Language;
   provider?: ProviderType;
+  /** Project config provider (used for provider/profile resolution parity with AgentRunner) */
+  projectProvider?: ProviderType;
+  /** Global config provider (used for provider/profile resolution parity with AgentRunner) */
+  globalProvider?: ProviderType;
   model?: string;
   /** Per-persona provider overrides (e.g., { coder: 'codex' }) */
   personaProviders?: Record<string, ProviderType>;
+  /** Project-level provider permission profiles */
+  projectProviderProfiles?: ProviderPermissionProfiles;
+  /** Global-level provider permission profiles */
+  globalProviderProfiles?: ProviderPermissionProfiles;
   /** Enable interactive-only rules and user-input transitions */
   interactive?: boolean;
   /** Rule tag index detector (required for rules evaluation) */

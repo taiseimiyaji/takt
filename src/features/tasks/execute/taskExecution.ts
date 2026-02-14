@@ -2,7 +2,7 @@
  * Task execution logic
  */
 
-import { loadPieceByIdentifier, isPiecePath, loadGlobalConfig } from '../../../infra/config/index.js';
+import { loadPieceByIdentifier, isPiecePath, loadGlobalConfig, loadProjectConfig } from '../../../infra/config/index.js';
 import { TaskRunner, type TaskInfo } from '../../../infra/task/index.js';
 import {
   header,
@@ -72,12 +72,17 @@ async function executeTaskWithResult(options: ExecuteTaskOptions): Promise<Piece
   });
 
   const globalConfig = loadGlobalConfig();
+  const projectConfig = loadProjectConfig(projectCwd);
   return await executePiece(pieceConfig, task, cwd, {
     projectCwd,
     language: globalConfig.language,
     provider: agentOverrides?.provider,
+    projectProvider: projectConfig.provider,
+    globalProvider: globalConfig.provider,
     model: agentOverrides?.model,
     personaProviders: globalConfig.personaProviders,
+    projectProviderProfiles: projectConfig.providerProfiles,
+    globalProviderProfiles: globalConfig.providerProfiles,
     interactiveUserInput,
     interactiveMetadata,
     startMovement,

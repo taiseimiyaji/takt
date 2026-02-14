@@ -14,7 +14,7 @@ movements:
   - name: execute
     edit: true
     persona: ../agents/test-coder.md
-    permission_mode: edit
+    required_permission_mode: edit
     instruction_template: |
       {task}
     rules:

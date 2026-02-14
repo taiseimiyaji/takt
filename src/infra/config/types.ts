@@ -4,6 +4,7 @@
 
 import type { PieceCategoryConfigNode } from '../../core/models/schemas.js';
 import type { MovementProviderOptions } from '../../core/models/piece-types.js';
+import type { ProviderPermissionProfiles } from '../../core/models/provider-profiles.js';
 
 /** Permission mode for the project
  * - default: Uses Agent SDK's acceptEdits mode (auto-accepts file edits, minimal prompts)
@@ -25,6 +26,10 @@ export interface ProjectLocalConfig {
   verbose?: boolean;
   /** Provider-specific options (overrides global, overridden by piece/movement) */
   provider_options?: MovementProviderOptions;
+  /** Provider-specific permission profiles (project-level override) */
+  provider_profiles?: ProviderPermissionProfiles;
+  /** Provider-specific permission profiles (camelCase alias) */
+  providerProfiles?: ProviderPermissionProfiles;
   /** Piece categories (name -> piece list) */
   piece_categories?: Record<string, PieceCategoryConfigNode>;
   /** Show uncategorized pieces under Others category */

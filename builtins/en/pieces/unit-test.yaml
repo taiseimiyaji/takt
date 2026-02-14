@@ -85,7 +85,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Test implementation complete
         next: ai_review
@@ -145,7 +145,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: AI issues fixed
         next: ai_review
@@ -212,7 +212,7 @@ movements:
       - Bash
       - WebSearch
       - WebFetch
-    permission_mode: edit
+    required_permission_mode: edit
     rules:
       - condition: Fix complete
         next: review_test

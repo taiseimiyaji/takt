@@ -1,91 +1,92 @@
-# TAKT グローバル設定
+# TAKT グローバル設定サンプル
 # 配置場所: ~/.takt/config.yaml
 
-# ── 基本設定 ──
-
-# 言語 (en | ja)
+# ---- 基本 ----
 language: ja
-
-# デフォルトピース（指定なし時に使用）
 default_piece: default
-
-# ログレベル (debug | info | warn | error)
 log_level: info
 
-# ── プロバイダー & モデル ──
-
-# プロバイダー (claude | codex)
+# ---- プロバイダー ----
+# provider: claude | codex | opencode | mock
 provider: claude
 
-# デフォルトモデル（オプション）
-# Claude: opus, sonnet, haiku
-# Codex: gpt-5.2-codex, gpt-5.1-codex など
+# モデル（任意）
+# Claude 例: opus, sonnet, haiku
+# Codex 例: gpt-5.2-codex, gpt-5.1-codex
+# OpenCode 形式: provider/model
 # model: sonnet
 
-# ペルソナ単位のプロバイダー上書き（オプション）
-# 特定ペルソナだけプロバイダーを変更。未指定のペルソナはグローバル設定を使用。
+# ペルソナ別プロバイダー上書き
 # persona_providers:
 #   coder: codex
+#   reviewer: claude
 
-# ── APIキー ──
-# オプション。環境変数が優先:
-#   TAKT_ANTHROPIC_API_KEY, TAKT_OPENAI_API_KEY
+# プロバイダー別 movement 権限ポリシー
+# 優先順:
+# 1) project provider_profiles override
+# 2) global provider_profiles override
+# 3) project provider_profiles default
+# 4) global provider_profiles default
+# 5) movement.required_permission_mode（下限補正）
+# provider_profiles:
+#   codex:
+#     default_permission_mode: full
+#     movement_permission_overrides:
+#       ai_review: readonly
+#   claude:
+#     default_permission_mode: edit
 
+# プロバイダー別ランタイムオプション
+# provider_options:
+#   codex:
+#     network_access: true
+#   claude:
+#     sandbox:
+#       allow_unsandboxed_commands: true
+
+# ---- API キー ----
+# 環境変数が優先:
+# TAKT_ANTHROPIC_API_KEY / TAKT_OPENAI_API_KEY / TAKT_OPENCODE_API_KEY
 # anthropic_api_key: ""
 # openai_api_key: ""
+# opencode_api_key: ""
 
-# ── 実行設定 ──
-
-# ワークツリー（shared clone）ディレクトリ（デフォルト: プロジェクトの ../{clone-name}）
-# worktree_dir: ~/takt-worktrees
-
-# ワークツリー実行後に自動PR作成（デフォルト: 対話モードで確認）
-# auto_pr: false
-
-# macOS のアイドルスリープを防止（デフォルト: false）
-# prevent_sleep: false
-
-# 実行時ランタイム環境のデフォルト（piece_config.runtime があればそちらを優先）
+# ---- ランタイム ----
+# グローバルなランタイム準備（piece_config.runtime があればそちらを優先）
 # runtime:
 #   prepare:
 #     - gradle
 #     - node
 
-# ── 並列実行 (takt run) ──
+# ---- 実行 ----
+# worktree_dir: ~/takt-worktrees
+# auto_pr: false
+# prevent_sleep: false
 
-# タスクの同時実行数（1 = 逐次実行、最大: 10）
+# ---- Run Loop ----
 # concurrency: 1
-
-# 新規タスクのポーリング間隔 ms（100-5000、デフォルト: 500）
 # task_poll_interval_ms: 500
-
-# ── 対話モード ──
-
-# ムーブメントプレビューの表示数（0 で無効、最大: 10）
 # interactive_preview_movements: 3
-
-# ブランチ名の生成方式（romaji: 高速デフォルト | ai: 低速）
 # branch_name_strategy: romaji
 
-# ── 出力 ──
-
-# 通知音（デフォルト: true）
-# notification_sound: true
-
-# CI 向け最小出力 - AI 出力を抑制（デフォルト: false）
+# ---- 出力 ----
 # minimal_output: false
+# notification_sound: true
+# notification_sound_events:
+#   iteration_limit: true
+#   piece_complete: true
+#   piece_abort: true
+#   run_complete: true
+#   run_abort: true
+# observability:
+#   provider_events: true
 
-# ── ビルトインピース ──
-
-# ビルトインピースの有効化（デフォルト: true）
+# ---- Builtins ----
 # enable_builtin_pieces: true
-
-# 特定のビルトインを除外
 # disabled_builtins:
 #   - magi
 
-# ── パイプラインモード (--pipeline) ──
-
+# ---- Pipeline ----
 # pipeline:
 #   default_branch_prefix: "takt/"
 #   commit_message_template: "feat: {title} (#{issue})"
@@ -94,14 +95,11 @@ provider: claude
 #     {issue_body}
 #     Closes #{issue}
 
-# ── プリファレンス ──
-
-# プリファレンスファイルのカスタムパス
+# ---- Preferences ----
 # bookmarks_file: ~/.takt/preferences/bookmarks.yaml
 # piece_categories_file: ~/.takt/preferences/piece-categories.yaml
 
-# ── デバッグ ──
-
+# ---- Debug ----
 # debug:
 #   enabled: false
 #   log_file: ~/.takt/logs/debug.log
