@@ -33,6 +33,7 @@ import { ParallelRunner } from './ParallelRunner.js';
 import { ArpeggioRunner } from './ArpeggioRunner.js';
 import { TeamLeaderRunner } from './TeamLeaderRunner.js';
 import { buildRunPaths, type RunPaths } from '../run/run-paths.js';
+import { prepareRuntimeEnvironment } from '../../runtime/runtime-environment.js';
 
 const log = createLogger('engine');
 
@@ -89,6 +90,7 @@ export class PieceEngine extends EventEmitter {
     this.runPaths = buildRunPaths(this.cwd, reportDirName);
     this.reportDir = this.runPaths.reportsRel;
     this.ensureRunDirsExist();
+    this.applyRuntimeEnvironment('init');
     this.validateConfig();
     this.state = createInitialState(config, options);
     this.detectRuleIndex = options.detectRuleIndex ?? (() => {
@@ -213,6 +215,20 @@ export class PieceEngine extends EventEmitter {
         mkdirSync(dir, { recursive: true });
       }
     }
+  }
+
+  private applyRuntimeEnvironment(stage: 'init' | 'movement'): void {
+    const prepared = prepareRuntimeEnvironment(this.cwd, this.config.runtime);
+    if (!prepared) return;
+    log.info('Runtime environment prepared', {
+      stage,
+      runtimeRoot: prepared.runtimeRoot,
+      envFile: prepared.envFile,
+      prepare: prepared.prepare,
+      tmpdir: prepared.injectedEnv.TMPDIR,
+      gradleUserHome: prepared.injectedEnv.GRADLE_USER_HOME,
+      npmCache: prepared.injectedEnv.npm_config_cache,
+    });
   }
 
   /** Validate piece configuration at construction time */
@@ -538,6 +554,7 @@ export class PieceEngine extends EventEmitter {
       }
 
       const movement = this.getMovement(this.state.currentMovement);
+      this.applyRuntimeEnvironment('movement');
       const loopCheck = this.loopDetector.check(movement.name);
 
       if (loopCheck.shouldWarn) {
@@ -676,6 +693,7 @@ export class PieceEngine extends EventEmitter {
     loopDetected?: boolean;
   }> {
     const movement = this.getMovement(this.state.currentMovement);
+    this.applyRuntimeEnvironment('movement');
     const loopCheck = this.loopDetector.check(movement.name);
 
     if (loopCheck.shouldAbort) {

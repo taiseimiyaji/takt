@@ -70,6 +70,7 @@ import { EXIT_SIGINT } from '../../../shared/exitCodes.js';
 import { ShutdownManager } from './shutdownManager.js';
 import { buildRunPaths } from '../../../core/piece/run/run-paths.js';
 import { resolveMovementProviderModel } from '../../../core/piece/provider-resolution.js';
+import { resolveRuntimeConfig } from '../../../core/runtime/runtime-environment.js';
 import { writeFileAtomic, ensureDir } from '../../../infra/config/index.js';
 
 const log = createLogger('piece');
@@ -319,6 +320,10 @@ export async function executePiece(
   const shouldNotifyPieceComplete = shouldNotify && notificationSoundEvents?.pieceComplete !== false;
   const shouldNotifyPieceAbort = shouldNotify && notificationSoundEvents?.pieceAbort !== false;
   const currentProvider = globalConfig.provider ?? 'claude';
+  const effectivePieceConfig: PieceConfig = {
+    ...pieceConfig,
+    runtime: resolveRuntimeConfig(globalConfig.runtime, pieceConfig.runtime),
+  };
   const providerEventLogger = createProviderEventLogger({
     logsDir: runPaths.logsAbs,
     sessionId: pieceSessionId,
@@ -424,7 +429,7 @@ export async function executePiece(
   const runAbortController = new AbortController();
 
   try {
-    engine = new PieceEngine(pieceConfig, cwd, task, {
+    engine = new PieceEngine(effectivePieceConfig, cwd, task, {
       abortSignal: runAbortController.signal,
       onStream: providerEventLogger.wrapCallback(streamHandler),
       onUserInput,

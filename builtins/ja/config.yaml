@@ -45,6 +45,12 @@ provider: claude
 # macOS のアイドルスリープを防止（デフォルト: false）
 # prevent_sleep: false
 
+# 実行時ランタイム環境のデフォルト（piece_config.runtime があればそちらを優先）
+# runtime:
+#   prepare:
+#     - gradle
+#     - node
+
 # ── 並列実行 (takt run) ──
 
 # タスクの同時実行数（1 = 逐次実行、最大: 10）

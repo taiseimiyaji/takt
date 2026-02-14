@@ -92,6 +92,17 @@ export interface OpenCodeProviderOptions {
   networkAccess?: boolean;
 }
 
+/** Runtime prepare preset identifiers */
+export type RuntimePreparePreset = 'gradle' | 'node';
+/** Runtime prepare entry: preset name or executable script path */
+export type RuntimePrepareEntry = RuntimePreparePreset | string;
+
+/** Piece-level runtime environment settings */
+export interface PieceRuntimeConfig {
+  /** Preset(s) or script path(s) to prepare .runtime and inject env vars */
+  prepare?: RuntimePrepareEntry[];
+}
+
 /** Claude sandbox settings (maps to SDK SandboxSettings) */
 export interface ClaudeSandboxSettings {
   /** Allow all Bash commands to run outside the sandbox */
@@ -237,6 +248,8 @@ export interface PieceConfig {
   description?: string;
   /** Piece-level default provider options (used as movement defaults) */
   providerOptions?: MovementProviderOptions;
+  /** Piece-level runtime preparation and env injection settings */
+  runtime?: PieceRuntimeConfig;
   /** Persona definitions — map of name to file path or inline content (raw, not content-resolved) */
   personas?: Record<string, string>;
   /** Resolved policy definitions — map of name to file content (resolved at parse time) */

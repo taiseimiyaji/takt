@@ -2,7 +2,7 @@
  * Configuration types (global and project)
  */
 
-import type { MovementProviderOptions } from './piece-types.js';
+import type { MovementProviderOptions, PieceRuntimeConfig } from './piece-types.js';
 
 /** Custom agent configuration */
 export interface CustomAgentConfig {
@@ -90,6 +90,8 @@ export interface GlobalConfig {
   personaProviders?: Record<string, 'claude' | 'codex' | 'opencode' | 'mock'>;
   /** Global provider-specific options (lowest priority) */
   providerOptions?: MovementProviderOptions;
+  /** Global runtime environment defaults (can be overridden by piece runtime) */
+  runtime?: PieceRuntimeConfig;
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branchNameStrategy?: 'romaji' | 'ai';
   /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */
