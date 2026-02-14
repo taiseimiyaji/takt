@@ -483,6 +483,41 @@ describe('loadGlobalConfig', () => {
     });
   });
 
+  describe('runtime', () => {
+    it('should load runtime.prepare from config.yaml', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(
+        getGlobalConfigPath(),
+        [
+          'language: en',
+          'runtime:',
+          '  prepare:',
+          '    - gradle',
+          '    - node',
+        ].join('\n'),
+        'utf-8',
+      );
+
+      const config = loadGlobalConfig();
+      expect(config.runtime).toEqual({ prepare: ['gradle', 'node'] });
+    });
+
+    it('should save and reload runtime.prepare', () => {
+      const taktDir = join(testHomeDir, '.takt');
+      mkdirSync(taktDir, { recursive: true });
+      writeFileSync(getGlobalConfigPath(), 'language: en\n', 'utf-8');
+
+      const config = loadGlobalConfig();
+      config.runtime = { prepare: ['gradle', 'node'] };
+      saveGlobalConfig(config);
+      invalidateGlobalConfigCache();
+
+      const reloaded = loadGlobalConfig();
+      expect(reloaded.runtime).toEqual({ prepare: ['gradle', 'node'] });
+    });
+  });
+
   describe('provider/model compatibility validation', () => {
     it('should throw when provider is codex but model is a Claude alias (opus)', () => {
       const taktDir = join(testHomeDir, '.takt');

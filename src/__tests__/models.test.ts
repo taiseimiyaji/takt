@@ -153,6 +153,30 @@ describe('PieceConfigRawSchema', () => {
     });
   });
 
+  it('should parse piece-level piece_config.runtime.prepare', () => {
+    const config = {
+      name: 'test-piece',
+      piece_config: {
+        runtime: {
+          prepare: ['gradle', 'node'],
+        },
+      },
+      movements: [
+        {
+          name: 'implement',
+          instruction: '{task}',
+        },
+      ],
+    };
+
+    const result = PieceConfigRawSchema.parse(config);
+    expect(result.piece_config).toEqual({
+      runtime: {
+        prepare: ['gradle', 'node'],
+      },
+    });
+  });
+
   it('should allow omitting permission_mode', () => {
     const config = {
       name: 'test-piece',

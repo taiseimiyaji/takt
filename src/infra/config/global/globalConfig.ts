@@ -126,6 +126,9 @@ export class GlobalConfigManager {
       pieceCategoriesFile: parsed.piece_categories_file,
       personaProviders: parsed.persona_providers,
       providerOptions: normalizeProviderOptions(parsed.provider_options),
+      runtime: parsed.runtime?.prepare && parsed.runtime.prepare.length > 0
+        ? { prepare: [...new Set(parsed.runtime.prepare)] }
+        : undefined,
       branchNameStrategy: parsed.branch_name_strategy,
       preventSleep: parsed.prevent_sleep,
       notificationSound: parsed.notification_sound,
@@ -209,6 +212,11 @@ export class GlobalConfigManager {
     }
     if (config.personaProviders && Object.keys(config.personaProviders).length > 0) {
       raw.persona_providers = config.personaProviders;
+    }
+    if (config.runtime?.prepare && config.runtime.prepare.length > 0) {
+      raw.runtime = {
+        prepare: [...new Set(config.runtime.prepare)],
+      };
     }
     if (config.branchNameStrategy) {
       raw.branch_name_strategy = config.branchNameStrategy;

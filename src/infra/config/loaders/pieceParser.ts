@@ -23,8 +23,10 @@ import {
 } from './resource-resolver.js';
 
 type RawStep = z.output<typeof PieceMovementRawSchema>;
+type RawPiece = z.output<typeof PieceConfigRawSchema>;
 
 import type { MovementProviderOptions } from '../../../core/models/piece-types.js';
+import type { PieceRuntimeConfig } from '../../../core/models/piece-types.js';
 
 /** Convert raw YAML provider_options (snake_case) to internal format (camelCase). */
 export function normalizeProviderOptions(
@@ -79,6 +81,16 @@ export function mergeProviderOptions(
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function normalizeRuntimeConfig(raw: RawPiece['piece_config']): PieceRuntimeConfig | undefined {
+  const prepare = raw?.runtime?.prepare;
+  if (!prepare || prepare.length === 0) {
+    return undefined;
+  }
+  return {
+    prepare: [...new Set(prepare)],
+  };
 }
 
 /** Check if a raw output contract item is the object form (has 'name' property). */
@@ -389,6 +401,7 @@ export function normalizePieceConfig(
   };
 
   const pieceProviderOptions = normalizeProviderOptions(parsed.piece_config?.provider_options as RawStep['provider_options']);
+  const pieceRuntime = normalizeRuntimeConfig(parsed.piece_config);
 
   const movements: PieceMovement[] = parsed.movements.map((step) =>
     normalizeStepFromRaw(step, pieceDir, sections, pieceProviderOptions, context),
@@ -401,6 +414,7 @@ export function normalizePieceConfig(
     name: parsed.name,
     description: parsed.description,
     providerOptions: pieceProviderOptions,
+    runtime: pieceRuntime,
     personas: parsed.personas,
     policies: resolvedPolicies,
     knowledge: resolvedKnowledge,

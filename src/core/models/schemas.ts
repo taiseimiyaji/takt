@@ -78,9 +78,23 @@ export const MovementProviderOptionsSchema = z.object({
   }).optional(),
 }).optional();
 
+/** Runtime prepare preset identifiers */
+export const RuntimePreparePresetSchema = z.enum(['gradle', 'node']);
+/** Runtime prepare entry: preset name or script path */
+export const RuntimePrepareEntrySchema = z.union([
+  RuntimePreparePresetSchema,
+  z.string().min(1),
+]);
+
+/** Piece-level runtime settings */
+export const RuntimeConfigSchema = z.object({
+  prepare: z.array(RuntimePrepareEntrySchema).optional(),
+}).optional();
+
 /** Piece-level provider options schema */
 export const PieceProviderOptionsSchema = z.object({
   provider_options: MovementProviderOptionsSchema,
+  runtime: RuntimeConfigSchema,
 }).optional();
 
 /**
@@ -425,6 +439,8 @@ export const GlobalConfigSchema = z.object({
   persona_providers: z.record(z.string(), z.enum(['claude', 'codex', 'opencode', 'mock'])).optional(),
   /** Global provider-specific options (lowest priority) */
   provider_options: MovementProviderOptionsSchema,
+  /** Global runtime defaults (piece runtime overrides this) */
+  runtime: RuntimeConfigSchema,
   /** Branch name generation strategy: 'romaji' (fast, default) or 'ai' (slow) */
   branch_name_strategy: z.enum(['romaji', 'ai']).optional(),
   /** Prevent macOS idle sleep during takt execution using caffeinate (default: false) */

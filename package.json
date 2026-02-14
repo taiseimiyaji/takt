@@ -1,6 +1,6 @@
 {
   "name": "takt",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "TAKT: TAKT Agent Koordination Topology - AI Agent Piece Orchestration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,7 @@
     "takt-cli": "./dist/app/cli/index.js"
   },
   "scripts": {
-    "build": "tsc && mkdir -p dist/shared/prompts/en dist/shared/prompts/ja dist/shared/i18n && cp src/shared/prompts/en/*.md dist/shared/prompts/en/ && cp src/shared/prompts/ja/*.md dist/shared/prompts/ja/ && cp src/shared/i18n/labels_en.yaml src/shared/i18n/labels_ja.yaml dist/shared/i18n/",
+    "build": "tsc && mkdir -p dist/shared/prompts/en dist/shared/prompts/ja dist/shared/i18n dist/core/runtime/presets && cp src/shared/prompts/en/*.md dist/shared/prompts/en/ && cp src/shared/prompts/ja/*.md dist/shared/prompts/ja/ && cp src/shared/i18n/labels_en.yaml src/shared/i18n/labels_ja.yaml dist/shared/i18n/ && cp src/core/runtime/presets/*.sh dist/core/runtime/presets/",
     "watch": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",

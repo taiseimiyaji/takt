@@ -91,6 +91,29 @@ describe('normalizePieceConfig provider_options', () => {
       },
     });
   });
+
+  it('piece-level runtime.prepare を正規化し重複を除去する', () => {
+    const raw = {
+      name: 'runtime-prepare',
+      piece_config: {
+        runtime: {
+          prepare: ['gradle', 'node', 'gradle'],
+        },
+      },
+      movements: [
+        {
+          name: 'implement',
+          instruction: '{task}',
+        },
+      ],
+    };
+
+    const config = normalizePieceConfig(raw, process.cwd());
+
+    expect(config.runtime).toEqual({
+      prepare: ['gradle', 'node'],
+    });
+  });
 });
 
 describe('mergeProviderOptions', () => {

@@ -113,6 +113,14 @@ E2Eテストを追加・変更した場合は、このドキュメントも更�
     - `takt run --provider mock` を起動し、`=== Running Piece:` が出たら `Ctrl+C` を送る。
     - 3件目タスク（`sigint-c`）が開始されないことを確認する。
     - `=== Tasks Summary ===` 以降に新規タスク開始やクローン作成ログが出ないことを確認する。
+- Runtime config injection with provider（`e2e/specs/runtime-config-provider.e2e.ts`）
+  - 目的: `config.yaml` の `runtime.prepare` が provider 実行時に反映される正例と、未設定時の失敗再現（env未注入）を確認。
+  - LLM: 条件付き（`TAKT_E2E_PROVIDER` が `claude` / `codex` / `opencode` の場合に実行、未指定時は skip）
+  - 手順（ユーザー行動/コマンド）:
+    - E2E用 `config.yaml` に `runtime.prepare: [gradle, node]` を設定する。
+    - `takt --task '<gradle/npm を実行する指示>' --piece e2e/fixtures/pieces/simple.yaml --create-worktree no` を実行する。
+    - 正例では、作業リポジトリに `.runtime/env.sh` と `.runtime/{tmp,cache,config,state,gradle,npm}` が作成されていることを確認する。
+    - 負例（`runtime.prepare` 未設定）では、`GRADLE_USER_HOME is required` と npm キャッシュ書き込み失敗が出力され、`.runtime/env.sh` が生成されないことを確認する。
 - List tasks non-interactive（`e2e/specs/list-non-interactive.e2e.ts`）
   - 目的: `takt list` の非対話モードでブランチ操作ができることを確認。
   - LLM: 呼び出さない（LLM不使用の操作のみ）

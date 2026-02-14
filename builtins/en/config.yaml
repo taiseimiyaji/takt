@@ -45,6 +45,12 @@ provider: claude
 # Prevent macOS idle sleep during execution using caffeinate (default: false)
 # prevent_sleep: false
 
+# Runtime environment defaults (applies to all pieces unless piece_config.runtime overrides)
+# runtime:
+#   prepare:
+#     - gradle
+#     - node
+
 # ── Parallel Execution (takt run) ──
 
 # Number of tasks to run concurrently (1 = sequential, max: 10)
