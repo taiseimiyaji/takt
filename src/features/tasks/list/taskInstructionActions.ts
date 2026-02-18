@@ -1,19 +1,27 @@
+/**
+ * Instruction actions for completed/failed tasks.
+ *
+ * Uses the existing worktree (clone) for conversation and direct re-execution.
+ * The worktree is preserved after initial execution, so no clone creation is needed.
+ */
+
+import * as fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import {
   TaskRunner,
+  detectDefaultBranch,
 } from '../../../infra/task/index.js';
 import { loadGlobalConfig, getPieceDescription } from '../../../infra/config/index.js';
-import { info, success } from '../../../shared/ui/index.js';
+import { info, error as logError } from '../../../shared/ui/index.js';
 import { createLogger, getErrorMessage } from '../../../shared/utils/index.js';
-import type { TaskExecutionOptions } from '../execute/types.js';
 import { runInstructMode } from './instructMode.js';
 import { selectPiece } from '../../pieceSelection/index.js';
 import { dispatchConversationAction } from '../../interactive/actionDispatcher.js';
 import type { PieceContext } from '../../interactive/interactive.js';
 import { resolveLanguage } from '../../interactive/index.js';
 import { type BranchActionTarget, resolveTargetBranch } from './taskActionTarget.js';
-import { detectDefaultBranch } from '../../../infra/task/index.js';
 import { appendRetryNote, selectRunSessionContext } from './requeueHelpers.js';
+import { executeAndCompleteTask } from '../execute/taskExecution.js';
 
 const log = createLogger('list-tasks');
 
@@ -66,11 +74,16 @@ function getBranchContext(projectDir: string, branch: string): string {
 export async function instructBranch(
   projectDir: string,
   target: BranchActionTarget,
-  _options?: TaskExecutionOptions,
 ): Promise<boolean> {
   if (!('kind' in target)) {
     throw new Error('Instruct requeue requires a task target.');
   }
+
+  if (!target.worktreePath || !fs.existsSync(target.worktreePath)) {
+    logError(`Worktree directory does not exist for task: ${target.name}`);
+    return false;
+  }
+  const worktreePath = target.worktreePath;
 
   const branch = resolveTargetBranch(target);
 
@@ -90,23 +103,30 @@ export async function instructBranch(
   };
 
   const lang = resolveLanguage(globalConfig.language);
-  const runSessionContext = await selectRunSessionContext(projectDir, lang);
+  // Runs data lives in the worktree (written during previous execution)
+  const runSessionContext = await selectRunSessionContext(worktreePath, lang);
 
   const branchContext = getBranchContext(projectDir, branch);
-  const result = await runInstructMode(projectDir, branchContext, branch, pieceContext, runSessionContext);
 
-  const requeueWithInstruction = async (instruction: string): Promise<boolean> => {
-    const runner = new TaskRunner(projectDir);
+  const result = await runInstructMode(
+    worktreePath, branchContext, branch,
+    target.name, target.content, target.data?.retry_note ?? '',
+    pieceContext, runSessionContext,
+  );
+
+  const executeWithInstruction = async (instruction: string): Promise<boolean> => {
     const retryNote = appendRetryNote(target.data?.retry_note, instruction);
-    runner.requeueTask(target.name, ['completed', 'failed'], undefined, retryNote);
-    success(`Task requeued with additional instructions: ${target.name}`);
-    info(`  Branch: ${branch}`);
-    log.info('Requeued task from instruct mode', {
+    const runner = new TaskRunner(projectDir);
+    const taskInfo = runner.startReExecution(target.name, ['completed', 'failed'], undefined, retryNote);
+
+    log.info('Starting re-execution of instructed task', {
       name: target.name,
+      worktreePath,
       branch,
       piece: selectedPiece,
     });
-    return true;
+
+    return executeAndCompleteTask(taskInfo, runner, projectDir, selectedPiece);
   };
 
   return dispatchConversationAction(result, {
@@ -114,7 +134,13 @@ export async function instructBranch(
       info('Cancelled');
       return false;
     },
-    execute: async ({ task }) => requeueWithInstruction(task),
-    save_task: async ({ task }) => requeueWithInstruction(task),
+    execute: async ({ task }) => executeWithInstruction(task),
+    save_task: async ({ task }) => {
+      const retryNote = appendRetryNote(target.data?.retry_note, task);
+      const runner = new TaskRunner(projectDir);
+      runner.requeueTask(target.name, ['completed', 'failed'], undefined, retryNote);
+      info(`Task "${target.name}" has been requeued.`);
+      return true;
+    },
   });
 }

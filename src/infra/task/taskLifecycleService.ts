@@ -156,6 +156,49 @@ export class TaskLifecycleService {
     return this.requeueTask(taskRef, ['failed'], startMovement, retryNote);
   }
 
+  /**
+   * Atomically transition a completed/failed task to running for re-execution.
+   * Avoids the race condition of requeueTask(→ pending) + claimNextTasks(→ running).
+   */
+  startReExecution(
+    taskRef: string,
+    allowedStatuses: readonly TaskStatus[],
+    startMovement?: string,
+    retryNote?: string,
+  ): TaskInfo {
+    const taskName = this.normalizeTaskRef(taskRef);
+    let found: TaskRecord | undefined;
+
+    this.store.update((current) => {
+      const index = current.tasks.findIndex((task) => (
+        task.name === taskName
+        && allowedStatuses.includes(task.status)
+      ));
+      if (index === -1) {
+        const expectedStatuses = allowedStatuses.join(', ');
+        throw new Error(`Task not found for re-execution: ${taskRef} (expected status: ${expectedStatuses})`);
+      }
+
+      const target = current.tasks[index]!;
+      const updated: TaskRecord = {
+        ...target,
+        status: 'running',
+        started_at: nowIso(),
+        owner_pid: process.pid,
+        failure: undefined,
+        start_movement: startMovement,
+        retry_note: retryNote,
+      };
+
+      found = updated;
+      const tasks = [...current.tasks];
+      tasks[index] = updated;
+      return { tasks };
+    });
+
+    return toTaskInfo(this.projectDir, this.tasksFile, found!);
+  }
+
   requeueTask(
     taskRef: string,
     allowedStatuses: readonly TaskStatus[],

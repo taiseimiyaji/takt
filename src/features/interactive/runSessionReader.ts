@@ -48,6 +48,12 @@ export interface RunSessionContext {
   readonly reports: readonly ReportEntry[];
 }
 
+/** Absolute paths to a run's logs and reports directories */
+export interface RunPaths {
+  readonly logsDir: string;
+  readonly reportsDir: string;
+}
+
 interface MetaJson {
   readonly task: string;
   readonly piece: string;
@@ -148,6 +154,33 @@ export function listRecentRuns(cwd: string): RunSummary[] {
 
   summaries.sort((a, b) => b.startTime.localeCompare(a.startTime));
   return summaries.slice(0, MAX_RUNS);
+}
+
+/**
+ * Find the most recent run matching the given task content.
+ *
+ * @returns The run slug if found, null otherwise.
+ */
+export function findRunForTask(cwd: string, taskContent: string): string | null {
+  const runs = listRecentRuns(cwd);
+  const match = runs.find((r) => r.task === taskContent);
+  return match?.slug ?? null;
+}
+
+/**
+ * Get absolute paths to a run's logs and reports directories.
+ */
+export function getRunPaths(cwd: string, slug: string): RunPaths {
+  const metaPath = join(cwd, '.takt', 'runs', slug, 'meta.json');
+  const meta = parseMetaJson(metaPath);
+  if (!meta) {
+    throw new Error(`Run not found: ${slug}`);
+  }
+
+  return {
+    logsDir: join(cwd, meta.logsDirectory),
+    reportsDir: join(cwd, meta.reportDirectory),
+  };
 }
 
 /**

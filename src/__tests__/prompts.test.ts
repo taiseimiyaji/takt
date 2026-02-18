@@ -35,6 +35,16 @@ describe('loadTemplate', () => {
     expect(result).toContain('対話モードポリシー');
   });
 
+  it('loads an English retry system prompt template', () => {
+    const result = loadTemplate('score_retry_system_prompt', 'en');
+    expect(result).toContain('Retry Assistant');
+  });
+
+  it('loads a Japanese retry system prompt template', () => {
+    const result = loadTemplate('score_retry_system_prompt', 'ja');
+    expect(result).toContain('リトライアシスタント');
+  });
+
   it('loads score_slug_system_prompt with explicit lang', () => {
     const result = loadTemplate('score_slug_system_prompt', 'en');
     expect(result).toContain('You are a slug generator');

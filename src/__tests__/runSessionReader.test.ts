@@ -14,6 +14,7 @@ vi.mock('../infra/fs/session.js', () => ({
 import { loadNdjsonLog } from '../infra/fs/session.js';
 import {
   listRecentRuns,
+  findRunForTask,
   loadRunSessionContext,
   formatRunSessionForPrompt,
   type RunSessionContext,
@@ -104,6 +105,78 @@ describe('listRecentRuns', () => {
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+  });
+});
+
+describe('findRunForTask', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = createTmpDir();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('should return null when no runs exist', () => {
+    const result = findRunForTask(tmpDir, 'Some task');
+    expect(result).toBeNull();
+  });
+
+  it('should return null when no runs match the task content', () => {
+    createRunDir(tmpDir, 'run-other', {
+      task: 'Different task',
+      piece: 'default',
+      status: 'completed',
+      startTime: '2026-02-01T00:00:00.000Z',
+      logsDirectory: '.takt/runs/run-other/logs',
+      reportDirectory: '.takt/runs/run-other/reports',
+      runSlug: 'run-other',
+    });
+
+    const result = findRunForTask(tmpDir, 'My specific task');
+    expect(result).toBeNull();
+  });
+
+  it('should return the matching run slug', () => {
+    createRunDir(tmpDir, 'run-match', {
+      task: 'Build login page',
+      piece: 'default',
+      status: 'failed',
+      startTime: '2026-02-01T00:00:00.000Z',
+      logsDirectory: '.takt/runs/run-match/logs',
+      reportDirectory: '.takt/runs/run-match/reports',
+      runSlug: 'run-match',
+    });
+
+    const result = findRunForTask(tmpDir, 'Build login page');
+    expect(result).toBe('run-match');
+  });
+
+  it('should return the most recent matching run when multiple exist', () => {
+    createRunDir(tmpDir, 'run-old', {
+      task: 'Build login page',
+      piece: 'default',
+      status: 'failed',
+      startTime: '2026-01-01T00:00:00.000Z',
+      logsDirectory: '.takt/runs/run-old/logs',
+      reportDirectory: '.takt/runs/run-old/reports',
+      runSlug: 'run-old',
+    });
+    createRunDir(tmpDir, 'run-new', {
+      task: 'Build login page',
+      piece: 'default',
+      status: 'failed',
+      startTime: '2026-02-01T00:00:00.000Z',
+      logsDirectory: '.takt/runs/run-new/logs',
+      reportDirectory: '.takt/runs/run-new/reports',
+      runSlug: 'run-new',
+    });
+
+    const result = findRunForTask(tmpDir, 'Build login page');
+    expect(result).toBe('run-new');
   });
 });
 

@@ -104,7 +104,7 @@ function setupScenarioProvider(...scenarios: Parameters<typeof createScenarioPro
 }
 
 async function runInstruct() {
-  return runInstructMode('/test', '', 'takt/test-branch');
+  return runInstructMode('/test', '', 'takt/test-branch', 'test-branch', '', '');
 }
 
 beforeEach(() => {
@@ -394,7 +394,7 @@ describe('policy injection', () => {
     setupRawStdin(toRawInputs(['fix the bug', '/cancel']));
     const capture = setupProvider(['OK.']);
 
-    await runInstructMode('/test', '', 'takt/test');
+    await runInstructMode('/test', '', 'takt/test', 'test', '', '');
 
     // The prompt sent to AI should contain Policy section
     expect(capture.prompts[0]).toContain('Policy');
@@ -407,21 +407,22 @@ describe('policy injection', () => {
 // System prompt: branch name appears in intro
 // =================================================================
 describe('branch context', () => {
-  it('should include branch name and context in intro', async () => {
-    setupRawStdin(toRawInputs(['/cancel']));
-    setupProvider([]);
-
-    const { info: mockInfo } = await import('../shared/ui/index.js');
+  it('should include branch name and context in system prompt', async () => {
+    setupRawStdin(toRawInputs(['check changes', '/cancel']));
+    const capture = setupProvider(['Looks good.']);
 
     await runInstructMode(
       '/test',
       '## Changes\n```\nsrc/auth.ts | 50 +++\n```',
       'takt/feature-auth',
+      'feature-auth',
+      'Do something',
+      '',
     );
 
-    const introCall = vi.mocked(mockInfo).mock.calls.find((call) =>
-      call[0]?.includes('takt/feature-auth'),
-    );
-    expect(introCall).toBeDefined();
+    expect(capture.systemPrompts.length).toBeGreaterThan(0);
+    const systemPrompt = capture.systemPrompts[0]!;
+    expect(systemPrompt).toContain('takt/feature-auth');
+    expect(systemPrompt).toContain('src/auth.ts | 50 +++');
   });
 });

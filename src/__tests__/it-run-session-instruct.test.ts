@@ -213,6 +213,9 @@ describe('E2E: Run session → instruct mode with interactive flow', () => {
       tmpDir,
       '## Branch: takt/fix-auth\n',
       'takt/fix-auth',
+      'fix-auth',
+      'Implement JWT auth',
+      '',
       { name: 'default', description: '', pieceStructure: '', movementPreviews: [] },
       context,
     );
@@ -239,7 +242,7 @@ describe('E2E: Run session → instruct mode with interactive flow', () => {
     setupRawStdin(toRawInputs(['/cancel']));
     setupProvider([]);
 
-    const result = await runInstructMode(tmpDir, '', 'takt/fix', undefined, undefined);
+    const result = await runInstructMode(tmpDir, '', 'takt/fix', 'fix', '', '', undefined, undefined);
 
     expect(result.action).toBe('cancel');
   });
@@ -254,7 +257,7 @@ describe('E2E: Run session → instruct mode with interactive flow', () => {
     const capture = setupProvider(['I understand.']);
 
     const result = await runInstructMode(
-      tmpDir, '', 'takt/branch', undefined, context,
+      tmpDir, '', 'takt/branch', 'branch', '', '', undefined, context,
     );
 
     expect(result.action).toBe('cancel');

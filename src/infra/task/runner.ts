@@ -83,6 +83,15 @@ export class TaskRunner {
     return this.lifecycle.requeueTask(taskRef, allowedStatuses, startMovement, retryNote);
   }
 
+  startReExecution(
+    taskRef: string,
+    allowedStatuses: readonly TaskStatus[],
+    startMovement?: string,
+    retryNote?: string,
+  ): TaskInfo {
+    return this.lifecycle.startReExecution(taskRef, allowedStatuses, startMovement, retryNote);
+  }
+
   deletePendingTask(name: string): void {
     this.deletion.deletePendingTask(name);
   }

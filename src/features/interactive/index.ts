@@ -22,5 +22,6 @@ export { passthroughMode } from './passthroughMode.js';
 export { quietMode } from './quietMode.js';
 export { personaMode } from './personaMode.js';
 export { selectRun } from './runSelector.js';
-export { listRecentRuns, loadRunSessionContext, type RunSessionContext } from './runSessionReader.js';
+export { listRecentRuns, findRunForTask, loadRunSessionContext, formatRunSessionForPrompt, getRunPaths, type RunSessionContext, type RunPaths } from './runSessionReader.js';
+export { runRetryMode, buildRetryTemplateVars, type RetryContext, type RetryFailureInfo, type RetryRunInfo } from './retryMode.js';
 export { dispatchConversationAction, type ConversationActionResult } from './actionDispatcher.js';

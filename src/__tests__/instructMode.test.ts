@@ -103,29 +103,17 @@ describe('runInstructMode', () => {
     setupRawStdin(toRawInputs(['/cancel']));
     setupMockProvider([]);
 
-    const result = await runInstructMode('/project', 'branch context', 'feature-branch');
+    const result = await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     expect(result.action).toBe('cancel');
     expect(result.task).toBe('');
-  });
-
-  it('should include branch name in intro message', async () => {
-    setupRawStdin(toRawInputs(['/cancel']));
-    setupMockProvider([]);
-
-    await runInstructMode('/project', 'diff stats', 'my-feature-branch');
-
-    const introCall = mockInfo.mock.calls.find((call) =>
-      call[0]?.includes('my-feature-branch')
-    );
-    expect(introCall).toBeDefined();
   });
 
   it('should return action=execute with task on /go after conversation', async () => {
     setupRawStdin(toRawInputs(['add more tests', '/go']));
     setupMockProvider(['What kind of tests?', 'Add unit tests for the feature.']);
 
-    const result = await runInstructMode('/project', 'branch context', 'feature-branch');
+    const result = await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     expect(result.action).toBe('execute');
     expect(result.task).toBe('Add unit tests for the feature.');
@@ -136,7 +124,7 @@ describe('runInstructMode', () => {
     setupMockProvider(['response', 'Summarized task.']);
     mockSelectOption.mockResolvedValue('save_task');
 
-    const result = await runInstructMode('/project', 'branch context', 'feature-branch');
+    const result = await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     expect(result.action).toBe('save_task');
     expect(result.task).toBe('Summarized task.');
@@ -147,7 +135,7 @@ describe('runInstructMode', () => {
     setupMockProvider(['response', 'Summarized task.']);
     mockSelectOption.mockResolvedValueOnce('continue');
 
-    const result = await runInstructMode('/project', 'branch context', 'feature-branch');
+    const result = await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     expect(result.action).toBe('cancel');
   });
@@ -156,7 +144,7 @@ describe('runInstructMode', () => {
     setupRawStdin(toRawInputs(['/go', '/cancel']));
     setupMockProvider([]);
 
-    const result = await runInstructMode('/project', 'branch context', 'feature-branch');
+    const result = await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     expect(result.action).toBe('cancel');
   });
@@ -165,7 +153,7 @@ describe('runInstructMode', () => {
     setupRawStdin(toRawInputs(['task', '/go']));
     setupMockProvider(['response', 'Task summary.']);
 
-    await runInstructMode('/project', 'branch context', 'feature-branch');
+    await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '');
 
     const selectCall = mockSelectOption.mock.calls.find((call) =>
       Array.isArray(call[1])
@@ -177,6 +165,25 @@ describe('runInstructMode', () => {
     expect(values).toContain('save_task');
     expect(values).toContain('continue');
     expect(values).not.toContain('create_issue');
+  });
+
+  it('should use dedicated instruct system prompt with task context', async () => {
+    setupRawStdin(toRawInputs(['/cancel']));
+    setupMockProvider([]);
+
+    await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', 'existing note');
+
+    expect(mockLoadTemplate).toHaveBeenCalledWith(
+      'score_instruct_system_prompt',
+      'en',
+      expect.objectContaining({
+        taskName: 'my-task',
+        taskContent: 'Do something',
+        branchName: 'feature-branch',
+        branchContext: 'branch context',
+        retryNote: 'existing note',
+      }),
+    );
   });
 
   it('should inject selected run context into system prompt variables', async () => {
@@ -195,10 +202,10 @@ describe('runInstructMode', () => {
       ],
     };
 
-    await runInstructMode('/project', 'branch context', 'feature-branch', undefined, runSessionContext);
+    await runInstructMode('/project', 'branch context', 'feature-branch', 'my-task', 'Do something', '', undefined, runSessionContext);
 
     expect(mockLoadTemplate).toHaveBeenCalledWith(
-      'score_interactive_system_prompt',
+      'score_instruct_system_prompt',
       'en',
       expect.objectContaining({
         hasRunSession: true,
