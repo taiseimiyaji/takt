@@ -13,7 +13,7 @@ import { z } from 'zod/v4';
 import { getPieceCategoriesPath } from '../global/pieceCategories.js';
 import { getLanguageResourcesDir } from '../../resources/index.js';
 import { listBuiltinPieceNames } from './pieceResolver.js';
-import { loadConfig } from '../loadConfig.js';
+import { resolveConfigValues } from '../resolveConfigValue.js';
 import type { PieceWithSource } from './pieceResolver.js';
 
 const CategoryConfigSchema = z.object({
@@ -233,7 +233,7 @@ function resolveOthersCategoryName(defaultConfig: ParsedCategoryConfig, userConf
  * Returns null if file doesn't exist or has no piece_categories.
  */
 export function loadDefaultCategories(cwd: string): CategoryConfig | null {
-  const lang = loadConfig(cwd).language;
+  const { language: lang } = resolveConfigValues(cwd, ['language']);
   const filePath = join(getLanguageResourcesDir(lang), 'piece-categories.yaml');
   const parsed = loadCategoryConfigFromPath(filePath, filePath);
 
@@ -256,7 +256,7 @@ export function loadDefaultCategories(cwd: string): CategoryConfig | null {
 
 /** Get the path to the builtin default categories file. */
 export function getDefaultCategoriesPath(cwd: string): string {
-  const lang = loadConfig(cwd).language;
+  const { language: lang } = resolveConfigValues(cwd, ['language']);
   return join(getLanguageResourcesDir(lang), 'piece-categories.yaml');
 }
 
@@ -378,7 +378,7 @@ export function buildCategorizedPieces(
   config: CategoryConfig,
   cwd: string,
 ): CategorizedPieces {
-  const globalConfig = loadConfig(cwd);
+  const globalConfig = resolveConfigValues(cwd, ['enableBuiltinPieces', 'disabledBuiltins']);
   const ignoreMissing = new Set<string>();
   if (globalConfig.enableBuiltinPieces === false) {
     for (const name of listBuiltinPieceNames(cwd, { includeDisabled: true })) {

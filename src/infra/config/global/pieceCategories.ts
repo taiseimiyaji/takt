@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { getGlobalConfigDir } from '../paths.js';
-import { loadConfig } from '../loadConfig.js';
+import { resolveConfigValue } from '../resolveConfigValue.js';
 
 const INITIAL_USER_CATEGORIES_CONTENT = 'piece_categories: {}\n';
 
@@ -17,9 +17,9 @@ function getDefaultPieceCategoriesPath(): string {
 
 /** Get the path to the user's piece categories file. */
 export function getPieceCategoriesPath(cwd: string): string {
-  const config = loadConfig(cwd);
-  if (config.pieceCategoriesFile) {
-    return config.pieceCategoriesFile;
+  const pieceCategoriesFile = resolveConfigValue(cwd, 'pieceCategoriesFile');
+  if (pieceCategoriesFile) {
+    return pieceCategoriesFile;
   }
   return getDefaultPieceCategoriesPath();
 }

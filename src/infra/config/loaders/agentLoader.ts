@@ -16,11 +16,11 @@ import {
   getBuiltinPiecesDir,
   isPathSafe,
 } from '../paths.js';
-import { loadConfig } from '../loadConfig.js';
+import { resolveConfigValue } from '../resolveConfigValue.js';
 
 /** Get all allowed base directories for persona prompt files */
 function getAllowedPromptBases(cwd: string): string[] {
-  const lang = loadConfig(cwd).language;
+  const lang = resolveConfigValue(cwd, 'language');
   return [
     getGlobalPersonasDir(),
     getGlobalPiecesDir(),

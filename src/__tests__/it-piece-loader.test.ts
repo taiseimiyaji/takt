@@ -20,15 +20,22 @@ vi.mock('../infra/config/global/globalConfig.js', () => ({
   loadGlobalConfig: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('../infra/config/loadConfig.js', () => ({
-  loadConfig: vi.fn(() => ({
-    global: {
-      language: languageState.value,
-      disabledBuiltins: [],
-      enableBuiltinPieces: true,
-    },
-    project: {},
-  })),
+vi.mock('../infra/config/resolveConfigValue.js', () => ({
+  resolveConfigValue: vi.fn((_cwd: string, key: string) => {
+    if (key === 'language') return languageState.value;
+    if (key === 'enableBuiltinPieces') return true;
+    if (key === 'disabledBuiltins') return [];
+    return undefined;
+  }),
+  resolveConfigValues: vi.fn((_cwd: string, keys: readonly string[]) => {
+    const result: Record<string, unknown> = {};
+    for (const key of keys) {
+      if (key === 'language') result[key] = languageState.value;
+      if (key === 'enableBuiltinPieces') result[key] = true;
+      if (key === 'disabledBuiltins') result[key] = [];
+    }
+    return result;
+  }),
 }));
 
 // --- Imports (after mocks) ---
