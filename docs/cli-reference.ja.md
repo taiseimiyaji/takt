@@ -273,18 +273,38 @@ takt catalog personas
 takt prompt [piece]
 ```
 
-### takt config
-
-パーミッションモードを設定します。
-
-```bash
-takt config
-```
-
 ### takt reset
 
-Piece カテゴリをビルトインのデフォルトにリセットします。
+設定をデフォルトにリセットします。
 
 ```bash
+# グローバル設定をビルトインテンプレートにリセット（バックアップ付き）
+takt reset config
+
+# Piece カテゴリをビルトインのデフォルトにリセット
 takt reset categories
+```
+
+### takt metrics
+
+アナリティクスメトリクスを表示します。
+
+```bash
+# レビュー品質メトリクスを表示（デフォルト: 直近30日）
+takt metrics review
+
+# 時間枠を指定
+takt metrics review --since 7d
+```
+
+### takt purge
+
+古いアナリティクスイベントファイルを削除します。
+
+```bash
+# 30日以上前のファイルを削除（デフォルト）
+takt purge
+
+# 保持期間を指定
+takt purge --retention-days 14
 ```

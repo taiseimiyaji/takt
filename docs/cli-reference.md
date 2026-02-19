@@ -273,18 +273,38 @@ Preview assembled prompts for each movement and phase.
 takt prompt [piece]
 ```
 
-### takt config
-
-Configure permission mode.
-
-```bash
-takt config
-```
-
 ### takt reset
 
-Reset piece categories to builtin defaults.
+Reset settings to defaults.
 
 ```bash
+# Reset global config to builtin template (with backup)
+takt reset config
+
+# Reset piece categories to builtin defaults
 takt reset categories
+```
+
+### takt metrics
+
+Show analytics metrics.
+
+```bash
+# Show review quality metrics (default: last 30 days)
+takt metrics review
+
+# Specify time window
+takt metrics review --since 7d
+```
+
+### takt purge
+
+Purge old analytics event files.
+
+```bash
+# Purge files older than 30 days (default)
+takt purge
+
+# Specify retention period
+takt purge --retention-days 14
 ```
