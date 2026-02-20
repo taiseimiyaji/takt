@@ -170,17 +170,12 @@ takt watch
 # タスクブランチの一覧表示（マージ/削除）
 takt list
 
-# 全タスクを一括削除
-takt list --delete-all
-
 # 非インタラクティブモード（CI/スクリプト向け）
 takt list --non-interactive
 takt list --non-interactive --action diff --branch takt/my-branch
 takt list --non-interactive --action delete --branch takt/my-branch --yes
 takt list --non-interactive --format json
 ```
-
-インタラクティブモードでは **Sync with root** アクションも利用可能です。ルートリポジトリの HEAD をワークツリーブランチにマージし、コンフリクトが発生した場合は AI が自動解決を試みます。
 
 ### タスクディレクトリワークフロー（作成 / 実行 / 確認）
 

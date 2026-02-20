@@ -170,17 +170,12 @@ List task branches and perform actions (merge, delete, etc.).
 # List task branches (merge/delete)
 takt list
 
-# Delete all tasks at once
-takt list --delete-all
-
 # Non-interactive mode (for CI/scripts)
 takt list --non-interactive
 takt list --non-interactive --action diff --branch takt/my-branch
 takt list --non-interactive --action delete --branch takt/my-branch --yes
 takt list --non-interactive --format json
 ```
-
-In interactive mode, `takt list` also offers a **Sync with root** action to merge the root repository's HEAD into a worktree branch, with AI-assisted conflict resolution.
 
 ### Task Directory Workflow (Create / Run / Verify)
 
