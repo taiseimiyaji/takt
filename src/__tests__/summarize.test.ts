@@ -248,6 +248,16 @@ describe('summarizeTaskName', () => {
     expect(result).not.toMatch(/^-|-$/); // No leading/trailing hyphens
   });
 
+  it('should handle very long names in romanization mode without stack overflow', async () => {
+    const result = await summarizeTaskName('a'.repeat(12000), {
+      cwd: '/project',
+      useLLM: false,
+    });
+
+    expect(result).toBe('a'.repeat(30));
+    expect(mockProviderCall).not.toHaveBeenCalled();
+  });
+
   it('should use romaji by default', async () => {
     // Given: branchNameStrategy is not set (undefined)
     mockResolveConfigValues.mockReturnValue({
