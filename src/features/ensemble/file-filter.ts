@@ -9,7 +9,7 @@
  * - Packages with more than MAX_FILE_COUNT files throw an error
  */
 
-import { lstatSync, readdirSync } from 'node:fs';
+import { lstatSync, readdirSync, type Stats } from 'node:fs';
 import { join, extname, relative } from 'node:path';
 import { createLogger } from '../../shared/utils/debug.js';
 
@@ -50,7 +50,7 @@ export function isAllowedExtension(filename: string): boolean {
  */
 function shouldCopyFile(
   filePath: string,
-  stats: ReturnType<typeof lstatSync>,
+  stats: Stats,
 ): boolean {
   if (stats.size > MAX_FILE_SIZE) return false;
   if (!isAllowedExtension(filePath)) return false;
@@ -66,9 +66,9 @@ function collectFromDir(
   packageRoot: string,
   targets: CopyTarget[],
 ): void {
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: string[];
   try {
-    entries = readdirSync(dir);
+    entries = readdirSync(dir, 'utf-8');
   } catch (err) {
     log.debug('Failed to read directory', { dir, err });
     return;
@@ -114,14 +114,14 @@ export function collectCopyTargets(packageRoot: string): CopyTarget[] {
 
   for (const allowedDir of ALLOWED_DIRS) {
     const dirPath = join(packageRoot, allowedDir);
-    let stats: ReturnType<typeof lstatSync>;
+    let stats: Stats | undefined;
     try {
       stats = lstatSync(dirPath);
     } catch (err) {
       log.debug('Directory not accessible, skipping', { dirPath, err });
       continue;
     }
-    if (!stats.isDirectory()) continue;
+    if (!stats?.isDirectory()) continue;
 
     collectFromDir(dirPath, packageRoot, targets);
 

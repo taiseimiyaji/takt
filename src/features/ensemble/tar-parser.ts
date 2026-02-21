@@ -38,14 +38,16 @@ export function parseTarVerboseListing(lines: string[]): TarVerboseListing {
   let firstDirEntry = '';
   const includePaths: string[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (const [i, line] of lines.entries()) {
+    if (!line) continue;
     const type = line[0];
 
     const match = TAR_VERBOSE_PATH_RE.exec(line);
     if (!match) continue;
+    const pathPart = match[1];
+    if (!pathPart) continue;
 
-    const archivePath = match[1].trim();
+    const archivePath = pathPart.trim();
 
     if (i === 0) {
       firstDirEntry = archivePath.replace(/\/$/, '');
