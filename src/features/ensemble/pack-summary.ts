@@ -20,7 +20,7 @@ export interface EditPieceInfo {
  * Count facet files per type (personas, policies, knowledge, etc.)
  * and produce a human-readable summary string.
  *
- * @param facetRelativePaths - Paths relative to package root, starting with `faceted/`
+ * @param facetRelativePaths - Paths relative to package root, starting with `facets/`
  */
 export function summarizeFacetsByType(facetRelativePaths: string[]): string {
   const countsByType = new Map<string, number>();

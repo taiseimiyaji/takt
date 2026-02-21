@@ -84,10 +84,10 @@ export function getPackageFromPieceDir(
  * Build candidate directories with optional package-local layer (4-layer for package pieces).
  *
  * Resolution order for package pieces:
- *   1. package-local: {ensembleDir}/@{owner}/{repo}/faceted/{type}
- *   2. project:       {projectDir}/.takt/faceted/{type}
- *   3. user:          ~/.takt/faceted/{type}
- *   4. builtin:       builtins/{lang}/faceted/{type}
+ *   1. package-local: {ensembleDir}/@{owner}/{repo}/facets/{type}
+ *   2. project:       {projectDir}/.takt/facets/{type}
+ *   3. user:          ~/.takt/facets/{type}
+ *   4. builtin:       builtins/{lang}/facets/{type}
  *
  * For non-package pieces: 3-layer (project → user → builtin).
  */

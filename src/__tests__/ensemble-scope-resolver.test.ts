@@ -8,7 +8,7 @@
  *
  * @scope resolution rules:
  *   "@{owner}/{repo}/{name}" in a facet field →
- *     {ensembleDir}/@{owner}/{repo}/faceted/{type}/{name}.md
+ *     {ensembleDir}/@{owner}/{repo}/facets/{type}/{name}.md
  *
  * Name constraints:
  *   owner:  /^[a-z0-9][a-z0-9-]*$/  (lowercase only after normalization)
@@ -16,10 +16,10 @@
  *   facet/piece name: /^[a-z0-9][a-z0-9-]*$/
  *
  * Facet resolution order (package piece):
- *   1. package-local: {ensembleDir}/@{owner}/{repo}/faceted/{type}/{facet}.md
- *   2. project:       .takt/faceted/{type}/{facet}.md
- *   3. user:          ~/.takt/faceted/{type}/{facet}.md
- *   4. builtin:       builtins/{lang}/faceted/{type}/{facet}.md
+ *   1. package-local: {ensembleDir}/@{owner}/{repo}/facets/{type}/{facet}.md
+ *   2. project:       .takt/facets/{type}/{facet}.md
+ *   3. user:          ~/.takt/facets/{type}/{facet}.md
+ *   4. builtin:       builtins/{lang}/facets/{type}/{facet}.md
  *
  * Facet resolution order (non-package piece):
  *   1. project → 2. user → 3. builtin  (package-local is NOT consulted)
@@ -56,27 +56,27 @@ describe('@scope reference resolution', () => {
 
   // U34: persona @scope 解決
   // Input:  "@nrslib/takt-pack-fixture/expert-coder" (personas field)
-  // Expect: resolves to {ensembleDir}/@nrslib/takt-pack-fixture/faceted/personas/expert-coder.md
+  // Expect: resolves to {ensembleDir}/@nrslib/takt-pack-fixture/facets/personas/expert-coder.md
   it('should resolve persona @scope reference to ensemble faceted path', () => {
     const ensembleDir = tempDir;
     const ref = '@nrslib/takt-pack-fixture/expert-coder';
     const scopeRef = parseScopeRef(ref);
     const resolved = resolveScopeRef(scopeRef, 'personas', ensembleDir);
 
-    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'faceted', 'personas', 'expert-coder.md');
+    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'facets', 'personas', 'expert-coder.md');
     expect(resolved).toBe(expected);
   });
 
   // U35: policy @scope 解決
   // Input:  "@nrslib/takt-pack-fixture/strict-coding" (policies field)
-  // Expect: resolves to {ensembleDir}/@nrslib/takt-pack-fixture/faceted/policies/strict-coding.md
+  // Expect: resolves to {ensembleDir}/@nrslib/takt-pack-fixture/facets/policies/strict-coding.md
   it('should resolve policy @scope reference to ensemble faceted path', () => {
     const ensembleDir = tempDir;
     const ref = '@nrslib/takt-pack-fixture/strict-coding';
     const scopeRef = parseScopeRef(ref);
     const resolved = resolveScopeRef(scopeRef, 'policies', ensembleDir);
 
-    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'faceted', 'policies', 'strict-coding.md');
+    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'facets', 'policies', 'strict-coding.md');
     expect(resolved).toBe(expected);
   });
 
@@ -93,7 +93,7 @@ describe('@scope reference resolution', () => {
     expect(scopeRef.repo).toBe('takt-pack-fixture');
 
     const resolved = resolveScopeRef(scopeRef, 'personas', ensembleDir);
-    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'faceted', 'personas', 'expert-coder.md');
+    const expected = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'facets', 'personas', 'expert-coder.md');
     expect(resolved).toBe(expected);
   });
 
@@ -179,8 +179,8 @@ describe('facet resolution chain: package-local layer', () => {
   it('should prefer package-local facet over project/user/builtin layers', () => {
     const ensembleDir = join(tempDir, 'ensemble');
     const packagePiecesDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'pieces');
-    const packageFacetDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'faceted', 'personas');
-    const projectFacetDir = join(tempDir, 'project', '.takt', 'faceted', 'personas');
+    const packageFacetDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'facets', 'personas');
+    const projectFacetDir = join(tempDir, 'project', '.takt', 'facets', 'personas');
 
     // Create both package-local and project facet files with the same name
     mkdirSync(packageFacetDir, { recursive: true });
@@ -207,7 +207,7 @@ describe('facet resolution chain: package-local layer', () => {
   it('should fall back to project facet when package-local does not have it', () => {
     const ensembleDir = join(tempDir, 'ensemble');
     const packagePiecesDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'pieces');
-    const projectFacetDir = join(tempDir, 'project', '.takt', 'faceted', 'personas');
+    const projectFacetDir = join(tempDir, 'project', '.takt', 'facets', 'personas');
 
     mkdirSync(packagePiecesDir, { recursive: true });
     mkdirSync(projectFacetDir, { recursive: true });
@@ -231,7 +231,7 @@ describe('facet resolution chain: package-local layer', () => {
   // Then:  package-local は無視。project → user → builtin の3層で解決
   it('should not consult package-local layer for non-package pieces', () => {
     const ensembleDir = join(tempDir, 'ensemble');
-    const packageFacetDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'faceted', 'personas');
+    const packageFacetDir = join(ensembleDir, '@nrslib', 'takt-pack-fixture', 'facets', 'personas');
     // Non-package pieceDir (not under ensembleDir)
     const globalPiecesDir = join(tempDir, 'global-pieces');
 

@@ -21,19 +21,19 @@ describe('summarizeFacetsByType', () => {
 
   it('should count single type correctly', () => {
     const paths = [
-      'faceted/personas/coder.md',
-      'faceted/personas/reviewer.md',
+      'facets/personas/coder.md',
+      'facets/personas/reviewer.md',
     ];
     expect(summarizeFacetsByType(paths)).toBe('2 personas');
   });
 
   it('should count multiple types and join with commas', () => {
     const paths = [
-      'faceted/personas/coder.md',
-      'faceted/personas/reviewer.md',
-      'faceted/policies/coding.md',
-      'faceted/knowledge/typescript.md',
-      'faceted/knowledge/react.md',
+      'facets/personas/coder.md',
+      'facets/personas/reviewer.md',
+      'facets/policies/coding.md',
+      'facets/knowledge/typescript.md',
+      'facets/knowledge/react.md',
     ];
     const result = summarizeFacetsByType(paths);
     // Order depends on insertion order; check all types are present
@@ -43,13 +43,13 @@ describe('summarizeFacetsByType', () => {
   });
 
   it('should skip paths that do not have at least 2 segments', () => {
-    const paths = ['faceted/', 'faceted/personas/coder.md'];
+    const paths = ['facets/', 'facets/personas/coder.md'];
     expect(summarizeFacetsByType(paths)).toBe('1 personas');
   });
 
   it('should skip paths where second segment is empty', () => {
-    // 'faceted//coder.md' splits to ['faceted', '', 'coder.md']
-    const paths = ['faceted//coder.md', 'faceted/personas/coder.md'];
+    // 'facets//coder.md' splits to ['facets', '', 'coder.md']
+    const paths = ['facets//coder.md', 'facets/personas/coder.md'];
     expect(summarizeFacetsByType(paths)).toBe('1 personas');
   });
 });

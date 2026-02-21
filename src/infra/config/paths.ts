@@ -48,9 +48,9 @@ export function getBuiltinPiecesDir(lang: Language): string {
   return join(getLanguageResourcesDir(lang), 'pieces');
 }
 
-/** Get builtin personas directory (builtins/{lang}/faceted/personas) */
+/** Get builtin personas directory (builtins/{lang}/facets/personas) */
 export function getBuiltinPersonasDir(lang: Language): string {
-  return join(getLanguageResourcesDir(lang), 'faceted', 'personas');
+  return join(getLanguageResourcesDir(lang), 'facets', 'personas');
 }
 
 /** Get project takt config directory (.takt in project) */
@@ -90,19 +90,19 @@ export function ensureDir(dirPath: string): void {
   }
 }
 
-/** Get project facet directory (.takt/faceted/{facetType} in project) */
+/** Get project facet directory (.takt/facets/{facetType} in project) */
 export function getProjectFacetDir(projectDir: string, facetType: FacetType): string {
-  return join(getProjectConfigDir(projectDir), 'faceted', facetType);
+  return join(getProjectConfigDir(projectDir), 'facets', facetType);
 }
 
-/** Get global facet directory (~/.takt/faceted/{facetType}) */
+/** Get global facet directory (~/.takt/facets/{facetType}) */
 export function getGlobalFacetDir(facetType: FacetType): string {
-  return join(getGlobalConfigDir(), 'faceted', facetType);
+  return join(getGlobalConfigDir(), 'facets', facetType);
 }
 
-/** Get builtin facet directory (builtins/{lang}/faceted/{facetType}) */
+/** Get builtin facet directory (builtins/{lang}/facets/{facetType}) */
 export function getBuiltinFacetDir(lang: Language, facetType: FacetType): string {
-  return join(getLanguageResourcesDir(lang), 'faceted', facetType);
+  return join(getLanguageResourcesDir(lang), 'facets', facetType);
 }
 
 /** Get ensemble directory (~/.takt/ensemble/) */
@@ -124,7 +124,7 @@ export function getEnsemblePackageDir(owner: string, repo: string): string {
  */
 export function getEnsembleFacetDir(owner: string, repo: string, facetType: FacetType, ensembleDir?: string): string {
   const base = ensembleDir ?? getEnsembleDir();
-  return join(base, `@${owner}`, repo, 'faceted', facetType);
+  return join(base, `@${owner}`, repo, 'facets', facetType);
 }
 
 /** Validate path is safe (no directory traversal) */

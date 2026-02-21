@@ -6,7 +6,7 @@
  * fill in the callbacks when the implementation lands.
  *
  * GitHub fixture repos used:
- *   - github:nrslib/takt-pack-fixture          (standard: faceted/ + pieces/)
+ *   - github:nrslib/takt-pack-fixture          (standard: facets/ + pieces/)
  *   - github:nrslib/takt-pack-fixture-subdir   (path field specified)
  *   - github:nrslib/takt-pack-fixture-facets-only (facets only, no pieces/)
  *
@@ -23,7 +23,7 @@ describe('E2E: takt ensemble add (正常系)', () => {
   // Given: 空の isolatedEnv
   // When:  takt ensemble add github:nrslib/takt-pack-fixture@v1.0.0、y 入力
   // Then:  {taktDir}/ensemble/@nrslib/takt-pack-fixture/ に takt-pack.yaml,
-  //        .takt-pack-lock.yaml, faceted/, pieces/ が存在する
+  //        .takt-pack-lock.yaml, facets/, pieces/ が存在する
   it.todo('should install standard package and verify directory structure');
 
   // E2: lock ファイルのフィールド確認
@@ -41,7 +41,7 @@ describe('E2E: takt ensemble add (正常系)', () => {
   // E4: ファセットのみパッケージのインポート
   // Given: 空の isolatedEnv
   // When:  takt ensemble add github:nrslib/takt-pack-fixture-facets-only@v1.0.0、y 入力
-  // Then:  faceted/ は存在し、pieces/ ディレクトリは存在しない
+  // Then:  facets/ は存在し、pieces/ ディレクトリは存在しない
   it.todo('should install facets-only package without creating pieces/ directory');
 
   // E4b: コミットSHA指定
@@ -128,11 +128,11 @@ describe('E2E: takt ensemble add (バリデーション・エラー系)', () => 
   // Then:  exit code 非0
   it.todo('should reject takt-pack.yaml with path traversal via ".." segments');
 
-  // E16: 空パッケージ（faceted/ も pieces/ もない）
-  // Given: faceted/, pieces/ のどちらもない takt-pack.yaml
+  // E16: 空パッケージ（facets/ も pieces/ もない）
+  // Given: facets/, pieces/ のどちらもない takt-pack.yaml
   // When:  ensemble add
   // Then:  exit code 非0
-  it.todo('should reject package with neither faceted/ nor pieces/ directory');
+  it.todo('should reject package with neither facets/ nor pieces/ directory');
 
   // E17: min_version 不正形式（1.0、セグメント不足）
   // Given: takt.min_version: "1.0"

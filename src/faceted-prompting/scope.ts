@@ -53,7 +53,7 @@ export function parseScopeRef(ref: string): ScopeRef {
 /**
  * Resolve a scope reference to a file path in the ensemble directory.
  *
- * Path: {ensembleDir}/@{owner}/{repo}/faceted/{facetType}/{name}.md
+ * Path: {ensembleDir}/@{owner}/{repo}/facets/{facetType}/{name}.md
  *
  * @param scopeRef    - parsed scope reference
  * @param facetType   - e.g. "personas", "policies", "knowledge"
@@ -69,7 +69,7 @@ export function resolveScopeRef(
     ensembleDir,
     `@${scopeRef.owner}`,
     scopeRef.repo,
-    'faceted',
+    'facets',
     facetType,
     `${scopeRef.name}.md`,
   );

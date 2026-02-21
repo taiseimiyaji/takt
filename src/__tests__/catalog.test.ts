@@ -37,9 +37,9 @@ let mockGlobalDir: string;
 vi.mock('../infra/config/paths.js', () => ({
   getGlobalConfigDir: () => mockGlobalDir,
   getProjectConfigDir: (cwd: string) => join(cwd, '.takt'),
-  getGlobalFacetDir: (facetType: string) => join(mockGlobalDir, 'faceted', facetType),
-  getProjectFacetDir: (cwd: string, facetType: string) => join(cwd, '.takt', 'faceted', facetType),
-  getBuiltinFacetDir: (_lang: string, facetType: string) => join(mockBuiltinDir, 'faceted', facetType),
+  getGlobalFacetDir: (facetType: string) => join(mockGlobalDir, 'facets', facetType),
+  getProjectFacetDir: (cwd: string, facetType: string) => join(cwd, '.takt', 'facets', facetType),
+  getBuiltinFacetDir: (_lang: string, facetType: string) => join(mockBuiltinDir, 'facets', facetType),
 }));
 
 describe('parseFacetType', () => {
@@ -134,9 +134,9 @@ describe('scanFacets', () => {
 
   it('should collect facets from all three layers', () => {
     // Given: facets in builtin, user, and project layers
-    const builtinPersonas = join(builtinDir, 'faceted', 'personas');
-    const globalPersonas = join(globalDir, 'faceted', 'personas');
-    const projectPersonas = join(projectDir, '.takt', 'faceted', 'personas');
+    const builtinPersonas = join(builtinDir, 'facets', 'personas');
+    const globalPersonas = join(globalDir, 'facets', 'personas');
+    const projectPersonas = join(projectDir, '.takt', 'facets', 'personas');
     mkdirSync(builtinPersonas, { recursive: true });
     mkdirSync(globalPersonas, { recursive: true });
     mkdirSync(projectPersonas, { recursive: true });
@@ -167,8 +167,8 @@ describe('scanFacets', () => {
 
   it('should detect override when higher layer has same name', () => {
     // Given: same facet name in builtin and user layers
-    const builtinPersonas = join(builtinDir, 'faceted', 'personas');
-    const globalPersonas = join(globalDir, 'faceted', 'personas');
+    const builtinPersonas = join(builtinDir, 'facets', 'personas');
+    const globalPersonas = join(globalDir, 'facets', 'personas');
     mkdirSync(builtinPersonas, { recursive: true });
     mkdirSync(globalPersonas, { recursive: true });
 
@@ -190,8 +190,8 @@ describe('scanFacets', () => {
 
   it('should detect override through project layer', () => {
     // Given: same facet name in builtin and project layers
-    const builtinPolicies = join(builtinDir, 'faceted', 'policies');
-    const projectPolicies = join(projectDir, '.takt', 'faceted', 'policies');
+    const builtinPolicies = join(builtinDir, 'facets', 'policies');
+    const projectPolicies = join(projectDir, '.takt', 'facets', 'policies');
     mkdirSync(builtinPolicies, { recursive: true });
     mkdirSync(projectPolicies, { recursive: true });
 
@@ -218,7 +218,7 @@ describe('scanFacets', () => {
 
   it('should only include .md files', () => {
     // Given: directory with mixed file types
-    const builtinKnowledge = join(builtinDir, 'faceted', 'knowledge');
+    const builtinKnowledge = join(builtinDir, 'facets', 'knowledge');
     mkdirSync(builtinKnowledge, { recursive: true });
 
     writeFileSync(join(builtinKnowledge, 'valid.md'), '# Valid');
@@ -237,7 +237,7 @@ describe('scanFacets', () => {
     // Given: one facet in each type directory
     const types = ['personas', 'policies', 'knowledge', 'instructions', 'output-contracts'] as const;
     for (const type of types) {
-      const dir = join(builtinDir, 'faceted', type);
+      const dir = join(builtinDir, 'facets', type);
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, 'test.md'), `# Test ${type}`);
     }
@@ -331,7 +331,7 @@ describe('showCatalog', () => {
 
   it('should display only the specified facet type when valid type is given', () => {
     // Given: personas facet exists
-    const builtinPersonas = join(builtinDir, 'faceted', 'personas');
+    const builtinPersonas = join(builtinDir, 'facets', 'personas');
     mkdirSync(builtinPersonas, { recursive: true });
     writeFileSync(join(builtinPersonas, 'coder.md'), '# Coder Agent');
 

@@ -44,7 +44,7 @@ takt:
 
 ```
 {path}/
-  faceted/                       # ファセット（部品ライブラリ）
+  facets/                       # ファセット（部品ライブラリ）
     personas/                    # WHO: ペルソナプロンプト
     policies/                    # HOW: 判断基準・ポリシー
     knowledge/                   # WHAT TO KNOW: ドメイン知識
@@ -53,7 +53,7 @@ takt:
   pieces/                        # ピース（ワークフロー定義）
 ```
 
-`faceted/` と `pieces/` の両方が存在する必要はありません。ファセットのみ、ピースのみのパッケージも有効です。ただし、どちらも存在しない場合はエラーとなります（空パッケージは許容しません）。
+`facets/` と `pieces/` の両方が存在する必要はありません。ファセットのみ、ピースのみのパッケージも有効です。ただし、どちらも存在しない場合はエラーとなります（空パッケージは許容しません）。
 
 #### takt.min_version
 
@@ -74,7 +74,7 @@ takt:
 
 ```
 {package-root}/
-  faceted/                       # ファセット群
+  facets/                       # ファセット群
     personas/
       expert-coder.md
       security-reviewer.md
@@ -125,7 +125,7 @@ takt ensemble add github:{owner}/{repo}@{commit-sha} # コミットSHA指定
 1. gh api repos/{owner}/{repo}/tarball/{ref} → /tmp/takt-import-xxxxx.tar.gz
 2. tar 展開（filter: .md/.yaml/.yml のみ、lstat でシンボリックリンクをスキップ）→ /tmp/takt-import-xxxxx/
 3. takt-pack.yaml を読み取り → path 確定、バリデーション
-4. {path}/faceted/ と {path}/pieces/ を ~/.takt/ensemble/@{owner}/{repo}/ にコピー
+4. {path}/facets/ と {path}/pieces/ を ~/.takt/ensemble/@{owner}/{repo}/ にコピー
 5. .takt-pack-lock.yaml を生成
 6. rm -rf /tmp/takt-import-xxxxx*
 ```
@@ -149,7 +149,7 @@ imported_at: 2026-02-20T12:00:00Z
 ~/.takt/ensemble/@{owner}/{repo}/
   takt-pack.yaml                 # 元の誘導ファイル（メタデータ参照用に保持）
   .takt-pack-lock.yaml           # 取り込み元情報（自動生成）
-  faceted/
+  facets/
   pieces/
 ```
 
@@ -173,7 +173,7 @@ takt ensemble add github:nrslib/takt-fullstack@v1.2.0
 | 項目 | 内容 |
 |------|------|
 | パッケージ情報 | owner/repo、ref |
-| ファセット数 | faceted/ の種別ごとのファイル数 |
+| ファセット数 | facets/ の種別ごとのファイル数 |
 | ピース一覧 | pieces/ 内のピース名 |
 | 権限警告 | 各ピースの `edit`、`allowed_tools`、`required_permission_mode` を表示 |
 
@@ -242,7 +242,7 @@ takt ensemble list
 ```
 github:nrslib/takt-security-facets
 ├── takt-pack.yaml
-└── faceted/
+└── facets/
     ├── personas/
     │   └── security-reviewer.md
     ├── policies/
@@ -279,11 +279,11 @@ takt ensemble add github:nrslib/takt-security-facets
 
 5. コピーされるファイル:
    /tmp/.../takt-pack.yaml         → ~/.takt/ensemble/@nrslib/takt-security-facets/takt-pack.yaml
-   /tmp/.../faceted/personas/...   → ~/.takt/ensemble/@nrslib/takt-security-facets/faceted/personas/...
-   /tmp/.../faceted/policies/...   → ~/.takt/ensemble/@nrslib/takt-security-facets/faceted/policies/...
-   /tmp/.../faceted/knowledge/...  → ~/.takt/ensemble/@nrslib/takt-security-facets/faceted/knowledge/...
+   /tmp/.../facets/personas/...   → ~/.takt/ensemble/@nrslib/takt-security-facets/facets/personas/...
+   /tmp/.../facets/policies/...   → ~/.takt/ensemble/@nrslib/takt-security-facets/facets/policies/...
+   /tmp/.../facets/knowledge/...  → ~/.takt/ensemble/@nrslib/takt-security-facets/facets/knowledge/...
 
-   ※ faceted/, pieces/ のみスキャン。それ以外のディレクトリは無視
+   ※ facets/, pieces/ のみスキャン。それ以外のディレクトリは無視
 
 6. .takt-pack-lock.yaml を生成
 
@@ -299,7 +299,7 @@ takt ensemble add github:nrslib/takt-security-facets
       takt-security-facets/
         takt-pack.yaml
         .takt-pack-lock.yaml
-        faceted/
+        facets/
           personas/
             security-reviewer.md
           policies/
@@ -335,7 +335,7 @@ movements:
 ```
 github:nrslib/takt-fullstack
 ├── takt-pack.yaml
-├── faceted/
+├── facets/
 │   ├── personas/
 │   │   ├── expert-coder.md
 │   │   └── architecture-reviewer.md
@@ -361,9 +361,9 @@ description: フルスタック開発ワークフロー（ファセット + ピ�
 name: expert
 movements:
   - name: implement
-    persona: expert-coder           # → faceted/personas/expert-coder.md
-    policy: strict-coding           # → faceted/policies/strict-coding.md
-    knowledge: design-patterns      # → faceted/knowledge/design-patterns.md
+    persona: expert-coder           # → facets/personas/expert-coder.md
+    policy: strict-coding           # → facets/policies/strict-coding.md
+    knowledge: design-patterns      # → facets/knowledge/design-patterns.md
     # ...
   - name: review
     persona: architecture-reviewer
@@ -389,13 +389,13 @@ takt ensemble add github:nrslib/takt-fullstack
 
 4. コピーされるファイル:
    /tmp/.../takt-pack.yaml              → ~/.takt/ensemble/@nrslib/takt-fullstack/takt-pack.yaml
-   /tmp/.../faceted/personas/...        → ~/.takt/ensemble/@nrslib/takt-fullstack/faceted/personas/...
-   /tmp/.../faceted/policies/...        → ~/.takt/ensemble/@nrslib/takt-fullstack/faceted/policies/...
-   /tmp/.../faceted/knowledge/...       → ~/.takt/ensemble/@nrslib/takt-fullstack/faceted/knowledge/...
+   /tmp/.../facets/personas/...        → ~/.takt/ensemble/@nrslib/takt-fullstack/facets/personas/...
+   /tmp/.../facets/policies/...        → ~/.takt/ensemble/@nrslib/takt-fullstack/facets/policies/...
+   /tmp/.../facets/knowledge/...       → ~/.takt/ensemble/@nrslib/takt-fullstack/facets/knowledge/...
    /tmp/.../pieces/expert.yaml          → ~/.takt/ensemble/@nrslib/takt-fullstack/pieces/expert.yaml
    /tmp/.../pieces/expert-mini.yaml     → ~/.takt/ensemble/@nrslib/takt-fullstack/pieces/expert-mini.yaml
 
-   ※ faceted/, pieces/ のみスキャン。それ以外のディレクトリは無視
+   ※ facets/, pieces/ のみスキャン。それ以外のディレクトリは無視
 
 5. .takt-pack-lock.yaml を生成
 
@@ -411,7 +411,7 @@ takt ensemble add github:nrslib/takt-fullstack
       takt-fullstack/
         takt-pack.yaml
         .takt-pack-lock.yaml
-        faceted/
+        facets/
           personas/
             expert-coder.md
             architecture-reviewer.md
@@ -434,14 +434,14 @@ takt -w @nrslib/takt-fullstack/expert "認証機能を実装して"
 ```
 
 ピースの `pieceDir` は `~/.takt/ensemble/@nrslib/takt-fullstack/pieces/` になります。
-ピース内の名前ベース参照（`persona: expert-coder`）は、パッケージローカルの `faceted/` から解決されます。
+ピース内の名前ベース参照（`persona: expert-coder`）は、パッケージローカルの `facets/` から解決されます。
 
 解決チェーン:
 ```
-1. package-local: ~/.takt/ensemble/@nrslib/takt-fullstack/faceted/personas/expert-coder.md  ← HIT
-2. project:       .takt/faceted/personas/expert-coder.md
-3. user:          ~/.takt/faceted/personas/expert-coder.md
-4. builtin:       builtins/{lang}/faceted/personas/expert-coder.md
+1. package-local: ~/.takt/ensemble/@nrslib/takt-fullstack/facets/personas/expert-coder.md  ← HIT
+2. project:       .takt/facets/personas/expert-coder.md
+3. user:          ~/.takt/facets/personas/expert-coder.md
+4. builtin:       builtins/{lang}/facets/personas/expert-coder.md
 ```
 
 **B. ファセットだけ自分のピースで使う**
@@ -470,7 +470,7 @@ github:someone/dotfiles
 ├── zsh/
 │   └── .zshrc
 └── takt/                        # ← TAKT パッケージはここだけ
-    ├── faceted/
+    ├── facets/
     │   └── personas/
     │       └── my-coder.md
     └── pieces/
@@ -506,10 +506,10 @@ takt ensemble add github:someone/dotfiles
 
 5. コピーされるファイル:
    /tmp/.../takt-pack.yaml                     → ~/.takt/ensemble/@someone/dotfiles/takt-pack.yaml
-   /tmp/.../takt/faceted/personas/my-coder.md  → ~/.takt/ensemble/@someone/dotfiles/faceted/personas/my-coder.md
+   /tmp/.../takt/facets/personas/my-coder.md  → ~/.takt/ensemble/@someone/dotfiles/facets/personas/my-coder.md
    /tmp/.../takt/pieces/my-workflow.yaml       → ~/.takt/ensemble/@someone/dotfiles/pieces/my-workflow.yaml
 
-   ※ faceted/, pieces/ のみスキャン。vim/, zsh/ 等は無視
+   ※ facets/, pieces/ のみスキャン。vim/, zsh/ 等は無視
 
 6. .takt-pack-lock.yaml を生成
 
@@ -620,7 +620,7 @@ y → rm -rf ~/.takt/ensemble/@nrslib/takt-fullstack/
 
 解決先:
 ```
-~/.takt/ensemble/@{owner}/{repo}/faceted/{facet-type}/{facet-name}.md
+~/.takt/ensemble/@{owner}/{repo}/facets/{facet-type}/{facet-name}.md
 ```
 
 `{facet-type}` はコンテキストから決まります。
@@ -636,7 +636,7 @@ y → rm -rf ~/.takt/ensemble/@nrslib/takt-fullstack/
 例:
 ```yaml
 persona: "@nrslib/takt-fullstack/expert-coder"
-# → ~/.takt/ensemble/@nrslib/takt-fullstack/faceted/personas/expert-coder.md
+# → ~/.takt/ensemble/@nrslib/takt-fullstack/facets/personas/expert-coder.md
 ```
 
 ### ピース参照
@@ -662,17 +662,17 @@ takt -w @nrslib/takt-fullstack/expert "タスク内容"
 
 パッケージ内ピースの場合:
 ```
-1. package-local   ~/.takt/ensemble/@{owner}/{repo}/faceted/{type}/{facet}.md
-2. project         .takt/faceted/{type}/{facet}.md
-3. user            ~/.takt/faceted/{type}/{facet}.md
-4. builtin         builtins/{lang}/faceted/{type}/{facet}.md
+1. package-local   ~/.takt/ensemble/@{owner}/{repo}/facets/{type}/{facet}.md
+2. project         .takt/facets/{type}/{facet}.md
+3. user            ~/.takt/facets/{type}/{facet}.md
+4. builtin         builtins/{lang}/facets/{type}/{facet}.md
 ```
 
 非パッケージピースの場合（ユーザー自身のピース、builtin ピース）:
 ```
-1. project         .takt/faceted/{type}/{facet}.md
-2. user            ~/.takt/faceted/{type}/{facet}.md
-3. builtin         builtins/{lang}/faceted/{type}/{facet}.md
+1. project         .takt/facets/{type}/{facet}.md
+2. user            ~/.takt/facets/{type}/{facet}.md
+3. builtin         builtins/{lang}/facets/{type}/{facet}.md
 ```
 
 パッケージのファセットはグローバル名前解決に入りません。他パッケージのファセットを使いたい場合は `@scope` 参照で明示的に指定してください。
@@ -685,7 +685,7 @@ takt -w @nrslib/takt-fullstack/expert "タスク内容"
 pieceDir が ~/.takt/ensemble/@{owner}/{repo}/pieces/ 配下
   → パッケージ @{owner}/{repo} に所属
   → package-local 解決チェーンが有効化
-  → candidateDirs の先頭に ~/.takt/ensemble/@{owner}/{repo}/faceted/{type}/ を追加
+  → candidateDirs の先頭に ~/.takt/ensemble/@{owner}/{repo}/facets/{type}/ を追加
 ```
 
 `~/.takt/ensemble/` 配下でなければパッケージ所属なし（既存の3層解決チェーンのまま）。
@@ -697,7 +697,7 @@ pieceDir が ~/.takt/ensemble/@{owner}/{repo}/pieces/ 配下
 | `takt-pack.yaml` がリポジトリルートに存在しない | エラー終了。メッセージ表示 |
 | `path` が絶対パスまたは `..` でリポジトリ外を参照 | エラー終了 |
 | `path` が指すディレクトリが存在しない | エラー終了 |
-| `path` 先に `faceted/` も `pieces/` もない | エラー終了（空パッケージは不許可） |
+| `path` 先に `facets/` も `pieces/` もない | エラー終了（空パッケージは不許可） |
 | `takt.min_version` が SemVer 形式でない | エラー終了。`{major}.{minor}.{patch}` 形式を要求 |
 | `takt.min_version` が現在の TAKT より新しい | エラー終了。必要バージョンと現在バージョンを表示 |
 
@@ -705,11 +705,11 @@ pieceDir が ~/.takt/ensemble/@{owner}/{repo}/pieces/ 配下
 
 ### コピー対象ディレクトリの制限
 
-`{path}/` 直下の `faceted/` と `pieces/` のみをスキャンします。それ以外のディレクトリ（README、テスト、CI設定等）は無視されます。`takt-pack.yaml` はリポジトリルートから常にコピーします。
+`{path}/` 直下の `facets/` と `pieces/` のみをスキャンします。それ以外のディレクトリ（README、テスト、CI設定等）は無視されます。`takt-pack.yaml` はリポジトリルートから常にコピーします。
 
 ```
 コピー対象:
-  {path}/faceted/**    → ~/.takt/ensemble/@{owner}/{repo}/faceted/
+  {path}/facets/**    → ~/.takt/ensemble/@{owner}/{repo}/facets/
   {path}/pieces/**     → ~/.takt/ensemble/@{owner}/{repo}/pieces/
   takt-pack.yaml       → ~/.takt/ensemble/@{owner}/{repo}/takt-pack.yaml
 
@@ -750,7 +750,7 @@ tar.extract({
 
 展開後のコピー処理:
 ```
-ALLOWED_DIRS = ['faceted', 'pieces']
+ALLOWED_DIRS = ['facets', 'pieces']
 
 for each dir in ALLOWED_DIRS:
   if not exists(join(packageRoot, dir)) → skip
@@ -799,7 +799,7 @@ for each dir in ALLOWED_DIRS:
      && !packageRoot.startsWith(extractRoot + '/') → エラー
    # 末尾に '/' を付けて比較することで /tmp/repo と /tmp/repo2 の誤判定を防ぐ
 
-5. コピー走査時（faceted/, pieces/ 配下）
+5. コピー走査時（facets/, pieces/ 配下）
    for each file:
      if lstat(file).isSymbolicLink() → skip   # defence-in-depth
      if file.size > MAX_FILE_SIZE → skip
@@ -860,7 +860,7 @@ takt switch
 
 ## builtin の構造変更
 
-この機能の導入に伴い、builtin ディレクトリ構造を `faceted/` + `pieces/` の2層構造に改修します。
+この機能の導入に伴い、builtin ディレクトリ構造を `facets/` + `pieces/` の2層構造に改修します。
 
 ### 変更前（現行構造）
 
@@ -902,7 +902,7 @@ builtins/{lang}/
 
 ```
 builtins/{lang}/
-  faceted/                       # ← ファセットを faceted/ 配下に集約
+  facets/                       # ← ファセットを facets/ 配下に集約
     personas/
       coder.md
       planner.md
@@ -938,7 +938,7 @@ builtins/{lang}/
 
 | ファイル | 変更内容 |
 |---------|---------|
-| `src/infra/config/paths.ts` | `getBuiltinFacetDir()`, `getGlobalFacetDir()`, `getProjectFacetDir()` のパス構築に `faceted/` を追加 |
+| `src/infra/config/paths.ts` | `getBuiltinFacetDir()`, `getGlobalFacetDir()`, `getProjectFacetDir()` のパス構築に `facets/` を追加 |
 | `src/infra/config/loaders/resource-resolver.ts` | `buildCandidateDirs()` が返すディレクトリパスの更新 |
 | `src/features/catalog/catalogFacets.ts` | `getFacetDirs()` のパス構築の更新 |
 | `src/infra/config/loaders/pieceResolver.ts` | パッケージ層の解決ロジック追加（`@scope` 対応）、`loadAllPiecesWithSources()` のパッケージスキャン |
@@ -952,12 +952,12 @@ builtins/{lang}/
 
 ```bash
 # 移行例
-mkdir -p ~/.takt/faceted
-mv ~/.takt/personas   ~/.takt/faceted/personas
-mv ~/.takt/policies   ~/.takt/faceted/policies
-mv ~/.takt/knowledge  ~/.takt/faceted/knowledge
-mv ~/.takt/instructions ~/.takt/faceted/instructions
-mv ~/.takt/output-contracts ~/.takt/faceted/output-contracts
+mkdir -p ~/.takt/facets
+mv ~/.takt/personas   ~/.takt/facets/personas
+mv ~/.takt/policies   ~/.takt/facets/policies
+mv ~/.takt/knowledge  ~/.takt/facets/knowledge
+mv ~/.takt/instructions ~/.takt/facets/instructions
+mv ~/.takt/output-contracts ~/.takt/facets/output-contracts
 ```
 
 プロジェクトレベル（`.takt/`）も同様です。
@@ -967,8 +967,8 @@ mv ~/.takt/output-contracts ~/.takt/faceted/output-contracts
 名前ベース参照（影響なし）:
 
 ```yaml
-persona: coder              # リゾルバが faceted/personas/coder.md を探す
-policy: coding              # リゾルバが faceted/policies/coding.md を探す
+persona: coder              # リゾルバが facets/personas/coder.md を探す
+policy: coding              # リゾルバが facets/policies/coding.md を探す
 ```
 
 リゾルバの内部パスが変わるだけで、ピース YAML の修正は不要です。
@@ -982,7 +982,7 @@ personas:
 
 # 変更後
 personas:
-  coder: ../faceted/personas/coder.md
+  coder: ../facets/personas/coder.md
 ```
 
 ピースの `personas:` セクションマップで相対パスを使用している場合のみ修正が必要です。builtin のピースは名前ベース参照を使用しているため、影響を受けません。
@@ -991,7 +991,7 @@ personas:
 
 ```
 ~/.takt/
-  faceted/                                 # ユーザー自身のファセット
+  facets/                                 # ユーザー自身のファセット
     personas/
     policies/
     knowledge/
@@ -1003,7 +1003,7 @@ personas:
       takt-fullstack/
         takt-pack.yaml
         .takt-pack-lock.yaml
-        faceted/
+        facets/
           personas/
           policies/
           knowledge/
@@ -1012,13 +1012,13 @@ personas:
       takt-security-facets/
         takt-pack.yaml
         .takt-pack-lock.yaml
-        faceted/
+        facets/
           personas/
           policies/
           knowledge/
 
 builtins/{lang}/
-  faceted/                                 # ビルトインファセット
+  facets/                                 # ビルトインファセット
     personas/
     policies/
     knowledge/
@@ -1032,9 +1032,9 @@ builtins/{lang}/
 
 ファセット解決の全体チェーン:
 ```
-@scope 参照   → ensemble/@{owner}/{repo}/faceted/ で直接解決
-名前参照      → project .takt/faceted/ → user ~/.takt/faceted/ → builtin faceted/
-pkg内名前参照 → package-local faceted/ → project → user → builtin
+@scope 参照   → ensemble/@{owner}/{repo}/facets/ で直接解決
+名前参照      → project .takt/facets/ → user ~/.takt/facets/ → builtin facets/
+pkg内名前参照 → package-local facets/ → project → user → builtin
 ```
 
 ## テスト戦略

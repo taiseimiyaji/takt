@@ -4,7 +4,7 @@
  * Covers:
  * - isScopeRef(): detects @{owner}/{repo}/{facet-name} format
  * - parseScopeRef(): parses components from scope reference
- * - resolveScopeRef(): resolves to ~/.takt/ensemble/@{owner}/{repo}/faceted/{facet-type}/{facet-name}.md
+ * - resolveScopeRef(): resolves to ~/.takt/ensemble/@{owner}/{repo}/facets/{facet-type}/{facet-name}.md
  * - facet-type mapping from field context (persona→personas, policy→policies, etc.)
  * - Name constraint validation (owner, repo, facet-name patterns)
  * - Case normalization (uppercase → lowercase)
@@ -134,9 +134,9 @@ describe('resolveScopeRef', () => {
     rmSync(tempEnsembleDir, { recursive: true, force: true });
   });
 
-  it('should resolve persona scope ref to faceted/personas/{name}.md', () => {
+  it('should resolve persona scope ref to facets/personas/{name}.md', () => {
     // Given: ensemble directory with the package's persona file
-    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'personas');
+    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'facets', 'personas');
     mkdirSync(facetDir, { recursive: true });
     writeFileSync(join(facetDir, 'expert-coder.md'), 'Expert coder persona');
 
@@ -146,12 +146,12 @@ describe('resolveScopeRef', () => {
     const result = resolveScopeRef(scopeRef, 'personas', tempEnsembleDir);
 
     // Then: resolved to the correct file path
-    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'personas', 'expert-coder.md'));
+    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'facets', 'personas', 'expert-coder.md'));
   });
 
-  it('should resolve policy scope ref to faceted/policies/{name}.md', () => {
+  it('should resolve policy scope ref to facets/policies/{name}.md', () => {
     // Given: ensemble directory with policy file
-    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'policies');
+    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'facets', 'policies');
     mkdirSync(facetDir, { recursive: true });
     writeFileSync(join(facetDir, 'owasp-checklist.md'), 'OWASP content');
 
@@ -161,12 +161,12 @@ describe('resolveScopeRef', () => {
     const result = resolveScopeRef(scopeRef, 'policies', tempEnsembleDir);
 
     // Then: resolved to correct path
-    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'policies', 'owasp-checklist.md'));
+    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-fullstack', 'facets', 'policies', 'owasp-checklist.md'));
   });
 
-  it('should resolve knowledge scope ref to faceted/knowledge/{name}.md', () => {
+  it('should resolve knowledge scope ref to facets/knowledge/{name}.md', () => {
     // Given: ensemble directory with knowledge file
-    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-security-facets', 'faceted', 'knowledge');
+    const facetDir = join(tempEnsembleDir, '@nrslib', 'takt-security-facets', 'facets', 'knowledge');
     mkdirSync(facetDir, { recursive: true });
     writeFileSync(join(facetDir, 'vulnerability-patterns.md'), 'Vuln patterns');
 
@@ -176,12 +176,12 @@ describe('resolveScopeRef', () => {
     const result = resolveScopeRef(scopeRef, 'knowledge', tempEnsembleDir);
 
     // Then: resolved to correct path
-    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-security-facets', 'faceted', 'knowledge', 'vulnerability-patterns.md'));
+    expect(result).toBe(join(tempEnsembleDir, '@nrslib', 'takt-security-facets', 'facets', 'knowledge', 'vulnerability-patterns.md'));
   });
 
-  it('should resolve instructions scope ref to faceted/instructions/{name}.md', () => {
+  it('should resolve instructions scope ref to facets/instructions/{name}.md', () => {
     // Given: instruction file
-    const facetDir = join(tempEnsembleDir, '@acme', 'takt-backend', 'faceted', 'instructions');
+    const facetDir = join(tempEnsembleDir, '@acme', 'takt-backend', 'facets', 'instructions');
     mkdirSync(facetDir, { recursive: true });
     writeFileSync(join(facetDir, 'review-checklist.md'), 'Review steps');
 
@@ -191,12 +191,12 @@ describe('resolveScopeRef', () => {
     const result = resolveScopeRef(scopeRef, 'instructions', tempEnsembleDir);
 
     // Then: correct path
-    expect(result).toBe(join(tempEnsembleDir, '@acme', 'takt-backend', 'faceted', 'instructions', 'review-checklist.md'));
+    expect(result).toBe(join(tempEnsembleDir, '@acme', 'takt-backend', 'facets', 'instructions', 'review-checklist.md'));
   });
 
-  it('should resolve output-contracts scope ref to faceted/output-contracts/{name}.md', () => {
+  it('should resolve output-contracts scope ref to facets/output-contracts/{name}.md', () => {
     // Given: output contract file
-    const facetDir = join(tempEnsembleDir, '@acme', 'takt-backend', 'faceted', 'output-contracts');
+    const facetDir = join(tempEnsembleDir, '@acme', 'takt-backend', 'facets', 'output-contracts');
     mkdirSync(facetDir, { recursive: true });
     writeFileSync(join(facetDir, 'review-report.md'), 'Report contract');
 
@@ -206,7 +206,7 @@ describe('resolveScopeRef', () => {
     const result = resolveScopeRef(scopeRef, 'output-contracts', tempEnsembleDir);
 
     // Then: correct path
-    expect(result).toBe(join(tempEnsembleDir, '@acme', 'takt-backend', 'faceted', 'output-contracts', 'review-report.md'));
+    expect(result).toBe(join(tempEnsembleDir, '@acme', 'takt-backend', 'facets', 'output-contracts', 'review-report.md'));
   });
 });
 

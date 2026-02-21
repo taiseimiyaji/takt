@@ -157,7 +157,7 @@ describe('buildCandidateDirsWithPackage', () => {
     const dirs = buildCandidateDirsWithPackage('personas', context);
 
     // Then: package-local dir is first
-    const expectedPackageLocal = join(ensembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'personas');
+    const expectedPackageLocal = join(ensembleDir, '@nrslib', 'takt-fullstack', 'facets', 'personas');
     expect(dirs[0]).toBe(expectedPackageLocal);
   });
 
@@ -196,12 +196,12 @@ describe('buildCandidateDirsWithPackage', () => {
   it('should resolve package-local facet before project-level for package piece', () => {
     // Given: both package-local and project-level facet files exist
     const ensembleDir = join(tempDir, 'ensemble');
-    const pkgFacetDir = join(ensembleDir, '@nrslib', 'takt-fullstack', 'faceted', 'personas');
+    const pkgFacetDir = join(ensembleDir, '@nrslib', 'takt-fullstack', 'facets', 'personas');
     mkdirSync(pkgFacetDir, { recursive: true });
     writeFileSync(join(pkgFacetDir, 'expert-coder.md'), 'Package persona');
 
     const projectDir = join(tempDir, 'project');
-    const projectFacetDir = join(projectDir, '.takt', 'faceted', 'personas');
+    const projectFacetDir = join(projectDir, '.takt', 'facets', 'personas');
     mkdirSync(projectFacetDir, { recursive: true });
     writeFileSync(join(projectFacetDir, 'expert-coder.md'), 'Project persona');
 

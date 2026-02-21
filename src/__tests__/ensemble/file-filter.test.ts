@@ -4,7 +4,7 @@
  * Covers:
  * - Allowed extensions (.md, .yaml, .yml)
  * - Disallowed extensions (.sh, .js, .env, .ts, etc.)
- * - collectCopyTargets: only faceted/ and pieces/ directories copied
+ * - collectCopyTargets: only facets/ and pieces/ directories copied
  * - collectCopyTargets: symbolic links skipped
  * - collectCopyTargets: file count limit (error if exceeds MAX_FILE_COUNT)
  * - collectCopyTargets: path subdirectory scenario
@@ -86,11 +86,11 @@ describe('collectCopyTargets', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('should only include files under faceted/ and pieces/ directories', () => {
-    // Given: package root with faceted/, pieces/, and a README.md at root
-    mkdirSync(join(tempDir, 'faceted', 'personas'), { recursive: true });
+  it('should only include files under facets/ and pieces/ directories', () => {
+    // Given: package root with facets/, pieces/, and a README.md at root
+    mkdirSync(join(tempDir, 'facets', 'personas'), { recursive: true });
     mkdirSync(join(tempDir, 'pieces'), { recursive: true });
-    writeFileSync(join(tempDir, 'faceted', 'personas', 'coder.md'), 'Coder persona');
+    writeFileSync(join(tempDir, 'facets', 'personas', 'coder.md'), 'Coder persona');
     writeFileSync(join(tempDir, 'pieces', 'expert.yaml'), 'name: expert');
     writeFileSync(join(tempDir, 'README.md'), 'Readme'); // should be excluded
 
@@ -98,18 +98,18 @@ describe('collectCopyTargets', () => {
     const targets = collectCopyTargets(tempDir);
     const paths = targets.map((t) => t.relativePath);
 
-    // Then: only faceted/ and pieces/ files are included
-    expect(paths).toContain(join('faceted', 'personas', 'coder.md'));
+    // Then: only facets/ and pieces/ files are included
+    expect(paths).toContain(join('facets', 'personas', 'coder.md'));
     expect(paths).toContain(join('pieces', 'expert.yaml'));
     expect(paths.some((p) => p === 'README.md')).toBe(false);
   });
 
   it('should skip symbolic links during scan', () => {
-    // Given: faceted/ with a symlink
-    mkdirSync(join(tempDir, 'faceted', 'personas'), { recursive: true });
-    const target = join(tempDir, 'faceted', 'personas', 'real.md');
+    // Given: facets/ with a symlink
+    mkdirSync(join(tempDir, 'facets', 'personas'), { recursive: true });
+    const target = join(tempDir, 'facets', 'personas', 'real.md');
     writeFileSync(target, 'Real content');
-    symlinkSync(target, join(tempDir, 'faceted', 'personas', 'link.md'));
+    symlinkSync(target, join(tempDir, 'facets', 'personas', 'link.md'));
 
     // When: collectCopyTargets scans
     const targets = collectCopyTargets(tempDir);
@@ -121,10 +121,10 @@ describe('collectCopyTargets', () => {
   });
 
   it('should throw when file count exceeds MAX_FILE_COUNT', () => {
-    // Given: more than MAX_FILE_COUNT files under faceted/
-    mkdirSync(join(tempDir, 'faceted', 'personas'), { recursive: true });
+    // Given: more than MAX_FILE_COUNT files under facets/
+    mkdirSync(join(tempDir, 'facets', 'personas'), { recursive: true });
     for (let i = 0; i <= MAX_FILE_COUNT; i++) {
-      writeFileSync(join(tempDir, 'faceted', 'personas', `file-${i}.md`), 'content');
+      writeFileSync(join(tempDir, 'facets', 'personas', `file-${i}.md`), 'content');
     }
 
     // When: collectCopyTargets scans
@@ -133,11 +133,11 @@ describe('collectCopyTargets', () => {
   });
 
   it('should skip files exceeding MAX_FILE_SIZE', () => {
-    // Given: faceted/ with a valid file and a file exceeding the size limit
-    mkdirSync(join(tempDir, 'faceted', 'personas'), { recursive: true });
-    writeFileSync(join(tempDir, 'faceted', 'personas', 'coder.md'), 'valid');
+    // Given: facets/ with a valid file and a file exceeding the size limit
+    mkdirSync(join(tempDir, 'facets', 'personas'), { recursive: true });
+    writeFileSync(join(tempDir, 'facets', 'personas', 'coder.md'), 'valid');
     writeFileSync(
-      join(tempDir, 'faceted', 'personas', 'large.md'),
+      join(tempDir, 'facets', 'personas', 'large.md'),
       Buffer.alloc(MAX_FILE_SIZE + 1),
     );
 
@@ -151,17 +151,17 @@ describe('collectCopyTargets', () => {
   });
 
   it('should adjust copy base when path is "takt" (subdirectory scenario)', () => {
-    // Given: package has path: "takt", so faceted/ is under takt/faceted/
-    mkdirSync(join(tempDir, 'takt', 'faceted', 'personas'), { recursive: true });
-    writeFileSync(join(tempDir, 'takt', 'faceted', 'personas', 'coder.md'), 'Coder');
+    // Given: package has path: "takt", so facets/ is under takt/facets/
+    mkdirSync(join(tempDir, 'takt', 'facets', 'personas'), { recursive: true });
+    writeFileSync(join(tempDir, 'takt', 'facets', 'personas', 'coder.md'), 'Coder');
 
     // When: collectCopyTargets is called with packageRoot = tempDir/takt
     const packageRoot = join(tempDir, 'takt');
     const targets = collectCopyTargets(packageRoot);
     const paths = targets.map((t) => t.relativePath);
 
-    // Then: file is found under faceted/personas/
-    expect(paths).toContain(join('faceted', 'personas', 'coder.md'));
+    // Then: file is found under facets/personas/
+    expect(paths).toContain(join('facets', 'personas', 'coder.md'));
   });
 });
 
@@ -177,7 +177,7 @@ describe('constants', () => {
   });
 
   it('ALLOWED_DIRS should include faceted and pieces', () => {
-    expect(ALLOWED_DIRS).toContain('faceted');
+    expect(ALLOWED_DIRS).toContain('facets');
     expect(ALLOWED_DIRS).toContain('pieces');
   });
 

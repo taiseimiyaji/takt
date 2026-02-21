@@ -42,7 +42,7 @@ describe('parseTarVerboseListing', () => {
     // Given: first line is a directory entry in BSD tar format
     const lines = [
       bsdLine('d', 'owner-repo-abc1234/'),
-      bsdLine('-', 'owner-repo-abc1234/faceted/personas/coder.md'),
+      bsdLine('-', 'owner-repo-abc1234/facets/personas/coder.md'),
     ];
 
     // When: parsed
@@ -56,7 +56,7 @@ describe('parseTarVerboseListing', () => {
     // Given: first line is a directory entry in GNU tar format
     const lines = [
       gnuLine('d', 'owner-repo-abc1234/'),
-      gnuLine('-', 'owner-repo-abc1234/faceted/personas/coder.md'),
+      gnuLine('-', 'owner-repo-abc1234/facets/personas/coder.md'),
     ];
 
     // When: parsed
@@ -70,14 +70,14 @@ describe('parseTarVerboseListing', () => {
     // Given: a regular .md file
     const lines = [
       bsdLine('d', 'repo-sha/'),
-      bsdLine('-', 'repo-sha/faceted/personas/coder.md'),
+      bsdLine('-', 'repo-sha/facets/personas/coder.md'),
     ];
 
     // When: parsed
     const result = parseTarVerboseListing(lines);
 
     // Then: .md is included
-    expect(result.includePaths).toContain('repo-sha/faceted/personas/coder.md');
+    expect(result.includePaths).toContain('repo-sha/facets/personas/coder.md');
   });
 
   it('should include .yaml files', () => {
@@ -108,56 +108,56 @@ describe('parseTarVerboseListing', () => {
       bsdLine('d', 'repo-sha/'),
       bsdLine('-', 'repo-sha/src/index.ts'),
       bsdLine('-', 'repo-sha/package.json'),
-      bsdLine('-', 'repo-sha/faceted/personas/coder.md'),
+      bsdLine('-', 'repo-sha/facets/personas/coder.md'),
     ];
 
     const result = parseTarVerboseListing(lines);
 
     // Then: only .md is included
-    expect(result.includePaths).toEqual(['repo-sha/faceted/personas/coder.md']);
+    expect(result.includePaths).toEqual(['repo-sha/facets/personas/coder.md']);
   });
 
   it('should skip directory entries (type "d")', () => {
     // Given: mix of directory and file entries
     const lines = [
       bsdLine('d', 'repo-sha/'),
-      bsdLine('d', 'repo-sha/faceted/'),
-      bsdLine('-', 'repo-sha/faceted/personas/coder.md'),
+      bsdLine('d', 'repo-sha/facets/'),
+      bsdLine('-', 'repo-sha/facets/personas/coder.md'),
     ];
 
     const result = parseTarVerboseListing(lines);
 
     // Then: directories are not in includePaths
-    expect(result.includePaths).not.toContain('repo-sha/faceted/');
-    expect(result.includePaths).toContain('repo-sha/faceted/personas/coder.md');
+    expect(result.includePaths).not.toContain('repo-sha/facets/');
+    expect(result.includePaths).toContain('repo-sha/facets/personas/coder.md');
   });
 
   it('should skip symlink entries (type "l")', () => {
     // Given: a symlink entry (type "l") alongside a normal file
     const lines = [
       bsdLine('d', 'repo-sha/'),
-      bsdLine('l', 'repo-sha/faceted/link.md'),
-      bsdLine('-', 'repo-sha/faceted/personas/coder.md'),
+      bsdLine('l', 'repo-sha/facets/link.md'),
+      bsdLine('-', 'repo-sha/facets/personas/coder.md'),
     ];
 
     const result = parseTarVerboseListing(lines);
 
     // Then: symlink is excluded, normal file is included
-    expect(result.includePaths).not.toContain('repo-sha/faceted/link.md');
-    expect(result.includePaths).toContain('repo-sha/faceted/personas/coder.md');
+    expect(result.includePaths).not.toContain('repo-sha/facets/link.md');
+    expect(result.includePaths).toContain('repo-sha/facets/personas/coder.md');
   });
 
   it('should handle lines that do not match the timestamp regex', () => {
     // Given: lines without a recognizable timestamp (should be ignored)
     const lines = [
       'some-garbage-line',
-      bsdLine('-', 'repo-sha/faceted/personas/coder.md'),
+      bsdLine('-', 'repo-sha/facets/personas/coder.md'),
     ];
 
     const result = parseTarVerboseListing(lines);
 
     // Then: garbage line is skipped, file is included
-    expect(result.includePaths).toContain('repo-sha/faceted/personas/coder.md');
+    expect(result.includePaths).toContain('repo-sha/facets/personas/coder.md');
   });
 
   it('should set firstDirEntry to empty string when first matching line has no trailing slash', () => {

@@ -1,7 +1,7 @@
 /**
  * Tests for facet directory path helpers in paths.ts — items 42–45.
  *
- * Verifies the `faceted/` segment is present in all facet path results,
+ * Verifies the `facets/` segment is present in all facet path results,
  * and that getEnsembleFacetDir constructs the correct full ensemble path.
  */
 
@@ -21,28 +21,28 @@ const ALL_FACET_TYPES: FacetType[] = ['personas', 'policies', 'knowledge', 'inst
 // getProjectFacetDir — item 42
 // ---------------------------------------------------------------------------
 
-describe('getProjectFacetDir — faceted/ prefix', () => {
-  it('should include "faceted" segment in the path', () => {
+describe('getProjectFacetDir — facets/ prefix', () => {
+  it('should include "facets" segment in the path', () => {
     // Given: project dir and facet type
     // When: path is built
     const dir = getProjectFacetDir('/my/project', 'personas');
 
     // Then: path must contain the faceted segment
     const normalized = dir.replace(/\\/g, '/');
-    expect(normalized).toContain('faceted');
+    expect(normalized).toContain('facets');
   });
 
-  it('should return .takt/faceted/{type} structure', () => {
+  it('should return .takt/facets/{type} structure', () => {
     // Given: project dir
     // When: path is built
     const dir = getProjectFacetDir('/my/project', 'personas');
 
-    // Then: segment order is .takt → faceted → personas
+    // Then: segment order is .takt → facets → personas
     const normalized = dir.replace(/\\/g, '/');
-    expect(normalized).toMatch(/\.takt\/faceted\/personas/);
+    expect(normalized).toMatch(/\.takt\/facets\/personas/);
   });
 
-  it('should work for all facet types with faceted/ prefix', () => {
+  it('should work for all facet types with facets/ prefix', () => {
     // Given: all valid facet types
     for (const t of ALL_FACET_TYPES) {
       // When: path is built
@@ -50,7 +50,7 @@ describe('getProjectFacetDir — faceted/ prefix', () => {
 
       // Then: contains both faceted and the type in the correct order
       const normalized = dir.replace(/\\/g, '/');
-      expect(normalized).toMatch(new RegExp(`\\.takt/faceted/${t}`));
+      expect(normalized).toMatch(new RegExp(`\\.takt/facets/${t}`));
     }
   });
 });
@@ -59,27 +59,27 @@ describe('getProjectFacetDir — faceted/ prefix', () => {
 // getGlobalFacetDir — item 43
 // ---------------------------------------------------------------------------
 
-describe('getGlobalFacetDir — faceted/ prefix', () => {
-  it('should include "faceted" segment in the path', () => {
+describe('getGlobalFacetDir — facets/ prefix', () => {
+  it('should include "facets" segment in the path', () => {
     // Given: facet type
     // When: path is built
     const dir = getGlobalFacetDir('policies');
 
     // Then: path must contain the faceted segment
-    expect(dir).toContain('faceted');
+    expect(dir).toContain('facets');
   });
 
-  it('should return .takt/faceted/{type} structure under global config dir', () => {
+  it('should return .takt/facets/{type} structure under global config dir', () => {
     // Given: facet type
     // When: path is built
     const dir = getGlobalFacetDir('policies');
 
-    // Then: segment order is .takt → faceted → policies
+    // Then: segment order is .takt → facets → policies
     const normalized = dir.replace(/\\/g, '/');
-    expect(normalized).toMatch(/\.takt\/faceted\/policies/);
+    expect(normalized).toMatch(/\.takt\/facets\/policies/);
   });
 
-  it('should work for all facet types with faceted/ prefix', () => {
+  it('should work for all facet types with facets/ prefix', () => {
     // Given: all valid facet types
     for (const t of ALL_FACET_TYPES) {
       // When: path is built
@@ -87,7 +87,7 @@ describe('getGlobalFacetDir — faceted/ prefix', () => {
 
       // Then: contains both faceted and the type in the correct order
       const normalized = dir.replace(/\\/g, '/');
-      expect(normalized).toMatch(new RegExp(`\\.takt/faceted/${t}`));
+      expect(normalized).toMatch(new RegExp(`\\.takt/facets/${t}`));
     }
   });
 });
@@ -96,27 +96,27 @@ describe('getGlobalFacetDir — faceted/ prefix', () => {
 // getBuiltinFacetDir — item 44
 // ---------------------------------------------------------------------------
 
-describe('getBuiltinFacetDir — faceted/ prefix', () => {
-  it('should include "faceted" segment in the path', () => {
+describe('getBuiltinFacetDir — facets/ prefix', () => {
+  it('should include "facets" segment in the path', () => {
     // Given: language and facet type
     // When: path is built
     const dir = getBuiltinFacetDir('ja', 'knowledge');
 
     // Then: path must contain the faceted segment
-    expect(dir).toContain('faceted');
+    expect(dir).toContain('facets');
   });
 
-  it('should return {lang}/faceted/{type} structure', () => {
+  it('should return {lang}/facets/{type} structure', () => {
     // Given: language and facet type
     // When: path is built
     const dir = getBuiltinFacetDir('ja', 'knowledge');
 
-    // Then: segment order is ja → faceted → knowledge
+    // Then: segment order is ja → facets → knowledge
     const normalized = dir.replace(/\\/g, '/');
-    expect(normalized).toMatch(/ja\/faceted\/knowledge/);
+    expect(normalized).toMatch(/ja\/facets\/knowledge/);
   });
 
-  it('should work for all facet types with faceted/ prefix', () => {
+  it('should work for all facet types with facets/ prefix', () => {
     // Given: all valid facet types
     for (const t of ALL_FACET_TYPES) {
       // When: path is built
@@ -124,7 +124,7 @@ describe('getBuiltinFacetDir — faceted/ prefix', () => {
 
       // Then: contains both faceted and the type in the correct order
       const normalized = dir.replace(/\\/g, '/');
-      expect(normalized).toMatch(new RegExp(`en/faceted/${t}`));
+      expect(normalized).toMatch(new RegExp(`en/facets/${t}`));
     }
   });
 });
@@ -134,7 +134,7 @@ describe('getBuiltinFacetDir — faceted/ prefix', () => {
 // ---------------------------------------------------------------------------
 
 describe('getEnsembleFacetDir — new path function', () => {
-  it('should return path containing ensemble/@{owner}/{repo}/faceted/{type}', () => {
+  it('should return path containing ensemble/@{owner}/{repo}/facets/{type}', () => {
     // Given: owner, repo, and facet type
     // When: path is built
     const dir = getEnsembleFacetDir('nrslib', 'takt-fullstack', 'personas');
@@ -144,18 +144,18 @@ describe('getEnsembleFacetDir — new path function', () => {
     expect(normalized).toContain('ensemble');
     expect(normalized).toContain('@nrslib');
     expect(normalized).toContain('takt-fullstack');
-    expect(normalized).toContain('faceted');
+    expect(normalized).toContain('facets');
     expect(normalized).toContain('personas');
   });
 
-  it('should construct path as ~/.takt/ensemble/@{owner}/{repo}/faceted/{type}', () => {
+  it('should construct path as ~/.takt/ensemble/@{owner}/{repo}/facets/{type}', () => {
     // Given: owner, repo, and facet type
     // When: path is built
     const dir = getEnsembleFacetDir('nrslib', 'takt-fullstack', 'personas');
 
-    // Then: full segment order is ensemble → @nrslib → takt-fullstack → faceted → personas
+    // Then: full segment order is ensemble → @nrslib → takt-fullstack → facets → personas
     const normalized = dir.replace(/\\/g, '/');
-    expect(normalized).toMatch(/ensemble\/@nrslib\/takt-fullstack\/faceted\/personas/);
+    expect(normalized).toMatch(/ensemble\/@nrslib\/takt-fullstack\/facets\/personas/);
   });
 
   it('should prepend @ before owner name in the path', () => {
@@ -176,7 +176,7 @@ describe('getEnsembleFacetDir — new path function', () => {
 
       // Then: path has correct ensemble structure with facet type
       const normalized = dir.replace(/\\/g, '/');
-      expect(normalized).toMatch(new RegExp(`ensemble/@owner/repo/faceted/${t}`));
+      expect(normalized).toMatch(new RegExp(`ensemble/@owner/repo/facets/${t}`));
     }
   });
 });
