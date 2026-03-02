@@ -18,7 +18,6 @@ This document provides a complete reference for all TAKT CLI commands and option
 | `--draft` | Create PR as draft (requires `--auto-pr` or `auto_pr` config) |
 | `--skip-git` | Skip branch creation, commit, and push (pipeline mode, piece-only) |
 | `--repo <owner/repo>` | Specify repository (for PR creation) |
-| `--create-worktree <yes\|no>` | Skip worktree confirmation prompt |
 | `-q, --quiet` | Minimal output mode: suppress AI output (for CI) |
 | `--provider <name>` | Override agent provider (claude\|codex\|opencode\|cursor\|copilot\|mock) |
 | `--model <name>` | Override agent model |
@@ -44,7 +43,7 @@ takt hello
 2. Select interactive mode (assistant / persona / quiet / passthrough)
 3. Refine task content through conversation with AI
 4. Finalize task instructions with `/go` (you can also add additional instructions like `/go additional instructions`), or use `/play <task>` to execute a task immediately
-5. Execute (create worktree, run piece, create PR)
+5. Execute (run piece, create PR)
 
 ### Interactive Mode Variants
 
@@ -88,8 +87,6 @@ Requirements:
 ---
 
 Proceed with these task instructions? (Y/n) y
-
-? Create worktree? (Y/n) y
 
 [Piece execution starts...]
 ```
