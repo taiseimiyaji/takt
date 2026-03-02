@@ -34,6 +34,16 @@ piece_categories:
   🔍 レビュー:
     pieces:
       - review
+      - frontend-review
+      - frontend-review-fix
+      - backend-review
+      - backend-review-fix
+      - dual-review
+      - dual-review-fix
+      - dual-cqrs-review
+      - dual-cqrs-review-fix
+      - backend-cqrs-review
+      - backend-cqrs-review-fix
   🧪 テスト:
     pieces:
       - unit-test
