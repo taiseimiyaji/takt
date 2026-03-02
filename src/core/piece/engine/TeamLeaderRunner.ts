@@ -79,6 +79,7 @@ export class TeamLeaderRunner {
       personaPath: leaderStep.personaPath,
       model: leaderModel,
       provider: leaderProvider,
+      onStream: this.deps.engineOptions.onStream,
     });
     const leaderResponse: AgentResponse = {
       persona: leaderStep.persona ?? leaderStep.name,
@@ -172,6 +173,7 @@ export class TeamLeaderRunner {
             language: this.deps.engineOptions.language,
             model: leaderModel,
             provider: leaderProvider,
+            onStream: this.deps.engineOptions.onStream,
           },
         );
       },

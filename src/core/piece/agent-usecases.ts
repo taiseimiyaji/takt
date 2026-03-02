@@ -1,5 +1,5 @@
 import type { AgentResponse, PartDefinition, PieceRule, RuleMatchMethod, Language } from '../models/types.js';
-import { runAgent, type RunAgentOptions } from '../../agents/runner.js';
+import { runAgent, type RunAgentOptions, type StreamCallback } from '../../agents/runner.js';
 import { detectJudgeIndex, buildJudgePrompt } from '../../agents/judge-utils.js';
 import { parseParts } from './engine/task-decomposer.js';
 import { loadJudgmentSchema, loadEvaluationSchema, loadDecompositionSchema, loadMorePartsSchema } from './schema-loader.js';
@@ -11,6 +11,7 @@ export interface JudgeStatusOptions {
   movementName: string;
   language?: Language;
   interactive?: boolean;
+  onStream?: StreamCallback;
 }
 
 export interface JudgeStatusResult {
@@ -29,6 +30,7 @@ export interface DecomposeTaskOptions {
   language?: Language;
   model?: string;
   provider?: 'claude' | 'codex' | 'opencode' | 'cursor' | 'copilot' | 'mock';
+  onStream?: StreamCallback;
 }
 
 export interface MorePartsResponse {
@@ -231,6 +233,7 @@ export async function judgeStatus(
     maxTurns: 3,
     permissionMode: 'readonly' as const,
     language: options.language,
+    onStream: options.onStream,
   };
 
   // Stage 1: Structured output
@@ -293,6 +296,7 @@ export async function decomposeTask(
     permissionMode: 'readonly',
     maxTurns: 4,
     outputSchema: loadDecompositionSchema(maxParts),
+    onStream: options.onStream,
   });
 
   if (response.status !== 'done') {
@@ -333,6 +337,7 @@ export async function requestMoreParts(
     permissionMode: 'readonly',
     maxTurns: 4,
     outputSchema: loadMorePartsSchema(maxAdditionalParts),
+    onStream: options.onStream,
   });
 
   if (response.status !== 'done') {

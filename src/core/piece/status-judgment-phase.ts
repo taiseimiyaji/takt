@@ -93,6 +93,7 @@ export async function runStatusJudgmentPhase(
       movementName: step.name,
       language: ctx.language,
       interactive: ctx.interactive,
+      onStream: ctx.onStream,
     });
     const tag = `[${step.name.toUpperCase()}:${result.ruleIndex + 1}]`;
     ctx.onPhaseComplete?.(step, 3, 'judge', tag, 'done');

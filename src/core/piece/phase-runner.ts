@@ -41,6 +41,8 @@ export interface PhaseRunnerContext {
   buildNewSessionReportOptions: (step: PieceMovement, overrides: Pick<RunAgentOptions, 'allowedTools' | 'maxTurns'>) => RunAgentOptions;
   /** Update persona session after a phase run */
   updatePersonaSession: (persona: string, sessionId: string | undefined) => void;
+  /** Stream callback for provider event logging (passed to judgeStatus) */
+  onStream?: import('../../agents/types.js').StreamCallback;
   /** Callback for phase lifecycle logging */
   onPhaseStart?: (step: PieceMovement, phase: 1 | 2 | 3, phaseName: PhaseName, instruction: string) => void;
   /** Callback for phase completion logging */
