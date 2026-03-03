@@ -64,7 +64,7 @@ describe('E2E: Export-cc command (takt export-cc)', () => {
     const pieceFiles = readdirSync(piecesDir);
     expect(pieceFiles.length).toBeGreaterThan(0);
 
-    const personasDir = join(skillDir, 'personas');
+    const personasDir = join(skillDir, 'facets', 'personas');
     expect(existsSync(personasDir)).toBe(true);
     const personaFiles = readdirSync(personasDir);
     expect(personaFiles.length).toBeGreaterThan(0);

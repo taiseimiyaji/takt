@@ -13,4 +13,5 @@ export const e2eBaseTestConfig: UserConfig['test'] = {
       singleThread: true,
     },
   },
+  reporters: ['verbose', 'json'],
 };

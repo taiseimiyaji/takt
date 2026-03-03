@@ -5,9 +5,6 @@ import { createIsolatedEnv, type IsolatedEnv, updateIsolatedConfig } from '../he
 import { createLocalRepo, type LocalRepo } from '../helpers/test-repo';
 import { runTakt } from '../helpers/takt-runner';
 
-const provider = process.env.TAKT_E2E_PROVIDER;
-const codexIt = provider === 'codex' ? it : it.skip;
-
 describe('E2E: Codex permission mode readonly/full', () => {
   let isolatedEnv: IsolatedEnv;
   let repo: LocalRepo;
@@ -48,7 +45,7 @@ describe('E2E: Codex permission mode readonly/full', () => {
     try { isolatedEnv.cleanup(); } catch { /* best-effort */ }
   });
 
-  codexIt('readonly で失敗し full で成功する', () => {
+  it('readonly で失敗し full で成功する', () => {
     updateIsolatedConfig(isolatedEnv.taktDir, {
       provider_profiles: {
         codex: { default_permission_mode: 'readonly' },

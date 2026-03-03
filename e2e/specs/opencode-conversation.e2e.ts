@@ -1,31 +1,10 @@
-/**
- * OpenCode real E2E conversation test.
- *
- * Tests the full stack with a real OpenCode server:
- *   OpenCodeProvider → callOpenCode → OpenCodeClient → createOpencode (real server)
- *
- * Skipped automatically if the opencode binary is not found.
- * Run with: npm run test:e2e:opencode
- */
-
 import { describe, it, expect, afterAll } from 'vitest';
-import { execSync } from 'node:child_process';
 import { resetSharedServer } from '../../src/infra/opencode/client.js';
 import { OpenCodeProvider } from '../../src/infra/providers/opencode.js';
 
-function isOpencodeAvailable(): boolean {
-  try {
-    execSync('which opencode', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const MODEL = process.env.OPENCODE_E2E_MODEL ?? 'minimax/MiniMax-M2.5-highspeed';
-const enabled = isOpencodeAvailable() && process.env.TAKT_E2E_PROVIDER === 'opencode';
 
-describe.skipIf(!enabled)('OpenCode real E2E conversation', () => {
+describe('OpenCode real E2E conversation', () => {
   afterAll(() => {
     resetSharedServer();
   });

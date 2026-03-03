@@ -23,6 +23,9 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# E2E test results
+e2e/results/
+
 # Environment
 .env
 .env.local
