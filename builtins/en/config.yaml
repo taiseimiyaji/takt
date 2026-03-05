@@ -30,7 +30,6 @@ language: en        # UI language: en | ja
 #   pr_body_template: "{report}"           # PR body template. Variables: {issue_body}, {report}, {issue}
 
 # Output / notifications
-# verbose: false                   # Shortcut: enable trace/debug and set logging.level=debug
 # minimal_output: false            # Suppress detailed agent output
 # notification_sound: true         # Master switch for sounds
 # notification_sound_events:       # Per-event sound toggle (unset means true)

@@ -30,7 +30,6 @@ language: ja         # 表示言語: ja | en
 #   pr_body_template: "{report}"           # PR本文テンプレート。変数: {issue_body}, {report}, {issue}
 
 # 出力・通知
-# verbose: false                   # ショートカット: trace/debug有効化 + logging.level=debug
 # minimal_output: false            # エージェント詳細出力を抑制
 # notification_sound: true         # 通知音全体のON/OFF
 # notification_sound_events:       # イベント別通知音（未指定はtrue扱い）
