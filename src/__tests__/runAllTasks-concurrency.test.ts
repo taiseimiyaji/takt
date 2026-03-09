@@ -833,13 +833,12 @@ describe('runAllTasks concurrency', () => {
 
       // When / Then
       await expect(runAllTasks('/project')).rejects.toThrow('worker pool crashed');
+      // Exception path sends empty executedTaskNames, so no task details in summary
       expect(mockSendSlackNotification).toHaveBeenCalledOnce();
       const [url, message] = mockSendSlackNotification.mock.calls[0]! as [string, string];
       expect(url).toBe(webhookUrl);
       expect(message).toContain('TAKT Run');
-      expect(message).toContain('task-1');
-      expect(message).toContain('piece=default');
-      expect(message).toContain('duration=15s');
+      expect(message).toContain('total=0');
     });
 
     it('should not send Slack notification when webhook URL is not set', async () => {

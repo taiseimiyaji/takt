@@ -89,7 +89,7 @@ describe('runWithWorkerPool', () => {
     const result = await runWithWorkerPool(runner as never, tasks, 2, '/cwd', undefined, TEST_POLL_INTERVAL_MS);
 
     // Then
-    expect(result).toEqual({ success: 2, fail: 0 });
+    expect(result).toEqual({ success: 2, fail: 0, executedTaskNames: ['a', 'b'] });
   });
 
   it('should return correct counts when some tasks fail', async () => {
@@ -106,7 +106,7 @@ describe('runWithWorkerPool', () => {
     const result = await runWithWorkerPool(runner as never, tasks, 3, '/cwd', undefined, TEST_POLL_INTERVAL_MS);
 
     // Then
-    expect(result).toEqual({ success: 2, fail: 1 });
+    expect(result).toEqual({ success: 2, fail: 1, executedTaskNames: ['pass', 'fail', 'pass2'] });
   });
 
   it('should display task name for each task via prefix writer in parallel mode', async () => {
@@ -272,7 +272,7 @@ describe('runWithWorkerPool', () => {
     const result = await runWithWorkerPool(runner as never, [], 2, '/cwd', undefined, TEST_POLL_INTERVAL_MS);
 
     // Then
-    expect(result).toEqual({ success: 0, fail: 0 });
+    expect(result).toEqual({ success: 0, fail: 0, executedTaskNames: [] });
     expect(mockExecuteAndCompleteTask).not.toHaveBeenCalled();
   });
 
@@ -286,7 +286,7 @@ describe('runWithWorkerPool', () => {
     const result = await runWithWorkerPool(runner as never, tasks, 1, '/cwd', undefined, TEST_POLL_INTERVAL_MS);
 
     // Then: Treated as failure
-    expect(result).toEqual({ success: 0, fail: 1 });
+    expect(result).toEqual({ success: 0, fail: 1, executedTaskNames: ['throws'] });
   });
 
   it('should wait for in-flight tasks to settle after SIGINT before returning', async () => {
@@ -331,7 +331,7 @@ describe('runWithWorkerPool', () => {
 
     // Then: pool returns after in-flight tasks settle, counting them as failures.
     const result = await resultPromise;
-    expect(result).toEqual({ success: 0, fail: 2 });
+    expect(result).toEqual({ success: 0, fail: 2, executedTaskNames: ['t1', 't2'] });
   });
 
   describe('polling', () => {
@@ -371,7 +371,7 @@ describe('runWithWorkerPool', () => {
       );
 
       // Then: Both tasks were executed
-      expect(result).toEqual({ success: 2, fail: 0 });
+      expect(result).toEqual({ success: 2, fail: 0, executedTaskNames: ['initial', 'added-later'] });
       expect(executionOrder).toContain('start:initial');
       expect(executionOrder).toContain('start:added-later');
       // task2 started before task1 ended (picked up by polling, not by task completion)
@@ -404,7 +404,7 @@ describe('runWithWorkerPool', () => {
       );
 
       // Then: Tasks executed sequentially — task2 starts after task1 ends
-      expect(result).toEqual({ success: 2, fail: 0 });
+      expect(result).toEqual({ success: 2, fail: 0, executedTaskNames: ['seq-1', 'seq-2'] });
       const task2Start = executionOrder.indexOf('start:seq-2');
       const task1End = executionOrder.indexOf('end:seq-1');
       expect(task2Start).toBeGreaterThan(task1End);
@@ -428,7 +428,7 @@ describe('runWithWorkerPool', () => {
       );
 
       // Then: Result is returned without hanging (timer was cleaned up by cancel())
-      expect(result).toEqual({ success: 1, fail: 0 });
+      expect(result).toEqual({ success: 1, fail: 0, executedTaskNames: ['fast-task'] });
     });
   });
 });

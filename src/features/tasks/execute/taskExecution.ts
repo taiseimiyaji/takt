@@ -272,10 +272,13 @@ export async function runAllTasks(
     info(`Concurrency: ${concurrency}`);
   }
 
-  const sendSlackSummary = async (): Promise<void> => {
+  const sendSlackSummary = async (executedTaskNames: string[]): Promise<void> => {
     if (!slackWebhookUrl) return;
     const durationSec = Math.round((Date.now() - startTime) / 1000);
-    const tasks = taskRunner.listAllTaskItems().map(toSlackTaskDetail);
+    const executedSet = new Set(executedTaskNames);
+    const tasks = taskRunner.listAllTaskItems()
+      .filter((item) => executedSet.has(item.name))
+      .map(toSlackTaskDetail);
     const successCount = tasks.filter((t) => t.success).length;
     const message = buildSlackRunSummary({
       runId,
@@ -309,19 +312,19 @@ export async function runAllTasks(
       if (shouldNotifyRunAbort) {
         notifyError('TAKT', getLabel('run.notifyAbort', undefined, { failed: String(result.fail) }));
       }
-      await sendSlackSummary();
+      await sendSlackSummary(result.executedTaskNames);
       return;
     }
 
     if (shouldNotifyRunComplete) {
       notifySuccess('TAKT', getLabel('run.notifyComplete', undefined, { total: String(totalCount) }));
     }
-    await sendSlackSummary();
+    await sendSlackSummary(result.executedTaskNames);
   } catch (e) {
     if (shouldNotifyRunAbort) {
       notifyError('TAKT', getLabel('run.notifyAbort', undefined, { failed: getErrorMessage(e) }));
     }
-    await sendSlackSummary();
+    await sendSlackSummary([]);
     throw e;
   }
 }

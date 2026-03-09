@@ -26,6 +26,7 @@ const log = createLogger('worker-pool');
 export interface WorkerPoolResult {
   success: number;
   fail: number;
+  executedTaskNames: string[];
 }
 
 type RaceResult =
@@ -110,6 +111,7 @@ export async function runWithWorkerPool(
 
   let successCount = 0;
   let failCount = 0;
+  const executedTaskNames: string[] = [];
 
   const queue = [...initialTasks];
   const active = new Map<Promise<boolean>, TaskInfo>();
@@ -161,6 +163,7 @@ export async function runWithWorkerPool(
         active.delete(settled.promise);
 
         if (task) {
+          executedTaskNames.push(task.name);
           if (settled.result) {
             successCount++;
           } else {
@@ -187,7 +190,7 @@ export async function runWithWorkerPool(
     shutdownManager.cleanup();
   }
 
-  return { success: successCount, fail: failCount };
+  return { success: successCount, fail: failCount, executedTaskNames };
 }
 
 function fillSlots(
