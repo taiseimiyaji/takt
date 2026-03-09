@@ -198,7 +198,7 @@ export async function executeDefaultAction(task?: string): Promise<void> {
         ? {
           worktree: true as const,
           branch: prBranch,
-          autoPr: false,
+          autoPr: true,
           ...(prBaseBranch ? { baseBranch: prBaseBranch } : {}),
         }
         : undefined;
