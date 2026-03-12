@@ -256,7 +256,7 @@ describe('loadPiece (builtin fallback)', () => {
     expect(piece).toBeNull();
   });
 
-  it('should load builtin pieces like default, research, e2e-test', () => {
+  it('should load builtin pieces like default, research, fill-e2e', () => {
     const defaultPiece = loadPiece('default', process.cwd());
     expect(defaultPiece).not.toBeNull();
     expect(defaultPiece!.name).toBe('default');
@@ -265,9 +265,9 @@ describe('loadPiece (builtin fallback)', () => {
     expect(research).not.toBeNull();
     expect(research!.name).toBe('research');
 
-    const e2eTest = loadPiece('e2e-test', process.cwd());
-    expect(e2eTest).not.toBeNull();
-    expect(e2eTest!.name).toBe('e2e-test');
+    const fillE2e = loadPiece('fill-e2e', process.cwd());
+    expect(fillE2e).not.toBeNull();
+    expect(fillE2e!.name).toBe('fill-e2e');
   });
 });
 
@@ -621,7 +621,7 @@ describe('listPieces (builtin fallback)', () => {
   it('should include builtin pieces', () => {
     const pieces = listPieces(testDir);
     expect(pieces).toContain('default');
-    expect(pieces).toContain('e2e-test');
+    expect(pieces).toContain('fill-e2e');
   });
 
   it('should return sorted list', () => {

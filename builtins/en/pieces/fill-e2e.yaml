@@ -1,5 +1,5 @@
-name: unit-test
-description: 単体テスト追加に特化したピース（テスト分析→テスト実装→レビュー→修正）
+name: fill-e2e
+description: Intensive E2E test gap filling. Deep-dives into all UX routes from code, manages test cases as a list, and implements all of them
 piece_config:
   provider_options:
     codex:
@@ -8,6 +8,7 @@ piece_config:
       network_access: true
 max_movements: 20
 initial_movement: plan_test
+
 loop_monitors:
   - cycle:
       - ai_review
@@ -16,102 +17,72 @@ loop_monitors:
     judge:
       persona: supervisor
       instruction: |
-        ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
+        The ai_review ↔ ai_fix loop has repeated {cycle_count} times.
 
-        各サイクルのレポートを確認し、このループが健全（進捗がある）か、
-        非生産的（同じ問題を繰り返している）かを判断してください。
+        Review the reports from each cycle and determine whether this loop
+        is healthy (making progress) or unproductive (repeating the same issues).
 
-        **参照するレポート:**
-        - AIレビュー結果: {report:ai-review.md}
+        **Reports to reference:**
+        - AI Review results: {report:ai-review.md}
 
-        **判断基準:**
-        - 各サイクルで新しい問題が発見・修正されているか
-        - 同じ指摘が繰り返されていないか
-        - 修正が実際に反映されているか
+        **Judgment criteria:**
+        - Are new issues being found/fixed in each cycle?
+        - Are the same findings being repeated?
+        - Are fixes actually being applied?
       rules:
-        - condition: 健全（進捗あり）
+        - condition: Healthy (making progress)
           next: ai_review
-        - condition: 非生産的（改善なし）
+        - condition: Unproductive (no improvement)
           next: review_test
+
 movements:
   - name: plan_test
-    edit: false
     persona: test-planner
     policy: testing
     knowledge:
       - architecture
-      - backend
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
-          - WebSearch
-          - WebFetch
-    rules:
-      - condition: テスト計画が完了
-        next: implement_test
-      - condition: ユーザーが質問をしている（テスト追加タスクではない）
-        next: COMPLETE
-      - condition: 要件が不明確、情報不足
-        next: ABORT
-        appendix: |
-          確認事項:
-          - {質問1}
-          - {質問2}
-    instruction: plan-test
+      - e2e-testing
+    instruction: e2e-coverage-plan
+    edit: false
     output_contracts:
       report:
-        - name: test-plan.md
-          format: test-plan
+        - name: 01-e2e-coverage-plan.md
+          format: e2e-coverage-plan
+    rules:
+      - condition: Test case list creation complete
+        next: implement_test
+      - condition: Requirements unclear or insufficient information
+        next: ABORT
+
   - name: implement_test
-    edit: true
     persona: coder
     policy:
       - coding
       - testing
-    session: refresh
     knowledge:
-      - backend
       - architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Edit
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
+      - e2e-testing
+    instruction: e2e-coverage-implement
+    edit: true
+    session: refresh
     required_permission_mode: edit
+    quality_gates:
+      - All E2E tests pass
+      - Existing tests are not broken
     rules:
-      - condition: テスト実装完了
+      - condition: All test cases from the list implemented
         next: ai_review
-      - condition: 実装未着手（レポートのみ）
+      - condition: Partially implemented (remaining cases exist)
         next: ai_review
-      - condition: 判断できない、情報不足
-        next: ai_review
-      - condition: ユーザー入力が必要
-        next: implement_test
-        requires_user_input: true
-        interactive_only: true
-    instruction: implement-test
-    output_contracts:
-      report:
-        - name: coder-scope.md
-          format: coder-scope
-        - name: coder-decisions.md
-          format: coder-decisions
+
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
     policy:
       - review
       - ai-antipattern
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -121,15 +92,16 @@ movements:
           - WebSearch
           - WebFetch
     rules:
-      - condition: AI特有の問題なし
+      - condition: No AI-specific issues
         next: review_test
-      - condition: AI特有の問題あり
+      - condition: AI-specific issues found
         next: ai_fix
     instruction: ai-review
     output_contracts:
       report:
         - name: ai-review.md
           format: ai-review
+
   - name: ai_fix
     edit: true
     persona: coder
@@ -138,8 +110,8 @@ movements:
       - testing
     session: refresh
     knowledge:
-      - backend
       - architecture
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -154,13 +126,14 @@ movements:
     required_permission_mode: edit
     pass_previous_response: false
     rules:
-      - condition: AI問題の修正完了
+      - condition: AI issues fixed
         next: ai_review
-      - condition: 修正不要（指摘対象ファイル/仕様の確認済み）
+      - condition: No fix needed (verified target files/spec)
         next: ai_no_fix
-      - condition: 判断できない、情報不足
+      - condition: Cannot proceed, insufficient info
         next: ai_no_fix
     instruction: ai-fix
+
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
@@ -172,17 +145,20 @@ movements:
           - Glob
           - Grep
     rules:
-      - condition: ai_reviewの指摘が妥当（修正すべき）
+      - condition: ai_review's findings are valid (fix required)
         next: ai_fix
-      - condition: ai_fixの判断が妥当（修正不要）
+      - condition: ai_fix's judgment is valid (no fix needed)
         next: review_test
     instruction: arbitrate
+
   - name: review_test
     edit: false
     persona: qa-reviewer
     policy:
       - review
       - qa
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -201,6 +177,7 @@ movements:
       report:
         - name: qa-review.md
           format: qa-review
+
   - name: fix
     edit: true
     persona: coder
@@ -209,8 +186,8 @@ movements:
       - testing
     session: refresh
     knowledge:
-      - backend
       - architecture
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -225,15 +202,18 @@ movements:
     required_permission_mode: edit
     pass_previous_response: false
     rules:
-      - condition: 修正完了
+      - condition: Fix complete
         next: review_test
-      - condition: 判断できない、情報不足
+      - condition: Cannot proceed, insufficient info
         next: plan_test
     instruction: fix
+
   - name: supervise
     edit: false
     persona: supervisor
     policy: review
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -243,13 +223,13 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
+    instruction: e2e-coverage-supervise
     pass_previous_response: false
     rules:
-      - condition: すべて問題なし
+      - condition: All test cases from the list are implemented and tests pass
         next: COMPLETE
-      - condition: 要求未達成、テスト失敗、ビルドエラー
-        next: plan_test
-    instruction: supervise
+      - condition: Unimplemented test cases exist, tests failing, quality issues
+        next: implement_test
     output_contracts:
       report:
         - name: supervisor-validation.md

@@ -1,5 +1,5 @@
-name: e2e-test
-description: E2E test focused piece (E2E analysis → E2E implementation → review → fix)
+name: fill-unit
+description: Intensive unit test gap filling. Test analysis → test implementation → review → fix
 piece_config:
   provider_options:
     codex:
@@ -41,6 +41,7 @@ movements:
     knowledge:
       - architecture
       - backend
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -53,7 +54,7 @@ movements:
     rules:
       - condition: Test plan complete
         next: implement_test
-      - condition: User is asking a question (not an E2E test task)
+      - condition: User is asking a question (not a test task)
         next: COMPLETE
       - condition: Requirements unclear, insufficient info
         next: ABORT
@@ -61,7 +62,7 @@ movements:
           Clarifications needed:
           - {Question 1}
           - {Question 2}
-    instruction: plan-e2e-test
+    instruction: plan-test
     output_contracts:
       report:
         - name: test-plan.md
@@ -76,6 +77,7 @@ movements:
     knowledge:
       - backend
       - architecture
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -99,7 +101,7 @@ movements:
         next: implement_test
         requires_user_input: true
         interactive_only: true
-    instruction: implement-e2e-test
+    instruction: implement-test
     output_contracts:
       report:
         - name: coder-scope.md
@@ -112,6 +114,8 @@ movements:
     policy:
       - review
       - ai-antipattern
+    knowledge:
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -140,6 +144,7 @@ movements:
     knowledge:
       - backend
       - architecture
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -183,6 +188,8 @@ movements:
     policy:
       - review
       - qa
+    knowledge:
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -211,6 +218,7 @@ movements:
     knowledge:
       - backend
       - architecture
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:
@@ -234,6 +242,8 @@ movements:
     edit: false
     persona: supervisor
     policy: review
+    knowledge:
+      - unit-testing
     provider_options:
       claude:
         allowed_tools:

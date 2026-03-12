@@ -1,5 +1,5 @@
-name: e2e-test
-description: E2Eテスト追加に特化したピース（E2E分析→E2E実装→レビュー→修正）
+name: fill-e2e
+description: E2Eテスト不足分の重点追加。UX全ルートをコードから深掘りし、テストケースをリスト管理して全件実装する
 piece_config:
   provider_options:
     codex:
@@ -8,6 +8,7 @@ piece_config:
       network_access: true
 max_movements: 20
 initial_movement: plan_test
+
 loop_monitors:
   - cycle:
       - ai_review
@@ -33,85 +34,55 @@ loop_monitors:
           next: ai_review
         - condition: 非生産的（改善なし）
           next: review_test
+
 movements:
   - name: plan_test
-    edit: false
     persona: test-planner
     policy: testing
     knowledge:
       - architecture
-      - backend
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
-          - WebSearch
-          - WebFetch
-    rules:
-      - condition: テスト計画が完了
-        next: implement_test
-      - condition: ユーザーが質問をしている（E2Eテスト追加タスクではない）
-        next: COMPLETE
-      - condition: 要件が不明確、情報不足
-        next: ABORT
-        appendix: |
-          確認事項:
-          - {質問1}
-          - {質問2}
-    instruction: plan-e2e-test
+      - e2e-testing
+    instruction: e2e-coverage-plan
+    edit: false
     output_contracts:
       report:
-        - name: test-plan.md
-          format: test-plan
+        - name: 01-e2e-coverage-plan.md
+          format: e2e-coverage-plan
+    rules:
+      - condition: テストケースリストの作成完了
+        next: implement_test
+      - condition: 要件が不明確、情報不足
+        next: ABORT
+
   - name: implement_test
-    edit: true
     persona: coder
     policy:
       - coding
       - testing
-    session: refresh
     knowledge:
-      - backend
       - architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Edit
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
+      - e2e-testing
+    instruction: e2e-coverage-implement
+    edit: true
+    session: refresh
     required_permission_mode: edit
+    quality_gates:
+      - E2Eテストが全件パスすること
+      - 既存テストが壊れていないこと
     rules:
-      - condition: テスト実装完了
+      - condition: テストケースリストの全件実装完了
         next: ai_review
-      - condition: 実装未着手（レポートのみ）
+      - condition: 一部実装完了（残りあり）
         next: ai_review
-      - condition: 判断できない、情報不足
-        next: ai_review
-      - condition: ユーザー入力が必要
-        next: implement_test
-        requires_user_input: true
-        interactive_only: true
-    instruction: implement-e2e-test
-    output_contracts:
-      report:
-        - name: coder-scope.md
-          format: coder-scope
-        - name: coder-decisions.md
-          format: coder-decisions
+
   - name: ai_review
     edit: false
     persona: ai-antipattern-reviewer
     policy:
       - review
       - ai-antipattern
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -130,6 +101,7 @@ movements:
       report:
         - name: ai-review.md
           format: ai-review
+
   - name: ai_fix
     edit: true
     persona: coder
@@ -138,8 +110,8 @@ movements:
       - testing
     session: refresh
     knowledge:
-      - backend
       - architecture
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -161,6 +133,7 @@ movements:
       - condition: 判断できない、情報不足
         next: ai_no_fix
     instruction: ai-fix
+
   - name: ai_no_fix
     edit: false
     persona: architecture-reviewer
@@ -177,12 +150,15 @@ movements:
       - condition: ai_fixの判断が妥当（修正不要）
         next: review_test
     instruction: arbitrate
+
   - name: review_test
     edit: false
     persona: qa-reviewer
     policy:
       - review
       - qa
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -201,6 +177,7 @@ movements:
       report:
         - name: qa-review.md
           format: qa-review
+
   - name: fix
     edit: true
     persona: coder
@@ -209,8 +186,8 @@ movements:
       - testing
     session: refresh
     knowledge:
-      - backend
       - architecture
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -230,10 +207,13 @@ movements:
       - condition: 判断できない、情報不足
         next: plan_test
     instruction: fix
+
   - name: supervise
     edit: false
     persona: supervisor
     policy: review
+    knowledge:
+      - e2e-testing
     provider_options:
       claude:
         allowed_tools:
@@ -243,13 +223,13 @@ movements:
           - Bash
           - WebSearch
           - WebFetch
+    instruction: e2e-coverage-supervise
     pass_previous_response: false
     rules:
-      - condition: すべて問題なし
+      - condition: テストケースリスト全件が実装済みでテストもパス
         next: COMPLETE
-      - condition: 要求未達成、テスト失敗、ビルドエラー
-        next: plan_test
-    instruction: supervise
+      - condition: 未実装のテストケースがある、テスト失敗、品質問題
+        next: implement_test
     output_contracts:
       report:
         - name: supervisor-validation.md
