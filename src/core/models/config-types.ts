@@ -9,6 +9,7 @@
 
 import type { MovementProviderOptions, PieceRuntimeConfig } from './piece-types.js';
 import type { ProviderPermissionProfiles } from './provider-profiles.js';
+import type { VcsProviderType } from './vcs-types.js';
 
 export interface PersonaProviderEntry {
   provider?: 'claude' | 'codex' | 'opencode' | 'cursor' | 'copilot' | 'mock';
@@ -113,7 +114,7 @@ export interface ProjectConfig {
   /** Create PR as draft */
   draftPr?: boolean;
   /** VCS provider selection (github or gitlab) */
-  vcsProvider?: 'github' | 'gitlab';
+  vcsProvider?: VcsProviderType;
   /** Base branch to clone from (overrides global baseBranch) */
   baseBranch?: string;
   /** Submodule acquisition mode (all or explicit path list) */

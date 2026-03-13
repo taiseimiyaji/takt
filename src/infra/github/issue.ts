@@ -7,16 +7,14 @@
 
 import { execFileSync } from 'node:child_process';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
-import type { GitHubIssue, GhCliStatus, CreateIssueOptions, CreateIssueResult } from './types.js';
-
-export type { GitHubIssue, GhCliStatus, CreateIssueOptions, CreateIssueResult };
+import type { CliStatus, Issue, CreateIssueOptions, CreateIssueResult } from '../git/types.js';
 
 const log = createLogger('github');
 
 /**
  * Check if `gh` CLI is available and authenticated.
  */
-export function checkGhCli(): GhCliStatus {
+export function checkGhCli(): CliStatus {
   try {
     execFileSync('gh', ['auth', 'status'], { stdio: 'pipe' });
     return { available: true };
@@ -40,7 +38,7 @@ export function checkGhCli(): GhCliStatus {
  * Fetch issue content via `gh issue view`.
  * Throws on failure (issue not found, network error, etc.).
  */
-export function fetchIssue(issueNumber: number): GitHubIssue {
+export function fetchIssue(issueNumber: number): Issue {
   log.debug('Fetching issue', { issueNumber });
 
   const raw = execFileSync(

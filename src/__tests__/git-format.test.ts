@@ -4,16 +4,18 @@
  * Regression tests ensuring provider-neutral formatting.
  * Covers: ARCH-001 (no "GitHub" hardcode), QA-R001 (GitLab output correctness),
  * TEST-003 (format.ts location and neutrality).
+ *
+ * ARCH-003: resolveIssueTask was moved from format.ts to git/index.ts.
+ * Tests for resolveIssueTask are in resolveIssueTask-provider.test.ts.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   formatIssueAsTask,
   parseIssueNumbers,
   isIssueReference,
   formatPrReviewAsTask,
   buildPrBody,
-  resolveIssueTask,
 } from '../infra/git/format.js';
 import type { Issue, PrReviewData } from '../infra/git/types.js';
 
@@ -105,45 +107,6 @@ describe('buildPrBody', () => {
     expect(result).toContain('## Execution Report');
     expect(result).toContain('Report text');
     expect(result).not.toContain('Closes');
-  });
-});
-
-describe('resolveIssueTask', () => {
-  it('should return task as-is when no issue references found', () => {
-    const mockProvider = vi.fn();
-
-    const result = resolveIssueTask('Fix the bug', mockProvider);
-
-    expect(result).toBe('Fix the bug');
-    expect(mockProvider).not.toHaveBeenCalled();
-  });
-
-  it('should resolve issue references via provider callback', () => {
-    const mockProvider = vi.fn().mockReturnValue({
-      checkCliStatus: () => ({ available: true }),
-      fetchIssue: (n: number) => ({
-        number: n,
-        title: `Issue ${n}`,
-        body: `Body ${n}`,
-        labels: [],
-        comments: [],
-      }),
-    });
-
-    const result = resolveIssueTask('#7', mockProvider);
-
-    expect(mockProvider).toHaveBeenCalled();
-    expect(result).toContain('## Issue #7: Issue 7');
-    expect(result).not.toContain('GitHub');
-  });
-
-  it('should throw when CLI is unavailable', () => {
-    const mockProvider = vi.fn().mockReturnValue({
-      checkCliStatus: () => ({ available: false, error: 'CLI not installed' }),
-      fetchIssue: vi.fn(),
-    });
-
-    expect(() => resolveIssueTask('#1', mockProvider)).toThrow('CLI not installed');
   });
 });
 

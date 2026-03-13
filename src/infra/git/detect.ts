@@ -8,8 +8,10 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import type { VcsProviderType } from '../../core/models/vcs-types.js';
 
-export type VcsProviderType = 'github' | 'gitlab';
+export { VCS_PROVIDER_TYPES } from '../../core/models/vcs-types.js';
+export type { VcsProviderType } from '../../core/models/vcs-types.js';
 
 // Only public SaaS hosts are mapped here. Self-hosted instances
 // (e.g. gitlab.example.com) are not auto-detected — set `vcs_provider`

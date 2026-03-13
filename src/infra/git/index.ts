@@ -12,7 +12,7 @@ import { GitHubProvider } from '../github/GitHubProvider.js';
 import { GitLabProvider } from '../gitlab/GitLabProvider.js';
 import { detectVcsProvider } from './detect.js';
 import { resolveConfigValue } from '../config/resolveConfigValue.js';
-import { resolveIssueTask as resolveIssueTaskGeneric } from './format.js';
+import { formatIssueAsTask, parseIssueNumbers } from './format.js';
 import type { GitProvider } from './types.js';
 import type { VcsProviderType } from './detect.js';
 
@@ -77,9 +77,27 @@ export function getGitProvider(): GitProvider {
 
 /**
  * Resolve issue references in a task string using the singleton GitProvider.
+ *
+ * If task contains `#N` patterns (space-separated), fetches issues and returns formatted text.
+ * Otherwise returns the task string as-is.
+ * Throws if VCS CLI is not available or issue fetch fails.
  */
 export function resolveIssueTask(task: string): string {
-  return resolveIssueTaskGeneric(task, () => getGitProvider());
+  const tokens = task.trim().split(/\s+/);
+  const issueNumbers = parseIssueNumbers(tokens);
+
+  if (issueNumbers.length === 0) {
+    return task;
+  }
+
+  const gitProvider = getGitProvider();
+  const cliStatus = gitProvider.checkCliStatus();
+  if (!cliStatus.available) {
+    throw new Error(cliStatus.error);
+  }
+
+  const issues = issueNumbers.map((n) => gitProvider.fetchIssue(n));
+  return issues.map(formatIssueAsTask).join('\n\n---\n\n');
 }
 
 /**

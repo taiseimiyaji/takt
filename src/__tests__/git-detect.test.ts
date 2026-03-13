@@ -11,7 +11,7 @@ vi.mock('node:child_process', () => ({
   execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }));
 
-import { detectVcsProvider } from '../infra/git/detect.js';
+import { detectVcsProvider, VCS_PROVIDER_TYPES } from '../infra/git/detect.js';
 import type { VcsProviderType } from '../infra/git/detect.js';
 
 beforeEach(() => {
@@ -178,5 +178,28 @@ describe('detectVcsProvider', () => {
       // Then
       expect(result).toBe('gitlab');
     });
+  });
+});
+
+describe('VCS_PROVIDER_TYPES', () => {
+  it('github と gitlab を含む readonly 配列としてエクスポートされる', () => {
+    // Then
+    expect(VCS_PROVIDER_TYPES).toContain('github');
+    expect(VCS_PROVIDER_TYPES).toContain('gitlab');
+  });
+
+  it('VcsProviderType と一致する値のみ含む', () => {
+    // Then: 各要素が VcsProviderType に代入可能であることを型レベルで保証
+    // ランタイムでは要素数と値を検証
+    expect(VCS_PROVIDER_TYPES).toHaveLength(2);
+    const types: readonly string[] = VCS_PROVIDER_TYPES;
+    expect(types).toEqual(['github', 'gitlab']);
+  });
+
+  it('配列が readonly である（変更不可）', () => {
+    // Then: as const で定義されているため、readonly tuple
+    // ランタイムでは Object.isFrozen では検証できないが、
+    // TypeScript コンパイル時に readonly が強制される
+    expect(Array.isArray(VCS_PROVIDER_TYPES)).toBe(true);
   });
 });

@@ -1,69 +1,112 @@
 /**
- * Regression test for ARCH-001: resolveIssueTask must use getGitProvider()
+ * Tests for resolveIssueTask in git/index.ts
  *
- * Tests the generic resolveIssueTask from git/format.ts which accepts
- * a getProvider callback, ensuring provider abstraction is used.
+ * ARCH-003: resolveIssueTask was inlined into git/index.ts.
+ * It uses getGitProvider() internally instead of accepting a callback.
+ * Tests mock getGitProvider via vi.mock of the detect module and provider classes.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { resolveIssueTask } from '../infra/git/format.js';
+const mockExecFileSync = vi.fn();
+vi.mock('node:child_process', () => ({
+  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
+}));
 
-describe('resolveIssueTask provider delegation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+vi.mock('../shared/utils/index.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  createLogger: () => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+  }),
+  getErrorMessage: (e: unknown) => String(e),
+}));
 
-  it('イシュー参照を解決する際に getProvider コールバックを経由する', () => {
-    // Given
-    const mockProvider = {
-      checkCliStatus: vi.fn().mockReturnValue({ available: true }),
-      fetchIssue: vi.fn().mockReturnValue({
+// Mock config resolution to avoid file system access
+vi.mock('../infra/config/resolveConfigValue.js', () => ({
+  resolveConfigValue: () => undefined,
+}));
+
+// Mock detect to control which provider is returned
+vi.mock('../infra/git/detect.js', () => ({
+  detectVcsProvider: vi.fn().mockReturnValue('github'),
+  VCS_PROVIDER_TYPES: ['github', 'gitlab'] as const,
+}));
+
+import { resolveIssueTask, resetGitProvider } from '../infra/git/index.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetGitProvider();
+});
+
+describe('resolveIssueTask (inlined in git/index.ts)', () => {
+  it('イシュー参照を解決する際に getGitProvider() 経由でプロバイダーを取得する', () => {
+    // Given: gh auth status succeeds, gh issue view returns issue data
+    mockExecFileSync
+      .mockReturnValueOnce('') // gh auth status
+      .mockReturnValueOnce(JSON.stringify({
         number: 42,
         title: 'Test Issue',
         body: 'Body text',
         labels: [],
         comments: [],
-      }),
-    };
-    const getProvider = vi.fn().mockReturnValue(mockProvider);
+      }));
 
     // When
-    const result = resolveIssueTask('#42', getProvider);
+    const result = resolveIssueTask('#42');
 
     // Then
-    expect(getProvider).toHaveBeenCalledOnce();
-    expect(mockProvider.checkCliStatus).toHaveBeenCalledOnce();
-    expect(mockProvider.fetchIssue).toHaveBeenCalledWith(42);
     expect(result).toContain('#42');
     expect(result).toContain('Test Issue');
   });
 
-  it('CLI が利用不可の場合にプロバイダーのエラーメッセージをスローする', () => {
-    // Given
-    const mockProvider = {
-      checkCliStatus: vi.fn().mockReturnValue({
-        available: false,
-        error: 'glab CLI is not authenticated',
-      }),
-      fetchIssue: vi.fn(),
-    };
-    const getProvider = vi.fn().mockReturnValue(mockProvider);
+  it('CLI が利用不可の場合にエラーをスローする', () => {
+    // Given: gh auth status fails, gh --version also fails
+    mockExecFileSync
+      .mockImplementationOnce(() => { throw new Error('not logged in'); })
+      .mockImplementationOnce(() => { throw new Error('command not found'); });
 
     // When / Then
-    expect(() => resolveIssueTask('#10', getProvider)).toThrow('glab CLI is not authenticated');
-    expect(mockProvider.fetchIssue).not.toHaveBeenCalled();
+    expect(() => resolveIssueTask('#10')).toThrow();
   });
 
   it('イシュー参照でない文字列はプロバイダーを呼び出さずそのまま返す', () => {
-    // Given
-    const getProvider = vi.fn();
-
     // When
-    const result = resolveIssueTask('Fix the bug', getProvider);
+    const result = resolveIssueTask('Fix the bug');
 
     // Then
     expect(result).toBe('Fix the bug');
-    expect(getProvider).not.toHaveBeenCalled();
+    // No execFileSync calls for provider operations
+    expect(mockExecFileSync).not.toHaveBeenCalled();
+  });
+
+  it('複数のイシュー参照を解決する', () => {
+    // Given
+    mockExecFileSync
+      .mockReturnValueOnce('') // gh auth status
+      .mockReturnValueOnce(JSON.stringify({
+        number: 1,
+        title: 'First issue',
+        body: 'Body 1',
+        labels: [],
+        comments: [],
+      }))
+      .mockReturnValueOnce(JSON.stringify({
+        number: 2,
+        title: 'Second issue',
+        body: 'Body 2',
+        labels: [],
+        comments: [],
+      }));
+
+    // When
+    const result = resolveIssueTask('#1 #2');
+
+    // Then
+    expect(result).toContain('Issue #1');
+    expect(result).toContain('Issue #2');
+    expect(result).toContain('---');
   });
 });

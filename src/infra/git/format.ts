@@ -5,7 +5,7 @@
  * from git/types.ts and contain no provider-specific logic.
  */
 
-import type { Issue, PrReviewData, CliStatus } from './types.js';
+import type { Issue, PrReviewData } from './types.js';
 
 /**
  * Format an issue into task text for piece execution.
@@ -154,31 +154,3 @@ export function buildPrBody(issues: Issue[] | undefined, report: string): string
   return parts.join('\n');
 }
 
-/**
- * Resolve issue references in a task string.
- * If task contains `#N` patterns (space-separated), fetches issues and returns formatted text.
- * Otherwise returns the task string as-is.
- *
- * Checks VCS CLI availability before fetching.
- * Throws if VCS CLI is not available or issue fetch fails.
- */
-export function resolveIssueTask(
-  task: string,
-  getProvider: () => { checkCliStatus(): CliStatus; fetchIssue(n: number): Issue },
-): string {
-  const tokens = task.trim().split(/\s+/);
-  const issueNumbers = parseIssueNumbers(tokens);
-
-  if (issueNumbers.length === 0) {
-    return task;
-  }
-
-  const provider = getProvider();
-  const cliStatus = provider.checkCliStatus();
-  if (!cliStatus.available) {
-    throw new Error(cliStatus.error);
-  }
-
-  const issues = issueNumbers.map((n) => provider.fetchIssue(n));
-  return issues.map(formatIssueAsTask).join('\n\n---\n\n');
-}

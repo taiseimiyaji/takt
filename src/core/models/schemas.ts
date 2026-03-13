@@ -9,6 +9,7 @@ import { DEFAULT_LANGUAGE } from '../../shared/constants.js';
 import { McpServersSchema } from './mcp-schemas.js';
 import { INTERACTIVE_MODES } from './interactive-mode.js';
 import { STATUS_VALUES } from './status.js';
+import { VCS_PROVIDER_TYPES } from './vcs-types.js';
 
 export { McpServerConfigSchema, McpServersSchema } from './mcp-schemas.js';
 
@@ -527,7 +528,7 @@ export const ProjectConfigSchema = z.object({
   /** Piece-level overrides (quality_gates, etc.) */
   piece_overrides: PieceOverridesSchema,
   /** VCS provider selection (github or gitlab) */
-  vcs_provider: z.enum(['github', 'gitlab']).optional(),
+  vcs_provider: z.enum(VCS_PROVIDER_TYPES).optional(),
   /** Submodule acquisition mode (all or explicit path list) */
   submodules: z.union([
     z.string().refine((value) => value.trim().toLowerCase() === 'all', {
