@@ -25,8 +25,15 @@ const {
   mockFetchMrReviewComments: vi.fn(),
 }));
 
-vi.mock('../infra/gitlab/issue.js', () => ({
+vi.mock('../infra/gitlab/utils.js', () => ({
   checkGlabCli: (...args: unknown[]) => mockCheckGlabCli(...args),
+  parseJson: (raw: string, context: string) => {
+    try { return JSON.parse(raw); } catch { throw new Error(`glab returned invalid JSON (${context})`); }
+  },
+  fetchAllPages: vi.fn(),
+}));
+
+vi.mock('../infra/gitlab/issue.js', () => ({
   fetchIssue: (...args: unknown[]) => mockFetchIssue(...args),
   createIssue: (...args: unknown[]) => mockCreateIssue(...args),
 }));

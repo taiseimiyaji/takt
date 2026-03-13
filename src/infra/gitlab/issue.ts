@@ -6,68 +6,63 @@
 
 import { execFileSync } from 'node:child_process';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
-import type { CliStatus, Issue, CreateIssueOptions, CreateIssueResult } from '../git/types.js';
+import type { Issue, CreateIssueOptions, CreateIssueResult } from '../git/types.js';
+import { checkGlabCli, fetchAllPages, parseJson } from './utils.js';
 
 const log = createLogger('gitlab');
 
-/**
- * Check if `glab` CLI is available and authenticated.
- */
-export function checkGlabCli(): CliStatus {
-  try {
-    execFileSync('glab', ['auth', 'status'], { stdio: 'pipe' });
-    return { available: true };
-  } catch {
-    try {
-      execFileSync('glab', ['--version'], { stdio: 'pipe' });
-      return {
-        available: false,
-        error: 'glab CLI is installed but not authenticated. Run `glab auth login` first.',
-      };
-    } catch {
-      return {
-        available: false,
-        error: 'glab CLI is not installed. Install it from https://gitlab.com/gitlab-org/cli',
-      };
-    }
-  }
+const NOTES_PER_PAGE = 100;
+
+/** Raw note from GitLab Notes API */
+interface GlabIssueNote {
+  body: string;
+  author: { username: string };
+  system: boolean;
 }
 
 /**
- * Fetch issue content via `glab issue view`.
+ * Fetch issue content via `glab issue view` + separate notes API call.
+ *
+ * Notes are fetched via `glab api` with pagination because
+ * `glab issue view --output json` does not include notes.
+ *
  * Throws on failure (issue not found, network error, etc.).
  */
 export function fetchIssue(issueNumber: number): Issue {
   log.debug('Fetching issue', { issueNumber });
 
+  // 1. Issue metadata
   const raw = execFileSync(
     'glab',
     ['issue', 'view', String(issueNumber), '--output', 'json'],
     { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
   );
 
-  let data: {
+  const data = parseJson<{
     iid: number;
     title: string;
     description: string | null;
     labels: string[];
-    notes: Array<{ author: { username: string }; body: string }>;
-  };
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    throw new Error(`glab returned invalid JSON for issue #${issueNumber}`);
-  }
+  }>(raw, `issue view #${issueNumber}`);
+
+  // 2. Notes via paginated API call
+  const allNotes = fetchAllPages<GlabIssueNote>(
+    `projects/:id/issues/${issueNumber}/notes`,
+    NOTES_PER_PAGE,
+    `issue #${issueNumber} notes`,
+  );
 
   return {
     number: data.iid,
     title: data.title,
     body: data.description ?? '',
     labels: data.labels,
-    comments: data.notes.map((n) => ({
-      author: n.author.username,
-      body: n.body,
-    })),
+    comments: allNotes
+      .filter((n) => !n.system)
+      .map((n) => ({
+        author: n.author.username,
+        body: n.body,
+      })),
   };
 }
 

@@ -6,7 +6,8 @@
  * the GitProvider contract to the GitLab/glab-CLI implementation.
  */
 
-import { checkGlabCli, fetchIssue, createIssue } from './issue.js';
+import { checkGlabCli } from './utils.js';
+import { fetchIssue, createIssue } from './issue.js';
 import { findExistingMr, commentOnMr, createMergeRequest, fetchMrReviewComments } from './pr.js';
 import type { GitProvider, CliStatus, Issue, ExistingPr, CreateIssueOptions, CreateIssueResult, CreatePrOptions, CreatePrResult, CommentResult, PrReviewData } from '../git/types.js';
 

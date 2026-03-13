@@ -6,18 +6,10 @@
 
 import { execFileSync } from 'node:child_process';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
-import { checkGlabCli } from './issue.js';
+import { checkGlabCli, fetchAllPages, parseJson } from './utils.js';
 import type { CreatePrOptions, CreatePrResult, ExistingPr, CommentResult, PrReviewData, PrReviewComment } from '../git/types.js';
 
 const log = createLogger('gitlab-mr');
-
-function parseJson<T>(raw: string, context: string): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    throw new Error(`glab returned invalid JSON (${context})`);
-  }
-}
 
 /**
  * Find an open MR for the given branch.
@@ -143,12 +135,14 @@ interface GlabDiscussion {
   }>;
 }
 
+const ITEMS_PER_PAGE = 100;
+
 /**
  * Fetch MR review comments and metadata.
- * Uses 3 API calls:
+ * Uses 3 API calls (with pagination):
  *   1. `glab mr view` — MR metadata
- *   2. `glab api` — notes (general comments)
- *   3. `glab api` — discussions (inline review comments)
+ *   2. `glab api` — notes (general comments, paginated)
+ *   3. `glab api` — discussions (inline review comments, paginated)
  *
  * Throws on failure (MR not found, network error, etc.).
  */
@@ -163,31 +157,29 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
   );
   const mrData = parseJson<GlabMrViewResponse>(rawMr, `mr view #${mrNumber}`);
 
-  // 2. Notes (general comments)
-  const rawNotes = execFileSync(
-    'glab',
-    ['api', `projects/:id/merge_requests/${mrNumber}/notes?per_page=100`],
-    { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+  // 2. Notes (general comments) with pagination
+  const allNotes = fetchAllPages<GlabNote>(
+    `projects/:id/merge_requests/${mrNumber}/notes`,
+    ITEMS_PER_PAGE,
+    `mr #${mrNumber} notes`,
   );
-  const notes = parseJson<GlabNote[]>(rawNotes, `mr #${mrNumber} notes`);
 
   const comments: PrReviewComment[] = [];
-  for (const note of notes) {
+  for (const note of allNotes) {
     if (!note.system) {
       comments.push({ author: note.author.username, body: note.body });
     }
   }
 
-  // 3. Discussions (inline review comments)
-  const rawDiscussions = execFileSync(
-    'glab',
-    ['api', `projects/:id/merge_requests/${mrNumber}/discussions?per_page=100`],
-    { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+  // 3. Discussions (inline review comments) with pagination
+  const allDiscussions = fetchAllPages<GlabDiscussion>(
+    `projects/:id/merge_requests/${mrNumber}/discussions`,
+    ITEMS_PER_PAGE,
+    `mr #${mrNumber} discussions`,
   );
-  const discussions = parseJson<GlabDiscussion[]>(rawDiscussions, `mr #${mrNumber} discussions`);
 
   const reviews: PrReviewComment[] = [];
-  for (const discussion of discussions) {
+  for (const discussion of allDiscussions) {
     for (const note of discussion.notes) {
       if (note.position) {
         reviews.push({

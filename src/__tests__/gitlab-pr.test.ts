@@ -2,6 +2,7 @@
  * Tests for gitlab/pr module
  *
  * Tests MR operations via glab CLI mock, mirroring github-pr.test.ts pattern.
+ * AI-AP-001: notes/discussions fetching now uses pagination.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -11,9 +12,13 @@ vi.mock('node:child_process', () => ({
   execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }));
 
-vi.mock('../infra/gitlab/issue.js', () => ({
-  checkGlabCli: vi.fn().mockReturnValue({ available: true }),
-}));
+vi.mock('../infra/gitlab/utils.js', async (importOriginal) => {
+  const original = await importOriginal<Record<string, unknown>>();
+  return {
+    ...original,
+    checkGlabCli: vi.fn().mockReturnValue({ available: true }),
+  };
+});
 
 vi.mock('../shared/utils/index.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -202,6 +207,23 @@ describe('createMergeRequest', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
   });
+
+  it('glab mr create は --repo オプションを含まない', () => {
+    // Given
+    mockExecFileSync.mockReturnValue('https://gitlab.com/org/repo/-/merge_requests/7\n');
+
+    // When
+    createMergeRequest('/project', {
+      branch: 'feat/my-branch',
+      title: 'MR with repo',
+      body: 'body',
+      repo: 'org/repo',
+    });
+
+    // Then: --repo should NOT be passed to glab
+    const call = mockExecFileSync.mock.calls[0];
+    expect(call[1]).not.toContain('--repo');
+  });
 });
 
 describe('commentOnMr', () => {
@@ -245,9 +267,30 @@ describe('commentOnMr', () => {
 });
 
 describe('fetchMrReviewComments', () => {
+  /** Helper: minimal MR view response */
+  function makeMrViewResponse(overrides: Partial<{
+    iid: number;
+    title: string;
+    description: string | null;
+    web_url: string;
+    source_branch: string;
+    target_branch: string;
+    diff_stats: Array<{ old_path: string; new_path: string }>;
+  }> = {}) {
+    return {
+      iid: overrides.iid ?? 1,
+      title: overrides.title ?? 'MR',
+      description: overrides.description ?? '',
+      web_url: overrides.web_url ?? 'https://gitlab.com/org/repo/-/merge_requests/1',
+      source_branch: overrides.source_branch ?? 'feat/x',
+      target_branch: overrides.target_branch ?? 'main',
+      diff_stats: overrides.diff_stats ?? [],
+    };
+  }
+
   it('MR メタデータとノートを統合して PrReviewData を返す', () => {
     // Given: glab mr view returns MR metadata
-    const mrViewResponse = {
+    const mrViewResponse = makeMrViewResponse({
       iid: 456,
       title: 'Fix auth bug',
       description: 'MR description',
@@ -258,7 +301,7 @@ describe('fetchMrReviewComments', () => {
         { old_path: 'src/auth.ts', new_path: 'src/auth.ts' },
         { old_path: 'src/auth.test.ts', new_path: 'src/auth.test.ts' },
       ],
-    };
+    });
     // glab api returns notes (discussions)
     const notesResponse = [
       {
@@ -310,15 +353,7 @@ describe('fetchMrReviewComments', () => {
 
   it('system ノートはスキップする', () => {
     // Given
-    const mrViewResponse = {
-      iid: 10,
-      title: 'MR',
-      description: '',
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/10',
-      source_branch: 'feat/x',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 10 });
     const notesResponse = [
       { body: 'approved this merge request', author: { username: 'bot' }, system: true, type: null },
       { body: 'Actual comment', author: { username: 'reviewer' }, system: false, type: null },
@@ -339,15 +374,7 @@ describe('fetchMrReviewComments', () => {
 
   it('description が null の場合は空文字にマッピングする', () => {
     // Given
-    const mrViewResponse = {
-      iid: 11,
-      title: 'No description',
-      description: null,
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/11',
-      source_branch: 'feat/y',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 11, description: null });
     mockExecFileSync
       .mockReturnValueOnce(JSON.stringify(mrViewResponse))
       .mockReturnValueOnce(JSON.stringify([]))
@@ -362,15 +389,7 @@ describe('fetchMrReviewComments', () => {
 
   it('ディスカッション内のインラインコメントで position がない場合はスキップする', () => {
     // Given
-    const mrViewResponse = {
-      iid: 12,
-      title: 'MR',
-      description: '',
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/12',
-      source_branch: 'feat/z',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 12 });
     const discussionsResponse = [
       {
         notes: [
@@ -425,15 +444,7 @@ describe('fetchMrReviewComments', () => {
 
   it('notes API が不正な JSON を返した場合は明確なエラーメッセージをスローする', () => {
     // Given
-    const mrViewResponse = {
-      iid: 101,
-      title: 'MR',
-      description: '',
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/101',
-      source_branch: 'feat/x',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 101 });
     mockExecFileSync
       .mockReturnValueOnce(JSON.stringify(mrViewResponse))
       .mockReturnValueOnce('invalid json');
@@ -444,15 +455,7 @@ describe('fetchMrReviewComments', () => {
 
   it('discussions API が不正な JSON を返した場合は明確なエラーメッセージをスローする', () => {
     // Given
-    const mrViewResponse = {
-      iid: 102,
-      title: 'MR',
-      description: '',
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/102',
-      source_branch: 'feat/x',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 102 });
     mockExecFileSync
       .mockReturnValueOnce(JSON.stringify(mrViewResponse))
       .mockReturnValueOnce(JSON.stringify([]))
@@ -462,17 +465,9 @@ describe('fetchMrReviewComments', () => {
     expect(() => fetchMrReviewComments(102)).toThrow('glab returned invalid JSON');
   });
 
-  it('notes API と discussions API に per_page=100 パラメータが含まれる', () => {
+  it('notes API と discussions API に per_page パラメータが含まれる', () => {
     // Given
-    const mrViewResponse = {
-      iid: 200,
-      title: 'MR',
-      description: '',
-      web_url: 'https://gitlab.com/org/repo/-/merge_requests/200',
-      source_branch: 'feat/pagination',
-      target_branch: 'main',
-      diff_stats: [],
-    };
+    const mrViewResponse = makeMrViewResponse({ iid: 200 });
     mockExecFileSync
       .mockReturnValueOnce(JSON.stringify(mrViewResponse))
       .mockReturnValueOnce(JSON.stringify([]))
@@ -481,31 +476,172 @@ describe('fetchMrReviewComments', () => {
     // When
     fetchMrReviewComments(200);
 
-    // Then: verify notes API call has per_page=100
+    // Then: verify notes API call has per_page
     const notesCall = mockExecFileSync.mock.calls[1];
     const notesApiPath = notesCall[1][1] as string;
     expect(notesApiPath).toContain('per_page=100');
 
-    // Then: verify discussions API call has per_page=100
+    // Then: verify discussions API call has per_page
     const discussionsCall = mockExecFileSync.mock.calls[2];
     const discussionsApiPath = discussionsCall[1][1] as string;
     expect(discussionsApiPath).toContain('per_page=100');
   });
 
-  it('glab mr create は --repo オプションを含まない', () => {
+  it('notes が100件の場合は次ページを取得する（ページネーション）', () => {
     // Given
-    mockExecFileSync.mockReturnValue('https://gitlab.com/org/repo/-/merge_requests/7\n');
+    const mrViewResponse = makeMrViewResponse({ iid: 300 });
+    const firstPageNotes = Array.from({ length: 100 }, (_, i) => ({
+      body: `Note ${i + 1}`,
+      author: { username: 'commenter' },
+      system: false,
+    }));
+    const secondPageNotes = [
+      { body: 'Note 101', author: { username: 'commenter' }, system: false },
+    ];
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify(firstPageNotes))
+      .mockReturnValueOnce(JSON.stringify(secondPageNotes))
+      .mockReturnValueOnce(JSON.stringify([])); // discussions (single page)
 
     // When
-    createMergeRequest('/project', {
-      branch: 'feat/my-branch',
-      title: 'MR with repo',
-      body: 'body',
-      repo: 'org/repo',
-    });
+    const result = fetchMrReviewComments(300);
 
-    // Then: --repo should NOT be passed to glab
-    const call = mockExecFileSync.mock.calls[0];
-    expect(call[1]).not.toContain('--repo');
+    // Then
+    expect(result.comments).toHaveLength(101);
+    expect(result.comments[100]).toEqual({ author: 'commenter', body: 'Note 101' });
   });
+
+  it('notes のページネーションで page パラメータが正しく増加する', () => {
+    // Given
+    const mrViewResponse = makeMrViewResponse({ iid: 301 });
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+      body: `Note ${i}`,
+      author: { username: 'user' },
+      system: false,
+    }));
+    const secondPage = [
+      { body: 'Last note', author: { username: 'user' }, system: false },
+    ];
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify(firstPage))
+      .mockReturnValueOnce(JSON.stringify(secondPage))
+      .mockReturnValueOnce(JSON.stringify([])); // discussions
+
+    // When
+    fetchMrReviewComments(301);
+
+    // Then: verify page=1 for notes
+    const notesCall1 = mockExecFileSync.mock.calls[1];
+    const apiPath1 = notesCall1[1][1] as string;
+    expect(apiPath1).toContain('page=1');
+    expect(apiPath1).toContain('notes');
+
+    // Then: verify page=2 for notes
+    const notesCall2 = mockExecFileSync.mock.calls[2];
+    const apiPath2 = notesCall2[1][1] as string;
+    expect(apiPath2).toContain('page=2');
+    expect(apiPath2).toContain('notes');
+  });
+
+  it('discussions が100件の場合は次ページを取得する（ページネーション）', () => {
+    // Given
+    const mrViewResponse = makeMrViewResponse({ iid: 302 });
+    const firstPageDiscussions = Array.from({ length: 100 }, (_, i) => ({
+      notes: [{
+        body: `Discussion ${i + 1}`,
+        author: { username: 'reviewer' },
+        system: false,
+        position: { new_path: 'src/app.ts', new_line: i + 1 },
+      }],
+    }));
+    const secondPageDiscussions = [{
+      notes: [{
+        body: 'Discussion 101',
+        author: { username: 'reviewer' },
+        system: false,
+        position: { new_path: 'src/app.ts', new_line: 101 },
+      }],
+    }];
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify([])) // notes (empty, single page)
+      .mockReturnValueOnce(JSON.stringify(firstPageDiscussions))
+      .mockReturnValueOnce(JSON.stringify(secondPageDiscussions));
+
+    // When
+    const result = fetchMrReviewComments(302);
+
+    // Then
+    expect(result.reviews).toHaveLength(101);
+    expect(result.reviews[100]).toEqual({
+      author: 'reviewer',
+      body: 'Discussion 101',
+      path: 'src/app.ts',
+      line: 101,
+    });
+  });
+
+  it('discussions のページネーションで page パラメータが正しく増加する', () => {
+    // Given
+    const mrViewResponse = makeMrViewResponse({ iid: 303 });
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+      notes: [{
+        body: `D${i}`,
+        author: { username: 'r' },
+        system: false,
+        position: { new_path: 'a.ts', new_line: i },
+      }],
+    }));
+    const secondPage = [{
+      notes: [{
+        body: 'Last',
+        author: { username: 'r' },
+        system: false,
+        position: { new_path: 'a.ts', new_line: 100 },
+      }],
+    }];
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify([])) // notes
+      .mockReturnValueOnce(JSON.stringify(firstPage))
+      .mockReturnValueOnce(JSON.stringify(secondPage));
+
+    // When
+    fetchMrReviewComments(303);
+
+    // Then: discussions page=1
+    const discCall1 = mockExecFileSync.mock.calls[2];
+    const discPath1 = discCall1[1][1] as string;
+    expect(discPath1).toContain('page=1');
+    expect(discPath1).toContain('discussions');
+
+    // Then: discussions page=2
+    const discCall2 = mockExecFileSync.mock.calls[3];
+    const discPath2 = discCall2[1][1] as string;
+    expect(discPath2).toContain('page=2');
+    expect(discPath2).toContain('discussions');
+  });
+
+  it('notes が100件未満の場合は追加ページを取得しない', () => {
+    // Given
+    const mrViewResponse = makeMrViewResponse({ iid: 304 });
+    const fewNotes = Array.from({ length: 50 }, (_, i) => ({
+      body: `Note ${i}`,
+      author: { username: 'user' },
+      system: false,
+    }));
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify(fewNotes))
+      .mockReturnValueOnce(JSON.stringify([])); // discussions
+
+    // When
+    fetchMrReviewComments(304);
+
+    // Then: 3 calls total (mr view + 1 page notes + 1 page discussions)
+    expect(mockExecFileSync).toHaveBeenCalledTimes(3);
+  });
+
 });
