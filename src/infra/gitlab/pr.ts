@@ -6,7 +6,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
-import { checkGlabCli, fetchAllPages, parseJson } from './utils.js';
+import { checkGlabCli, fetchAllPages, parseJson, ITEMS_PER_PAGE } from './utils.js';
 import type { CreatePrOptions, CreatePrResult, ExistingPr, CommentResult, PrReviewData, PrReviewComment } from '../git/types.js';
 
 const log = createLogger('gitlab-mr');
@@ -135,8 +135,6 @@ interface GlabDiscussion {
     };
   }>;
 }
-
-const ITEMS_PER_PAGE = 100;
 
 /**
  * Fetch MR review comments and metadata.

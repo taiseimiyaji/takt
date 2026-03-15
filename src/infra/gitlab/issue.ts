@@ -7,11 +7,9 @@
 import { execFileSync } from 'node:child_process';
 import { createLogger, getErrorMessage } from '../../shared/utils/index.js';
 import type { Issue, CreateIssueOptions, CreateIssueResult } from '../git/types.js';
-import { checkGlabCli, fetchAllPages, parseJson } from './utils.js';
+import { checkGlabCli, fetchAllPages, parseJson, ITEMS_PER_PAGE } from './utils.js';
 
 const log = createLogger('gitlab');
-
-const NOTES_PER_PAGE = 100;
 
 /** Raw note from GitLab Notes API */
 interface GlabIssueNote {
@@ -48,7 +46,7 @@ export function fetchIssue(issueNumber: number): Issue {
   // 2. Notes via paginated API call
   const allNotes = fetchAllPages<GlabIssueNote>(
     `projects/:id/issues/${issueNumber}/notes`,
-    NOTES_PER_PAGE,
+    ITEMS_PER_PAGE,
     `issue #${issueNumber} notes`,
   );
 
