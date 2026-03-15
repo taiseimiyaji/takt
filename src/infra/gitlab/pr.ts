@@ -120,6 +120,7 @@ interface GlabNote {
   body: string;
   author: { username: string };
   system: boolean;
+  position?: unknown;
 }
 
 /** Raw discussion from GitLab Discussions API */
@@ -166,7 +167,7 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
 
   const comments: PrReviewComment[] = [];
   for (const note of allNotes) {
-    if (!note.system) {
+    if (!note.system && !note.position) {
       comments.push({ author: note.author.username, body: note.body });
     }
   }

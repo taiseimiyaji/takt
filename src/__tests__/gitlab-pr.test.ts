@@ -624,6 +624,56 @@ describe('fetchMrReviewComments', () => {
     expect(discPath2).toContain('discussions');
   });
 
+  it('notes に position を持つ DiffNote が含まれる場合、一般コメントから除外する', () => {
+    // Given
+    const mrViewResponse = makeMrViewResponse({ iid: 400 });
+    const notesResponse = [
+      {
+        body: 'General comment',
+        author: { username: 'commenter1' },
+        system: false,
+      },
+      {
+        body: 'Inline diff note that should be excluded',
+        author: { username: 'reviewer1' },
+        system: false,
+        position: { new_path: 'src/foo.ts', new_line: 10 },
+      },
+      {
+        body: 'Another general comment',
+        author: { username: 'commenter2' },
+        system: false,
+      },
+    ];
+    const discussionsResponse = [
+      {
+        notes: [{
+          body: 'Inline diff note that should be excluded',
+          author: { username: 'reviewer1' },
+          system: false,
+          position: { new_path: 'src/foo.ts', new_line: 10 },
+        }],
+      },
+    ];
+    mockExecFileSync
+      .mockReturnValueOnce(JSON.stringify(mrViewResponse))
+      .mockReturnValueOnce(JSON.stringify(notesResponse))
+      .mockReturnValueOnce(JSON.stringify(discussionsResponse));
+
+    // When
+    const result = fetchMrReviewComments(400);
+
+    // Then: DiffNote excluded from comments, only general comments remain
+    expect(result.comments).toEqual([
+      { author: 'commenter1', body: 'General comment' },
+      { author: 'commenter2', body: 'Another general comment' },
+    ]);
+    // DiffNote appears in reviews via discussions
+    expect(result.reviews).toEqual([
+      { author: 'reviewer1', body: 'Inline diff note that should be excluded', path: 'src/foo.ts', line: 10 },
+    ]);
+  });
+
   it('notes が100件未満の場合は追加ページを取得しない', () => {
     // Given
     const mrViewResponse = makeMrViewResponse({ iid: 304 });
