@@ -29,7 +29,6 @@ interface GlabIssueNote {
 export function fetchIssue(issueNumber: number): Issue {
   log.debug('Fetching issue', { issueNumber });
 
-  // 1. Issue metadata
   const raw = execFileSync(
     'glab',
     ['issue', 'view', String(issueNumber), '--output', 'json'],
@@ -43,7 +42,6 @@ export function fetchIssue(issueNumber: number): Issue {
     labels: string[];
   }>(raw, `issue view #${issueNumber}`);
 
-  // 2. Notes via paginated API call
   const allNotes = fetchAllPages<GlabIssueNote>(
     `projects/:id/issues/${issueNumber}/notes`,
     ITEMS_PER_PAGE,

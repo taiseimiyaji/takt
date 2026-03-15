@@ -148,7 +148,6 @@ interface GlabDiscussion {
 export function fetchMrReviewComments(mrNumber: number): PrReviewData {
   log.debug('Fetching MR review comments', { mrNumber });
 
-  // 1. MR metadata
   const rawMr = execFileSync(
     'glab',
     ['mr', 'view', String(mrNumber), '--output', 'json'],
@@ -156,7 +155,6 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
   );
   const mrData = parseJson<GlabMrViewResponse>(rawMr, `mr view #${mrNumber}`);
 
-  // 2. Notes (general comments) with pagination
   const allNotes = fetchAllPages<GlabNote>(
     `projects/:id/merge_requests/${mrNumber}/notes`,
     ITEMS_PER_PAGE,
@@ -170,7 +168,6 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
     }
   }
 
-  // 3. Discussions (inline review comments) with pagination
   const allDiscussions = fetchAllPages<GlabDiscussion>(
     `projects/:id/merge_requests/${mrNumber}/discussions`,
     ITEMS_PER_PAGE,
