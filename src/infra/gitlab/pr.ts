@@ -112,7 +112,6 @@ interface GlabMrViewResponse {
   web_url: string;
   source_branch: string;
   target_branch: string;
-  diff_stats: Array<{ old_path: string; new_path: string }>;
 }
 
 /** Raw note from GitLab Notes API */
@@ -138,10 +137,11 @@ interface GlabDiscussion {
 
 /**
  * Fetch MR review comments and metadata.
- * Uses 3 API calls (with pagination):
+ * Uses 4 CLI calls (with pagination):
  *   1. `glab mr view` — MR metadata
- *   2. `glab api` — notes (general comments, paginated)
- *   3. `glab api` — discussions (inline review comments, paginated)
+ *   2. `glab mr diff` — changed file list
+ *   3. `glab api` — notes (general comments, paginated)
+ *   4. `glab api` — discussions (inline review comments, paginated)
  *
  * Throws on failure (MR not found, network error, etc.).
  */
@@ -154,6 +154,14 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
     { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
   );
   const mrData = parseJson<GlabMrViewResponse>(rawMr, `mr view #${mrNumber}`);
+
+  // Fetch changed file list via `glab mr diff --name-only`
+  const rawDiff = execFileSync(
+    'glab',
+    ['mr', 'diff', String(mrNumber), '--name-only'],
+    { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+  );
+  const files = rawDiff.trim().split('\n').filter((f) => f.length > 0);
 
   const allNotes = fetchAllPages<GlabNote>(
     `projects/:id/merge_requests/${mrNumber}/notes`,
@@ -197,6 +205,6 @@ export function fetchMrReviewComments(mrNumber: number): PrReviewData {
     baseRefName: mrData.target_branch,
     comments,
     reviews,
-    files: mrData.diff_stats.map((d) => d.new_path),
+    files,
   };
 }
