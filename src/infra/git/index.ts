@@ -99,11 +99,3 @@ export function resolveIssueTask(task: string): string {
   const issues = issueNumbers.map((n) => gitProvider.fetchIssue(n));
   return issues.map(formatIssueAsTask).join('\n\n---\n\n');
 }
-
-/**
- * Reset the singleton (for testing).
- */
-export function resetGitProvider(): void {
-  provider = undefined;
-  currentProviderType = undefined;
-}

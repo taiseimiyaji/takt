@@ -9,22 +9,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockDetectVcsProvider, mockResolveConfigValue } = vi.hoisted(() => ({
+const { mockDetectVcsProvider, mockResolveConfigValue, MockGitHubProvider, MockGitLabProvider } = vi.hoisted(() => ({
   mockDetectVcsProvider: vi.fn(),
   mockResolveConfigValue: vi.fn(),
-}));
-
-vi.mock('../infra/git/detect.js', () => ({
-  detectVcsProvider: (...args: unknown[]) => mockDetectVcsProvider(...args),
-}));
-
-vi.mock('../infra/config/resolveConfigValue.js', () => ({
-  resolveConfigValue: (...args: unknown[]) => mockResolveConfigValue(...args),
-}));
-
-// Mock GitHubProvider and GitLabProvider to verify instantiation
-vi.mock('../infra/github/GitHubProvider.js', () => ({
-  GitHubProvider: vi.fn().mockImplementation(() => ({
+  MockGitHubProvider: vi.fn().mockImplementation(() => ({
     _type: 'github',
     checkCliStatus: vi.fn(),
     fetchIssue: vi.fn(),
@@ -34,10 +22,7 @@ vi.mock('../infra/github/GitHubProvider.js', () => ({
     createPullRequest: vi.fn(),
     commentOnPr: vi.fn(),
   })),
-}));
-
-vi.mock('../infra/gitlab/GitLabProvider.js', () => ({
-  GitLabProvider: vi.fn().mockImplementation(() => ({
+  MockGitLabProvider: vi.fn().mockImplementation(() => ({
     _type: 'gitlab',
     checkCliStatus: vi.fn(),
     fetchIssue: vi.fn(),
@@ -49,13 +34,31 @@ vi.mock('../infra/gitlab/GitLabProvider.js', () => ({
   })),
 }));
 
-import { getGitProvider, initGitProvider, resetGitProvider } from '../infra/git/index.js';
-import { GitHubProvider } from '../infra/github/GitHubProvider.js';
-import { GitLabProvider } from '../infra/gitlab/GitLabProvider.js';
+vi.mock('../infra/git/detect.js', () => ({
+  detectVcsProvider: (...args: unknown[]) => mockDetectVcsProvider(...args),
+}));
 
-beforeEach(() => {
+vi.mock('../infra/config/resolveConfigValue.js', () => ({
+  resolveConfigValue: (...args: unknown[]) => mockResolveConfigValue(...args),
+}));
+
+vi.mock('../infra/github/GitHubProvider.js', () => ({
+  GitHubProvider: MockGitHubProvider,
+}));
+
+vi.mock('../infra/gitlab/GitLabProvider.js', () => ({
+  GitLabProvider: MockGitLabProvider,
+}));
+
+let getGitProvider: typeof import('../infra/git/index.js').getGitProvider;
+let initGitProvider: typeof import('../infra/git/index.js').initGitProvider;
+
+beforeEach(async () => {
   vi.clearAllMocks();
-  resetGitProvider();
+  vi.resetModules();
+  const mod = await import('../infra/git/index.js');
+  getGitProvider = mod.getGitProvider;
+  initGitProvider = mod.initGitProvider;
 });
 
 describe('getGitProvider', () => {
@@ -68,7 +71,7 @@ describe('getGitProvider', () => {
 
     // Then
     expect((provider as unknown as { _type: string })._type).toBe('github');
-    expect(GitHubProvider).toHaveBeenCalledTimes(1);
+    expect(MockGitHubProvider).toHaveBeenCalledTimes(1);
   });
 
   it('initGitProvider 未呼び出し、自動検出で GitLab の場合、GitLab プロバイダーを返す', () => {
@@ -80,7 +83,7 @@ describe('getGitProvider', () => {
 
     // Then
     expect((provider as unknown as { _type: string })._type).toBe('gitlab');
-    expect(GitLabProvider).toHaveBeenCalledTimes(1);
+    expect(MockGitLabProvider).toHaveBeenCalledTimes(1);
   });
 
   it('自動検出が undefined の場合、GitHub にフォールバックする', () => {
@@ -104,7 +107,7 @@ describe('getGitProvider', () => {
 
     // Then
     expect(provider1).toBe(provider2);
-    expect(GitHubProvider).toHaveBeenCalledTimes(1);
+    expect(MockGitHubProvider).toHaveBeenCalledTimes(1);
   });
 
   it('GitProvider インターフェースを実装するインスタンスを返す', () => {
@@ -204,7 +207,7 @@ describe('initGitProvider', () => {
 
     // Then
     expect(provider1).toBe(provider2);
-    expect(GitLabProvider).toHaveBeenCalledTimes(1);
+    expect(MockGitLabProvider).toHaveBeenCalledTimes(1);
   });
 
   it('プロバイダータイプが変わった場合、インスタンスを再生成する', () => {
@@ -221,20 +224,5 @@ describe('initGitProvider', () => {
     expect(provider1).not.toBe(provider2);
     expect((provider1 as unknown as { _type: string })._type).toBe('github');
     expect((provider2 as unknown as { _type: string })._type).toBe('gitlab');
-  });
-});
-
-describe('resetGitProvider', () => {
-  it('リセット後、getGitProvider は新しいインスタンスを返す', () => {
-    // Given
-    mockDetectVcsProvider.mockReturnValue('github');
-    const provider1 = getGitProvider();
-
-    // When
-    resetGitProvider();
-    const provider2 = getGitProvider();
-
-    // Then
-    expect(provider1).not.toBe(provider2);
   });
 });

@@ -34,11 +34,13 @@ vi.mock('../infra/git/detect.js', () => ({
   VCS_PROVIDER_TYPES: ['github', 'gitlab'] as const,
 }));
 
-import { resolveIssueTask, resetGitProvider } from '../infra/git/index.js';
+let resolveIssueTask: typeof import('../infra/git/index.js').resolveIssueTask;
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  resetGitProvider();
+  vi.resetModules();
+  const mod = await import('../infra/git/index.js');
+  resolveIssueTask = mod.resolveIssueTask;
 });
 
 describe('resolveIssueTask (inlined in git/index.ts)', () => {
